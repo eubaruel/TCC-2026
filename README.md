@@ -64,7 +64,7 @@ Desenvolver um sistema para armazenar questões de prova e corrigir provas objet
 
 ## Arquitetura do Projeto
 
-O projeto segue o padrão MVC
+O projeto segue o padrão MVC e a API REST
 
 ---
 
