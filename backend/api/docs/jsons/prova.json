@@ -1,0 +1,20 @@
+{
+    "prova_dissertativa":{
+        "id_hash":"",
+        "id_turma":["<id_turma1>","<id_turma2>","etc..."],
+        "disciplina":{
+            "codigo_disciplina":"",
+            "nome_disciplina":""
+        },
+        "professor":{
+            "registro_professor":0,
+            "nome_professor":""
+        },
+        "status":"APENAS 'Corrigida' OU 'Não corrigida'",
+        "tipo":"APENAS 'Objetiva' ou 'Dissertativa'",
+        "ano":0,
+        "bimestre":"APENAS '1° bimestre' ou '2° bimestre' ou '3° bimestre' ou '4° bimestre'",
+        "data_de_aplicacao":"<USAR CALENDARIO>",
+        "id_questao":[1,2,3,4,5]
+    }
+}

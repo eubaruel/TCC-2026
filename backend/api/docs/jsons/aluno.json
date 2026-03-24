@@ -1,0 +1,11 @@
+{
+    "aluno":{
+        "id_hash":"",
+        "matricula_aluno":"",
+        "nome_aluno":"",
+        "turma":"",
+        "serie":"",
+        "situacao":"",
+        "email_aluno":""
+    }
+}

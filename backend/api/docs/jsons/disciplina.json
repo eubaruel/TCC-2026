@@ -1,0 +1,13 @@
+{
+    "disciplina":{
+        "id_hash":"",
+        "nome_disciplina":"",
+        "codigo_disciplina":"",
+        "professor":{
+            "registro_professor":0,
+            "nome_professor":""
+        },
+        "turma":"",
+        "alunos":["<matricula1>","<matricula2>","etc..."]
+    }
+}

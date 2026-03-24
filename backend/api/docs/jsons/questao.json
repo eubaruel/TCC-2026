@@ -1,0 +1,17 @@
+{
+    "questao":{
+        "id_hash":"",
+        "professor":{
+            "registro_professor":0,
+            "nome_professor":""
+        },
+        "assunto":"",
+        "disciplina":["<disciplina1>","<disciplina2>"],
+        "palavras_chave":["<palavras_chave1>","<palavras_chave2>"],
+        "tipo_questao":"APENAS 'Objetiva' ou 'Dissertativa'",
+        "dificuldade":"APENAS 'Fácil' ou 'Médio' ou 'Difícil'",
+        "autor":"",
+        "alternativas":["SE FOR DISSERTATIVA MANTER VAZIO"],
+        "alternativa_correta":""
+    }
+}
