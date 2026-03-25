@@ -12,6 +12,7 @@ class Questao:
         self.__tipo_questao = None   #se é objetiva ou dissertativa
         self.__dificuldade = None 
         self.__autor = None   #Ex: Professor, Universidades, etc.
+        self.__enunciado = None   #gerado automaticamente no programa
         self.__alternativas = None
         self.__alternativa_correta = None 
 
@@ -198,6 +199,19 @@ class Questao:
         
         self.__autor = value
 
+    @property
+    def enunciado(self):
+        return self.__enunciado
+    
+    @enunciado.setter
+    def enunciado(self,value):
+        if value is None:
+            raise ValueError("Enunciado nulo")
+        
+        if not isinstance(value, str):
+            raise TypeError("Enunciado deve ser str")
+
+        self.__enunciado = value
 
     #GET/SET ALTERNATIVAS
     @property

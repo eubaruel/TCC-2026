@@ -1,8 +1,8 @@
 {
     "disciplina":{
         "id_hash":"",
-        "nome_disciplina":"",
         "codigo_disciplina":"",
+        "nome_disciplina":"",
         "professor":{
             "registro_professor":0,
             "nome_professor":""
