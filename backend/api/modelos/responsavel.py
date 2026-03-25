@@ -71,7 +71,7 @@ class Responsavel:
             if not re.match(padrao,value):
                 raise ValueError("Email inválido")
             
-            self.__email_responsavel = value
+            self.__email_responsavel = value.lower()
 
     @property
     def aluno(self):
@@ -101,3 +101,17 @@ class Responsavel:
             raise ValueError("Telefone deve ter ao menos 10 caracteres")
 
         self.__telefone_responsavel = value
+
+    @property
+    def ativo(self):
+        return self.__ativo
+    
+    @ativo.setter
+    def ativo(self,value):
+        if value is None:
+            raise ValueError("Ativo nulo")
+        
+        if not isinstance(value,bool):
+            raise TypeError("Ativo deve ser booleano")
+        
+        self.__ativo = value

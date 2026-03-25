@@ -86,4 +86,18 @@ class Professor:
             if not re.match(padrao,value):
                 raise ValueError("Email inválido")
             
-            self.__email_professor = value
+            self.__email_professor = value.lower()
+
+    @property
+    def ativo(self):
+        return self.__ativo
+    
+    @ativo.setter
+    def ativo(self,value):
+        if value is None:
+            raise ValueError("Ativo nulo")
+        
+        if not isinstance(value,bool):
+            raise TypeError("Ativo deve ser booleano")
+        
+        self.__ativo = value
