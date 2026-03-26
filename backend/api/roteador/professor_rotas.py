@@ -1,10 +1,10 @@
 from flask import Blueprint, request
 from functools import wraps
 
-class Professor_routes:
+class Professor_rotas:
     #def __init__(self, jwt_middleware:Jwt_middleware, professor_middleware:Professor_middleware, professor_controle:Professor_controle):
     def __init__(self):
-        print("⬆️  professor_routes.__init__()")
+        print("⬆️  professor_rotas.__init__()")
 
         #self.jwt_middleware = jwt_middleware
         #self.professor_middleware = professor_middleware
@@ -13,7 +13,7 @@ class Professor_routes:
         self.blueprint = Blueprint('professores',__name__)
 
 
-    def create_routes(self):
+    def criar_rotas(self):
 
         @self.blueprint.route('/',methods=['POST'])
         def cadastrar():

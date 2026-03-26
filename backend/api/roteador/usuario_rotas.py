@@ -1,14 +1,14 @@
 from flask import Blueprint, request
 from functools import wraps
 
-class Usuario_routes:
+class Usuario_rotas:
     def __init__(self):
-        print("⬆️  usuario_routes.__init__()")
+        print("⬆️  usuario_rotas.__init__()")
 
         self.blueprint = Blueprint('usuarios',__name__)
 
     
-    def create_routes(self):
+    def criar_rotas(self):
 
         @self.blueprint.route('/',methods=['POST'])
         def cadastrar():
