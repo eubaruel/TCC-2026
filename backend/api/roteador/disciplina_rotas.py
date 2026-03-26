@@ -2,14 +2,14 @@ from flask import Blueprint, request
 from functools import wraps
 
 
-class Disciplina_routes:
+class Disciplina_rotas:
     #def __init__(self, jwt_middleware:Jwt_middleware, aluno_middleware:Aluno_middleware, aluno_controle:Aluno_controle):
     def __init__(self):
-        print("⬆️  disciplina_routes.__init__()")
+        print("⬆️  disciplina_rotas.__init__()")
 
         self.blueprint = Blueprint('disciplinas',__name__)
 
-    def create_routes(self):
+    def criar_rotas(self):
 
         @self.blueprint.route('/',methods=['POST'])
         #

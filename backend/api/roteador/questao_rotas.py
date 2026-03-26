@@ -4,9 +4,10 @@ from functools import wraps
 #from backend.api.middlewares.questao_middleware import Questao_middleware
 #from backend.api.control.questao_controle import Questao_controle
 
-class Questao_routes:
+class Questao_rotas:
     #def __init__(self, jwt_middleware:Jwt_middleware, questao_middleware:Questao_middleware, questao_controle:Questao_controle):
     def __init__(self):
+        print("⬆️  questao_rotas.__init__()")
 
         #self.jwt_middleware = jwt_middleware
         #self.questao_middleware = questao_middleware
@@ -14,7 +15,7 @@ class Questao_routes:
 
         self.blueprint = Blueprint('questoes',__name__)
 
-    def create_routes(self):
+    def criar_rotas(self):
         
         @self.blueprint.route('/',methods=['POST'])
         #@self.jwt_middleware.validar_token

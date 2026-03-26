@@ -1,14 +1,14 @@
 from flask import Blueprint, request
 from functools import wraps
 
-class Responsavel_routes:
+class Responsavel_rotas:
 
     def __init__(self):
-        print("⬆️  responsavel_routes.__init__()")
+        print("⬆️  responsavel_rotas.__init__()")
 
         self.blueprint = Blueprint('responsaveis',__name__)
 
-    def create_routes(self):
+    def criar_rotas(self):
 
         @self.blueprint.route('/',methods=['POST'])
         def cadastrar():
