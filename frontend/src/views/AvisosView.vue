@@ -10,7 +10,7 @@
       <form @submit.prevent="criarAviso" class="form-aviso">
         <div class="form-group">
           <label>Título do Aviso *</label>
-          <input type="text" v-model="novoAviso.titulo" required placeholder="Ex: Prova Bimestral - Matemática" />
+          <input type="text" v-model="novoAviso.titulo" required placeholder="Ex: Prova Dissertativa Semana G1" />
         </div>
         
         <div class="form-group">
@@ -20,12 +20,12 @@
         
         <div class="form-row">
           <div class="form-group">
-            <label>Matéria *</label>
-            <input type="text" v-model="novoAviso.materia" required placeholder="Ex: Matemática" />
+            <label>Disciplina *</label>
+            <input type="text" v-model="novoAviso.disciplina" required placeholder="Ex: Matemática" />
           </div>
           <div class="form-group">
             <label>Turma *</label>
-            <input type="text" v-model="novoAviso.turma" required placeholder="Ex: 9° Ano A" />
+            <input type="text" v-model="novoAviso.turma" required placeholder="Ex: 1° Ano A" />
           </div>
         </div>
         
