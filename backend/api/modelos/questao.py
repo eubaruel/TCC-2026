@@ -1,4 +1,4 @@
-from professor import Professor
+from usuario import Usuario
 
 class Questao:
     def __init__(self):
@@ -55,7 +55,7 @@ class Questao:
 
     @professor.setter
     def professor(self, value):
-        if not isinstance(value, Professor):
+        if not isinstance(value, Usuario):
             raise ValueError("Professor deve ser uma instância válida")
         self.__professor = value
 

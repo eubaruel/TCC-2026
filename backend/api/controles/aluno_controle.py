@@ -59,8 +59,7 @@ class Aluno_controle:
         print("🔵 aluno_controle.alterar()")
 
         json_aluno = request.json.get("aluno") 
-        matricula_aluno = json_aluno.get("matricula_aluno")
-        sucesso = self.__aluno_service.atualizar(json_aluno,matricula_aluno)
+        sucesso = self.__aluno_service.atualizar(json_aluno)
         
         if sucesso:
             return jsonify({
@@ -73,12 +72,12 @@ class Aluno_controle:
         else:
             return jsonify({
                 "success": False,
-                "error": {"message": f"Não foi possível atualizar o aluno com a matricula {matricula_aluno}"},
+                "error": {"message": f"Não foi possível atualizar o aluno com a matricula {json_aluno.get("matricula_aluno")}"},
             }), 404
     
     def deletar(self, matricula_aluno):
         print("🔵 aluno_controle.deletar()")
-        excluiu = self.__aluno_service.delete(matricula_aluno)
+        excluiu = self.__aluno_service.excluir(matricula_aluno)
         if excluiu:
             return jsonify({
             "success": True,

@@ -4,6 +4,8 @@ import bcrypt
 class Usuario:
     def __init__(self):
         self.__id_hash = None
+        self.__registro = None
+        self.__nome = None
         self.__email = None
         self.__senha = None
         self.__role = None
@@ -22,6 +24,46 @@ class Usuario:
             raise TypeError("Id_hash deve ser uma string")
         
         self.__id_hash = value
+
+    @property
+    def registro(self):
+        return self.__registro
+
+    @registro.setter
+    def registro(self, value):
+        if value is None:
+            raise ValueError("Registro do funcionário nulo")
+
+        if not isinstance(value, int):
+            raise TypeError("Registro do funcionário deve ser um int")
+
+        self.__registro = value
+
+    @property
+    def nome(self):
+        return self.__nome
+
+    @nome.setter
+    def nome(self, value):
+        if value is None:
+            raise ValueError("Nome do funcionário nulo")
+
+        if not isinstance(value, str):
+            raise TypeError("Nome do funcionário deve ser uma string")
+
+        value = value.strip().title()
+        
+        if len(value) < 5:
+            raise ValueError("Nome do funcionário deve ter ao menos 5 caracteres")
+
+        if len(value.split()) < 2:
+            raise ValueError("Nome do funcionário deve ter ao menos um sobrenome")
+        
+        for n in value.split(): 
+            if len(n) < 3:
+                raise ValueError("Cada parte do nome deve conter ao menos 3 caracteres")
+
+        self.__nome = value
 
     
     @property
