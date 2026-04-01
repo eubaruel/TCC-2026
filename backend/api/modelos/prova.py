@@ -1,10 +1,9 @@
-from professor import Professor
+from usuario import Usuario
 from disciplina import Disciplina
 
 class Prova:
     def __init__(self):
-        self.__id_hash = None
-        self.__id_prova = None   #gerado automaticamente no cadastro da provas
+        self.__id_hash = None   
         self.__id_turma = None   #id das turmas as quais farão essa prova
         self.__disciplina = None   #id da disciplina da prova
         self.__professor = None   #id do professor autor da prova
@@ -14,33 +13,19 @@ class Prova:
         self.__bimestre = None    
         self.__data_de_aplicacao = None 
         self.__id_questao = None   #id das questões que contém a determinada prova
-
+    
     @property
     def id_hash(self):
         return self.__id_hash
-    
+
     @id_hash.setter
     def id_hash(self, value):
         if value is None:
-            raise ValueError("Id hash nulo")
+            raise ValueError("Id_hash da prova nulo")
         
         if not isinstance(value, str):
-            raise TypeError("Id deve ser uma string")
-        
+            raise TypeError("Id da prova deve ser string")
         self.__id_hash = value
-    
-    @property
-    def id_prova(self):
-        return self.__id_prova
-
-    @id_prova.setter
-    def id_prova(self, value):
-        if value is None:
-            raise ValueError("Id da prova nulo")
-        
-        if not isinstance(value, int):
-            raise TypeError("Id da prova deve ser inteiro")
-        self.__id_prova = value
 
 
     @property
@@ -84,7 +69,7 @@ class Prova:
 
     @professor.setter
     def professor(self, value):
-        if not isinstance(value, Professor):
+        if not isinstance(value, Usuario):
             raise ValueError("Professor deve ser uma instância válida")
         self.__professor = value
 

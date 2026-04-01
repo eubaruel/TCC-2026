@@ -1,6 +1,7 @@
 {
     "questao":{
         "id_hash":"",
+        "id_questao":"",
         "professor":{
             "registro_professor":0,
             "nome_professor":""
@@ -11,6 +12,7 @@
         "tipo_questao":"APENAS 'Objetiva' ou 'Dissertativa'",
         "dificuldade":"APENAS 'Fácil' ou 'Médio' ou 'Difícil'",
         "autor":"",
+        "enunciado":"",
         "alternativas":["SE FOR DISSERTATIVA MANTER VAZIO"],
         "alternativa_correta":""
     }

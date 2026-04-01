@@ -1,0 +1,10 @@
+- aba questões 
+    - buscar questão
+    - cadastrar questão
+    - minhas questões
+
+- aba provas
+dia de entregar a prova é sempre na segunda antes da semana da prova
+criar alerts para professores fazerem as provas indicando a semana que será a prova
+
+
