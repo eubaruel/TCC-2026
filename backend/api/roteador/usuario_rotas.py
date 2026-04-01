@@ -10,6 +10,10 @@ class Usuario_rotas:
     
     def criar_rotas(self):
 
+        @self.blueprint.route('/login',methods=['POST'])
+        def cadastrar():
+            return #self.usuario_controle.login()
+
         @self.blueprint.route('/',methods=['POST'])
         def cadastrar():
             return #self.usuario_controle.cadastrar()
