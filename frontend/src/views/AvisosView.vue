@@ -35,19 +35,31 @@
             <input type="date" v-model="novoAviso.dataEntrega" required />
           </div>
           <div class="form-group">
-            <label>Semana da Prova *</label>
-            <select v-model="novoAviso.semana">
-              <option value="">Selecione a semana</option>
-              <option value="1ª Semana">1ª Semana do mês</option>
-              <option value="2ª Semana">2ª Semana do mês</option>
-              <option value="3ª Semana">3ª Semana do mês</option>
-              <option value="4ª Semana">4ª Semana do mês</option>
-              <option value="5ª Semana">5ª Semana do mês</option>
+            <label>Bimestre *</label>
+            <select v-model="novoAviso.bimestre" required>
+              <option value="">Selecione o bimestre</option>
+              <option value="1° Bimestre">1° Bimestre</option>
+              <option value="2° Bimestre">2° Bimestre</option>
+              <option value="3° Bimestre">3° Bimestre</option>
+              <option value="4° Bimestre">4° Bimestre</option>
             </select>
           </div>
         </div>
         
-        <button type="submit" class="btn-criar">📢 Publicar Aviso</button>
+        <div class="form-group">
+          <label>Semana da Prova *</label>
+          <select v-model="novoAviso.semana" required>
+            <option value="">Selecione a semana</option>
+            <option value="G1 Dissertativa">G1 Dissertativa</option>
+            <option value="G2 Dissertativa">G2 Dissertativa</option>
+            <option value="G3 Dissertativa">G3 Dissertativa</option>
+            <option value="G1 Objetiva">G1 Objetiva</option>
+            <option value="G2 Objetiva">G2 Objetiva</option>
+            <option value="G3 Objetiva">G3 Objetiva</option>
+          </select>
+        </div>
+        
+        <button type="submit" class="btn-criar">Publicar Aviso</button>
       </form>
     </div>
     
@@ -67,7 +79,8 @@
             <span>📚 {{ aviso.materia }}</span>
             <span>🏫 {{ aviso.turma }}</span>
             <span>📅 Entrega: {{ aviso.dataEntregaFormatada || aviso.dataEntrega }}</span>
-            <span>📆 {{ aviso.semana }}</span>
+            <span>📆 {{ aviso.bimestre }}</span>
+            <span>📋 {{ aviso.semana }}</span>
           </div>
           <div class="aviso-actions">
             <button @click="excluirAviso(aviso.id)" class="btn-excluir-aviso">🗑️ Excluir</button>
@@ -82,7 +95,7 @@
 import { useAuthStore } from '@/stores/auth'
 
 export default {
-  name: 'AvisosView', // Nome do componente
+  name: 'AvisosView',
   setup() {
     const authStore = useAuthStore()
     return { authStore }
@@ -96,6 +109,7 @@ export default {
         materia: '',
         turma: '',
         dataEntrega: '',
+        bimestre: '',
         semana: ''
       }
     }
@@ -121,7 +135,8 @@ export default {
             turma: '9° Ano A',
             dataEntrega: '2026-04-15',
             dataEntregaFormatada: '15/04/2026',
-            semana: '2ª Semana',
+            bimestre: '1° Bimestre',
+            semana: 'G1 Objetiva',
             dataCriacao: '10/04/2026'
           },
           {
@@ -132,7 +147,8 @@ export default {
             turma: '8° Ano B',
             dataEntrega: '2026-04-22',
             dataEntregaFormatada: '22/04/2026',
-            semana: '3ª Semana',
+            bimestre: '2° Bimestre',
+            semana: 'G2 Dissertativa',
             dataCriacao: '12/04/2026'
           }
         ]
@@ -141,7 +157,7 @@ export default {
     },
     
     criarAviso() {
-      if (!this.novoAviso.titulo || !this.novoAviso.mensagem || !this.novoAviso.materia || !this.novoAviso.turma || !this.novoAviso.dataEntrega) {
+      if (!this.novoAviso.titulo || !this.novoAviso.mensagem || !this.novoAviso.materia || !this.novoAviso.turma || !this.novoAviso.dataEntrega || !this.novoAviso.bimestre || !this.novoAviso.semana) {
         alert('Preencha todos os campos obrigatórios!')
         return
       }
@@ -165,6 +181,7 @@ export default {
         dataEntrega: this.formatarData(novo.dataEntrega),
         materia: novo.materia,
         turma: novo.turma,
+        bimestre: novo.bimestre,
         semana: novo.semana
       })
       localStorage.setItem('alerts', JSON.stringify(alerts))
@@ -186,6 +203,7 @@ export default {
         materia: '',
         turma: '',
         dataEntrega: '',
+        bimestre: '',
         semana: ''
       }
     },

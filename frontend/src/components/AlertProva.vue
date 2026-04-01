@@ -14,6 +14,8 @@
           <span>📅 Data de entrega: {{ dataEntrega }}</span>
           <span>📚 Matéria: {{ materia }}</span>
           <span>🏫 Turma: {{ turma }}</span>
+          <span>📆 Bimestre: {{ bimestre }}</span>
+          <span>📋 Semana: {{ semana }}</span>
         </div>
       </div>
       <button 
@@ -61,6 +63,14 @@ export default {
       type: String,
       default: 'Não especificada'
     },
+    bimestre: {
+      type: String,
+      default: 'Não especificado'
+    },
+    semana: {
+      type: String,
+      default: 'Não especificada'
+    },
     tipoUsuario: {
       type: String,
       required: true
@@ -93,13 +103,11 @@ export default {
         const dataAtual = new Date().toLocaleDateString('pt-BR')
         this.dataConfirmacao = dataAtual
         
-        // Salva no localStorage
         localStorage.setItem(`prova_${this.id}_entregue`, JSON.stringify({
           entregue: true,
           data: dataAtual
         }))
         
-        // Emite evento para o pai
         this.$emit('confirmado', this.id)
         
         alert('Prova confirmada com sucesso!')

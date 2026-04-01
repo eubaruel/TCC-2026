@@ -20,6 +20,8 @@
           :dataEntrega="alert.dataEntrega"
           :materia="alert.materia"
           :turma="alert.turma"
+          :bimestre="alert.bimestre"
+          :semana="alert.semana"
           :tipoUsuario="userType"
           :entregueInicial="alert.entregue"
           @confirmado="onConfirmado"
@@ -34,7 +36,7 @@ import AlertProva from '@/components/AlertProva.vue'
 import { useAuthStore } from '@/stores/auth'
 
 export default {
-  name: 'ProvasView', // Nome do componente
+  name: 'ProvasView',
   components: {
     AlertProva
   },
@@ -79,6 +81,8 @@ export default {
             dataEntrega: '15/04/2026',
             materia: 'Matemática',
             turma: '9° Ano A',
+            bimestre: '1° Bimestre',
+            semana: 'G1 Objetiva',
             entregue: false
           },
           {
@@ -88,6 +92,8 @@ export default {
             dataEntrega: '22/04/2026',
             materia: 'Português',
             turma: '8° Ano B',
+            bimestre: '2° Bimestre',
+            semana: 'G2 Dissertativa',
             entregue: false
           },
           {
@@ -97,6 +103,8 @@ export default {
             dataEntrega: '29/04/2026',
             materia: 'Ciências',
             turma: '7° Ano C',
+            bimestre: '3° Bimestre',
+            semana: 'G3 Dissertativa',
             entregue: false
           }
         ]
