@@ -1,5 +1,5 @@
 from flask import request,jsonify
-from backend.api.services.aluno_service import Aluno_service
+from api.services.aluno_service import Aluno_service
 
 class Aluno_controle:
     def __init__(self, aluno_service:Aluno_service):
@@ -47,7 +47,9 @@ class Aluno_controle:
                 }), 400
     
         
-        leitura = self.__aluno_service.consulta(**filtro)
+        leitura = self.__aluno_service.consulta(filtro)
+        
+
         return jsonify({
             "success":True,
             "message":"Executado com sucesso",

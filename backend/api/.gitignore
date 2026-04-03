@@ -1,2 +1,2 @@
-/.cache/
+/__pycache__
 professores_disciplinas.csv

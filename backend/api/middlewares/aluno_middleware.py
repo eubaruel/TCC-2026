@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import request
-from backend.api.utils.resposta_erro import resposta_erro
+from api.utils.resposta_erro import resposta_erro
 
 class Aluno_middleware:
     def validar_body(self,f):

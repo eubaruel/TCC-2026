@@ -8,7 +8,6 @@ class Questao:
         self.__professor = None   #id do professor que cadastrou a questão no sistema
         self.__assunto = None
         self.__disciplina = None
-        self.__palavras_chave = None
         self.__tipo_questao = None   #se é objetiva ou dissertativa
         self.__dificuldade = None 
         self.__autor = None   #Ex: Professor, Universidades, etc.
@@ -107,33 +106,7 @@ class Questao:
                 raise ValueError("Disciplina deve conter letras")
         
         self.__disciplina = value
-
-    #GET/SET PALAVRAS-CHAVE
-    @property
-    def palavras_chave(self):
-        return self.__palavras_chave
-    
-    @palavras_chave.setter
-    def palavras_chave(self,value):
-        if value is None:
-            raise ValueError("Palavra(as) chave nula")
         
-        if not isinstance(value, list):
-            raise TypeError("Palavras-chave devem ser uma lista")
-        
-        value = [palavra.strip().lower() for palavra in value]
-
-        for palavra in value:
-            if not isinstance(palavra, str):
-                raise TypeError("Cada palavra-chave deve ser uma string")
-
-            if len(palavra) < 3:
-                raise ValueError("Palavra-chave muito curta")
-            
-            if palavra.isnumeric():
-                raise ValueError("Palavra-chave deve conter letras")
-        
-        self.__palavras_chave = value
 
     #GET/SET TIPO DA QUESTÃO
     @property
