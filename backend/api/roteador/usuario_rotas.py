@@ -1,31 +1,42 @@
 from flask import Blueprint, request
 from functools import wraps
+from api.controles.usuario_controle import Usuario_controle
+from api.middlewares.usuario_middleware import Usuario_middleware
 
 class Usuario_rotas:
-    def __init__(self):
+    def __init__(self,usuario_middleware:Usuario_middleware, usuario_controle:Usuario_controle):
         print("⬆️  usuario_rotas.__init__()")
+        
+        self.__usuario_middleware = usuario_middleware
+        self.__usuario_controle = usuario_controle
 
-        self.blueprint = Blueprint('usuarios',__name__)
+        self.__blueprint = Blueprint('usuarios',__name__)
 
     
     def criar_rotas(self):
 
-        @self.blueprint.route('/login',methods=['POST'])
+        @self.__blueprint.route('/login',methods=['POST'])
+        @self.__usuario_middleware.validar_login
         def cadastrar():
-            return #self.usuario_controle.login()
+            return self.__usuario_controle.login()
 
-        @self.blueprint.route('/',methods=['POST'])
+        @self.__blueprint.route('/',methods=['POST'])
+        @self.__usuario_middleware.validar_body
         def cadastrar():
-            return #self.usuario_controle.cadastrar()
+            return self.__usuario_controle.cadastrar()
         
-        @self.blueprint.route('/',methods=['GET'])
+        @self.__blueprint.route('/',methods=['GET'])
         def ler():
-            return #self.usuario_controle.ler()
+            return self.__usuario_controle.ler()
         
-        @self.blueprint.route('/',methods=['PUT'])
+        @self.__blueprint.route('/',methods=['PUT'])
+        @self.__usuario_middleware.validar_body
         def alterar():
-            return #self.aluno_controle.alterar()
+            return self.__usuario_controle.alterar()
         
-        @self.blueprint.route('/',methods=['DELETE'])
-        def deletar():
-            return #self.aluno_controle.deletar()
+        @self.__blueprint.route('/<int:registro>',methods=['DELETE'])
+        @self.__usuario_middleware.validar_registro_param
+        def deletar(registro):
+            return self.__usuario_controle.deletar(registro)
+        
+        return self.__blueprint
