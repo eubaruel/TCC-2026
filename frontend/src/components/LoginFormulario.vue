@@ -5,15 +5,28 @@
     </div>
     
     <form @submit.prevent="processarLogin" class="formulario_login">
-      <div class="campo_email">
-        <label for="email_usuario">Email</label>
+      <div class="tipo-usuario">
+        <label class="radio-label">
+          <input type="radio" value="professor" v-model="tipoUsuario" />
+          <span class="radio-custom"></span>
+          Professor
+        </label>
+        <label class="radio-label">
+          <input type="radio" value="processo_pedagogico" v-model="tipoUsuario" />
+          <span class="radio-custom"></span>
+          Processo Pedagógico
+        </label>
+      </div>
+
+      <div class="campo_registro">
+        <label for="registro_usuario">Registro</label>
         <input
-          id="email_usuario"
-          v-model="email_usuario"
-          type="email"
+          id="registro_usuario"
+          v-model="registro_usuario"
+          type="text"
           required
-          autocomplete="email"
-          placeholder="Digite seu email"
+          autocomplete="username"
+          placeholder="Digite seu registro"
         />
       </div>
 
@@ -30,44 +43,61 @@
       </div>
 
       <button type="submit" class="botao_entrar">
-        Entrar
+        Enviar
       </button>
     </form>
   </div>
 </template>
 
 <script>
+import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
+
 export default {
   name: 'LoginFormulario',
+  setup() {
+    const authStore = useAuthStore()
+    const router = useRouter()
+    return { authStore, router }
+  },
   data() {
     return {
-      email_usuario: '',
+      tipoUsuario: 'professor',
+      registro_usuario: '',
       senha_usuario: ''
     }
   },
   methods: {
     processarLogin() {
-      const credenciais = {
-        email: this.email_usuario,
-        senha: this.senha_usuario
+      // Simulação de login com base no tipo selecionado
+      let usuario = null
+      let tipo = null
+      
+      if (this.tipoUsuario === 'professor') {
+        usuario = {
+          id: 1,
+          nome: this.registro_usuario || 'Professor',
+          registro: this.registro_usuario,
+          tipo: 'professor'
+        }
+        tipo = 'professor'
+      } else if (this.tipoUsuario === 'processo_pedagogico') {
+        usuario = {
+          id: 2,
+          nome: 'Processo Pedagógico',
+          registro: this.registro_usuario,
+          tipo: 'processo_pedagogico'
+        }
+        tipo = 'processo_pedagogico'
       }
       
-      console.log('Credenciais:', credenciais)
+      this.authStore.user = usuario
+      this.authStore.userType = tipo
       
-      // Simulação de login
-      const usuarioSimulado = {
-        nome: this.email_usuario.split('@')[0],
-        email: this.email_usuario,
-        tipo: 'professor'
-      }
+      localStorage.setItem('usuarioLogado', JSON.stringify(usuario))
+      localStorage.setItem('userType', tipo)
       
-      localStorage.setItem('usuarioLogado', JSON.stringify(usuarioSimulado))
-      localStorage.setItem('token', 'simulated-token-123')
-      
-      this.$emit('login-enviado', credenciais)
-      
-      // Redireciona para a tela principal
-      this.$router.push('/acessar-provas')
+      this.router.push('/provas')
     }
   }
 }
@@ -102,7 +132,28 @@ export default {
   padding: 20px 40px 40px 40px;
 }
 
-.campo_email,
+.tipo-usuario {
+  display: flex;
+  gap: 30px;
+  margin-bottom: 25px;
+  justify-content: center;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+}
+
+.radio-label input {
+  width: auto;
+  margin: 0;
+}
+
+.campo_registro,
 .campo_senha {
   margin-bottom: 25px;
 }
@@ -167,6 +218,10 @@ input::placeholder {
     padding: 15px 30px 30px 30px;
   }
   
+  .tipo-usuario {
+    gap: 20px;
+  }
+  
   input {
     padding: 12px;
     font-size: 15px;
@@ -175,20 +230,6 @@ input::placeholder {
   .botao_entrar {
     padding: 14px;
     font-size: 16px;
-  }
-}
-
-@media (max-width: 360px) {
-  .logo-section {
-    padding: 25px 20px 10px 20px;
-  }
-  
-  .logo {
-    max-width: 120px;
-  }
-  
-  .formulario_login {
-    padding: 10px 20px 20px 20px;
   }
 }
 </style>

@@ -3,9 +3,9 @@
     <BarraLateral />
     <div class="conteudo-principal" :class="temaAtual">
       <div class="header" v-if="mostrarHeader">
-        <h1>Seja Bem Vindo(a) {{ nomeProfessor }}!</h1>
+        <h1>Seja Bem Vindo(a) {{ nomeUsuario }}!</h1>
       </div>
-
+      
       <div class="conteudo">
         <router-view />
       </div>
@@ -14,73 +14,66 @@
 </template>
 
 <script>
-import BarraLateral from "@/components/BarraLateral.vue";
+import BarraLateral from '@/components/BarraLateral.vue'
+import { useAuthStore } from '@/stores/auth'
 
 export default {
-  name: "TelaPrincipal",
+  name: 'TelaPrincipal',
   components: {
-    BarraLateral,
+    BarraLateral
+  },
+  setup() {
+    const authStore = useAuthStore()
+    return { authStore }
   },
   data() {
     return {
-      nomeProfessor: "Professor",
-      temaAtual: "tema-claro",
-      configuracaoAlterada: false,
-      mostrarHeader: true,
-    };
+      temaAtual: 'tema-claro',
+      mostrarHeader: true
+    }
+  },
+  computed: {
+    nomeUsuario() {
+      return this.authStore.user?.nome || 'Usuário'
+    }
   },
   mounted() {
-    console.log("TelaPrincipal montada, rota:", this.$route.path);
-    this.carregarDadosUsuario();
-    this.carregarTema();
-    this.verificarRota();
-
-    window.addEventListener("tema-mudou", this.atualizarTema);
+    this.carregarTema()
+    this.verificarRota()
+    
+    window.addEventListener('tema-mudou', this.atualizarTema)
   },
   beforeUnmount() {
-    window.removeEventListener("tema-mudou", this.atualizarTema);
+    window.removeEventListener('tema-mudou', this.atualizarTema)
   },
   watch: {
-    "$route.path"() {
-      this.verificarRota();
-    },
+    '$route.path'() {
+      this.verificarRota()
+    }
   },
   methods: {
-    carregarDadosUsuario() {
-      const usuarioSalvo = localStorage.getItem("usuarioLogado");
-      if (usuarioSalvo) {
-        try {
-          const usuario = JSON.parse(usuarioSalvo);
-          this.nomeProfessor =
-            usuario.nome || usuario.email?.split("@")[0] || "Professor";
-        } catch (error) {
-          console.error("Erro ao carregar dados do usuário:", error);
-        }
-      }
-    },
-
     carregarTema() {
-      const temaSalvo = localStorage.getItem("tema");
+      const temaSalvo = localStorage.getItem('tema')
       if (temaSalvo) {
-        this.temaAtual = temaSalvo;
+        this.temaAtual = temaSalvo
       } else {
-        this.temaAtual = "tema-claro";
+        this.temaAtual = 'tema-claro'
       }
     },
-
+    
     atualizarTema(event) {
-      this.temaAtual = event.detail.tema;
+      this.temaAtual = event.detail.tema
     },
-
+    
     verificarRota() {
-      if (this.$route.path === "/configuracoes") {
-        this.mostrarHeader = false;
+      if (this.$route.path === '/configuracoes') {
+        this.mostrarHeader = false
       } else {
-        this.mostrarHeader = true;
+        this.mostrarHeader = true
       }
-    },
-  },
-};
+    }
+  }
+}
 </script>
 
 <style scoped>
@@ -135,15 +128,15 @@ export default {
   .conteudo-principal {
     margin-left: 70px;
   }
-
+  
   .header {
     padding: 20px;
   }
-
+  
   .header h1 {
     font-size: 24px;
   }
-
+  
   .conteudo {
     padding: 20px;
   }
