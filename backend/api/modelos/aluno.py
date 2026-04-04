@@ -10,6 +10,7 @@ class Aluno:
         self.__serie = None #int
         self.__situacao = None #string
         self.__email_aluno = None #string
+        self.__ativo = None
 
     @property
     def id_hash(self):
@@ -66,8 +67,8 @@ class Aluno:
             raise ValueError("Nome do aluno deve ter ao menos um sobrenome")
         
         for nome in value.split(): 
-            if len(nome) < 3:
-                raise ValueError("Cada parte do nome deve conter ao menos 3 caracteres")
+            if len(nome) < 2:
+                raise ValueError("Cada parte do nome deve conter ao menos 2 caracteres")
         
         self.__nome_aluno = value
 
@@ -121,8 +122,8 @@ class Aluno:
         if not isinstance(value, str):
             raise TypeError("Situação do aluno deve ser uma string")
         
-        if not value.isalpha():
-            raise ValueError("Situação do aluno não pode conter números")
+        if value.isnumeric():
+            raise ValueError("Situação do aluno deve conter letras")
 
         self.__situacao = value
 

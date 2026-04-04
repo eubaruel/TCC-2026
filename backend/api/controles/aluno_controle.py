@@ -1,5 +1,5 @@
 from flask import request,jsonify
-from backend.api.services.aluno_service import Aluno_service
+from api.services.aluno_service import Aluno_service
 
 class Aluno_controle:
     def __init__(self, aluno_service:Aluno_service):
@@ -28,7 +28,7 @@ class Aluno_controle:
         }
 
         campos_permitidos = {"matricula_aluno", "nome_aluno",
-                            "turma" ,"serie","situacao"}
+                            "turma" ,"serie","situacao","ativo"}
 
         filtro = {}
 
@@ -47,7 +47,9 @@ class Aluno_controle:
                 }), 400
     
         
-        leitura = self.__aluno_service.consulta(**filtro)
+        leitura = self.__aluno_service.consulta(filtro)
+        
+
         return jsonify({
             "success":True,
             "message":"Executado com sucesso",
@@ -96,5 +98,6 @@ class Aluno_controle:
             "turma": aluno.get("turma"),
             "serie": aluno.get("serie"),
             "situacao": aluno.get("situacao"),
-            "email_aluno": aluno.get("email_aluno")
+            "email_aluno": aluno.get("email_aluno"),
+            "ativo":aluno.get("ativo")
         }
