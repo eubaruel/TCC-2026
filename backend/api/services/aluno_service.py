@@ -52,6 +52,7 @@ class Aluno_service:
         obj_aluno.serie = json_aluno.get("serie")
         obj_aluno.situacao = json_aluno.get("situacao")
         obj_aluno.email_aluno = json_aluno.get("email_aluno")
+        obj_aluno.ativo = json_aluno.get("ativo")
 
 
 

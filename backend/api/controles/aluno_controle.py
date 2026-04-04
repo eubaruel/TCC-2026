@@ -28,7 +28,7 @@ class Aluno_controle:
         }
 
         campos_permitidos = {"matricula_aluno", "nome_aluno",
-                            "turma" ,"serie","situacao"}
+                            "turma" ,"serie","situacao","ativo"}
 
         filtro = {}
 
@@ -98,5 +98,6 @@ class Aluno_controle:
             "turma": aluno.get("turma"),
             "serie": aluno.get("serie"),
             "situacao": aluno.get("situacao"),
-            "email_aluno": aluno.get("email_aluno")
+            "email_aluno": aluno.get("email_aluno"),
+            "ativo":aluno.get("ativo")
         }

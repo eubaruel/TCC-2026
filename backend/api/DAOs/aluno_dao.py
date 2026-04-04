@@ -15,7 +15,8 @@ class Aluno_dao:
             "turma": obj_aluno.turma,
             "serie": obj_aluno.serie,
             "situacao": obj_aluno.situacao,
-            "email_aluno": obj_aluno.email_aluno
+            "email_aluno": obj_aluno.email_aluno,
+            "ativo":obj_aluno.ativo
         }
 
         resultado = self.__colecao.insert_one(doc)
@@ -28,7 +29,7 @@ class Aluno_dao:
     def consulta(self, filtro=None):
         print("✅ aluno_dao.consulta()")
         filtro = filtro or {}
-        resultado = list(self.__colecao.find(filtro, {"_id":0}))
+        resultado = list(self.__colecao.find(filtro, {"_id": 0}))
         return resultado
     
     def atualizar(self, obj_aluno: Aluno) -> bool:
@@ -40,7 +41,8 @@ class Aluno_dao:
                 "turma": obj_aluno.turma,
                 "serie": obj_aluno.serie,
                 "situacao": obj_aluno.situacao,
-                "email_aluno": obj_aluno.email_aluno
+                "email_aluno": obj_aluno.email_aluno,
+                "ativo":obj_aluno.ativo
             }
         }
 
@@ -50,11 +52,21 @@ class Aluno_dao:
     
     def excluir(self, matricula_aluno) -> bool:
         print("✅ aluno_dao.excluir()")
-        filtro = {"matricula_aluno":matricula_aluno}
 
-        resultado = self.__colecao.delete_one(filtro)
+        filtro = {"matricula_aluno": int(matricula_aluno)}
 
-        return resultado.deleted_count > 0
+        doc = {
+            "$set": {
+                "ativo": False
+            }
+        }
+
+        resultado = self.__colecao.update_one(filtro, doc)
+
+        if resultado.matched_count == 0:
+            return False  # não encontrou
+
+        return resultado.modified_count > 0  # alterou ou não
     
     def campo_existe(self,campo,valor):
         print("✅ aluno_dao.campo_existe()")
