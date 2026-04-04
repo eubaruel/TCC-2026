@@ -3,7 +3,6 @@ import re
 class Aluno:
     def __init__(self):
         
-        self.__id_hash = None #string
         self.__matricula_aluno = None #int
         self.__nome_aluno = None #string
         self.__turma = None #string
@@ -11,22 +10,6 @@ class Aluno:
         self.__situacao = None #string
         self.__email_aluno = None #string
         self.__ativo = None
-
-    @property
-    def id_hash(self):
-        return self.__id_hash
-
-    @id_hash.setter
-    def id_hash(self, value):
-        if value is None:
-            raise ValueError("Id nulo")
-
-        if not isinstance(value, str):
-            raise TypeError("Id deve ser uma string")
-
-        value = value.strip()
-        self.__id_hash = value
-
 
     @property
     def matricula_aluno(self):
