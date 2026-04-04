@@ -76,21 +76,6 @@
         Cancelar
       </button>
     </div>
-
-    <div v-if="mostrarModal" class="modal-overlay">
-      <div class="modal-container">
-        <div class="modal-header">
-          <h3>Configurações não salvas</h3>
-        </div>
-        <div class="modal-body">
-          <p>Há configurações que não foram salvas. O que você deseja fazer?</p>
-        </div>
-        <div class="modal-footer">
-          <button @click="salvarESair" class="btn-modal-salvar">Salvar</button>
-          <button @click="descartarESair" class="btn-modal-descartar">Não Salvar</button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -104,23 +89,11 @@ export default {
       notificacoesSistema: true,
       temaSelecionado: 'tema-claro',
       notificacoesEmailSelecionado: true,
-      notificacoesSistemaSelecionado: true,
-      mostrarModal: false,
-      temAlteracoes: false,
-      navegacaoPendente: null
+      notificacoesSistemaSelecionado: true
     }
   },
   mounted() {
     this.carregarConfiguracoes()
-    window.addEventListener('beforeunload', this.handleBeforeUnload)
-  },
-  beforeUnmount() {
-    window.removeEventListener('beforeunload', this.handleBeforeUnload)
-  },
-  watch: {
-    temaSelecionado() { this.verificarAlteracoes() },
-    notificacoesEmailSelecionado() { this.verificarAlteracoes() },
-    notificacoesSistemaSelecionado() { this.verificarAlteracoes() }
   },
   methods: {
     carregarConfiguracoes() {
@@ -143,15 +116,6 @@ export default {
       }
     },
     
-    verificarAlteracoes() {
-      this.temAlteracoes = 
-        this.temaSelecionado !== this.temaAtual ||
-        this.notificacoesEmailSelecionado !== this.notificacoesEmail ||
-        this.notificacoesSistemaSelecionado !== this.notificacoesSistema
-      
-      this.$emit('configuracao-alterada', this.temAlteracoes)
-    },
-    
     selecionarTema(tema) {
       this.temaSelecionado = tema
     },
@@ -167,8 +131,6 @@ export default {
       
       window.dispatchEvent(new CustomEvent('tema-mudou', { detail: { tema: this.temaAtual } }))
       
-      this.temAlteracoes = false
-      this.$emit('configuracao-alterada', false)
       alert('Configurações salvas com sucesso!')
     },
     
@@ -176,40 +138,6 @@ export default {
       this.temaSelecionado = this.temaAtual
       this.notificacoesEmailSelecionado = this.notificacoesEmail
       this.notificacoesSistemaSelecionado = this.notificacoesSistema
-      this.temAlteracoes = false
-      this.$emit('configuracao-alterada', false)
-    },
-    
-    handleBeforeUnload(event) {
-      if (this.temAlteracoes) {
-        event.preventDefault()
-        event.returnValue = 'Há configurações que não foram salvas.'
-      }
-    },
-    
-    salvarESair() {
-      this.salvarConfiguracoes()
-      this.mostrarModal = false
-      if (this.navegacaoPendente) {
-        this.navegacaoPendente.next()
-        this.navegacaoPendente = null
-      }
-    },
-    
-    descartarESair() {
-      this.mostrarModal = false
-      if (this.navegacaoPendente) {
-        this.navegacaoPendente.next()
-        this.navegacaoPendente = null
-      }
-    }
-  },
-  beforeRouteLeave(to, from, next) {
-    if (this.temAlteracoes) {
-      this.mostrarModal = true
-      this.navegacaoPendente = { to, next }
-    } else {
-      next()
     }
   }
 }
@@ -268,10 +196,6 @@ export default {
   border-bottom: 1px solid #e0e0e0;
 }
 
-.tema-escuro .card-header {
-  border-bottom-color: #404040;
-}
-
 .card-icon {
   width: 32px;
   height: 32px;
@@ -308,10 +232,6 @@ export default {
   border-radius: 8px;
   cursor: pointer;
   color: inherit;
-}
-
-.tema-escuro .botao-tema {
-  border-color: #404040;
 }
 
 .botao-tema.ativo {
@@ -416,64 +336,6 @@ input:checked + .slider:before {
   color: inherit;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
-  cursor: pointer;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.modal-container {
-  background: white;
-  border-radius: 12px;
-  max-width: 400px;
-  width: 90%;
-}
-
-.tema-escuro .modal-container {
-  background: #2a2a2a;
-}
-
-.modal-header {
-  padding: 20px 24px;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.modal-body {
-  padding: 24px;
-}
-
-.modal-footer {
-  display: flex;
-  gap: 12px;
-  padding: 20px 24px;
-  border-top: 1px solid #e0e0e0;
-  justify-content: flex-end;
-}
-
-.btn-modal-salvar {
-  padding: 10px 20px;
-  background: #00488b;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.btn-modal-descartar {
-  padding: 10px 20px;
-  background: transparent;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
   cursor: pointer;
 }
 </style>
