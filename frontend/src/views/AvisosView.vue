@@ -10,7 +10,7 @@
       <form @submit.prevent="criarAviso" class="form-aviso">
         <div class="form-group">
           <label>Título do Aviso *</label>
-          <input type="text" v-model="novoAviso.titulo" required placeholder="Ex: Prova Dissertativa Semana G1" />
+          <input type="text" v-model="novoAviso.titulo" required placeholder="Ex: Prova Bimestral - Matemática" />
         </div>
         
         <div class="form-group">
@@ -21,11 +21,21 @@
         <div class="form-row">
           <div class="form-group">
             <label>Disciplina *</label>
-            <input type="text" v-model="novoAviso.disciplina" required placeholder="Ex: Matemática" />
+            <select v-model="novoAviso.disciplina" required>
+              <option value="">Selecione a disciplina</option>
+              <option v-for="disciplina in disciplinas" :key="disciplina" :value="disciplina">
+                {{ disciplina }}
+              </option>
+            </select>
           </div>
           <div class="form-group">
             <label>Turma *</label>
-            <input type="text" v-model="novoAviso.turma" required placeholder="Ex: 1° Ano A" />
+            <select v-model="novoAviso.turma" required>
+              <option value="">Selecione a turma</option>
+              <option v-for="turma in turmas" :key="turma" :value="turma">
+                {{ turma }}
+              </option>
+            </select>
           </div>
         </div>
         
@@ -76,14 +86,14 @@
           </div>
           <p class="aviso-mensagem">{{ aviso.mensagem }}</p>
           <div class="aviso-detalhes">
-            <span>📚 {{ aviso.materia }}</span>
+            <span>📚 {{ aviso.disciplina }}</span>
             <span>🏫 {{ aviso.turma }}</span>
             <span>📅 Entrega: {{ aviso.dataEntregaFormatada || aviso.dataEntrega }}</span>
             <span>📆 {{ aviso.bimestre }}</span>
             <span>📋 {{ aviso.semana }}</span>
           </div>
           <div class="aviso-actions">
-            <button @click="excluirAviso(aviso.id)" class="btn-excluir-aviso">🗑️ Excluir</button>
+            <button @click="excluirAviso(aviso.id)" class="btn-excluir-aviso">Excluir</button>
           </div>
         </div>
       </div>
@@ -102,11 +112,35 @@ export default {
   },
   data() {
     return {
+      // Lista de disciplinas disponíveis - VOCÊ PODE EDITAR AQUI
+      disciplinas: [
+        'Matemática FGB',
+        'Matemática AP',
+        'Português',
+        'Literatura',
+        'Inglês',
+        'Projeto de Vida',
+        'Eletiva',
+        'Física FGB',
+        'Física AP',
+        'Química FGB',
+        'Química AP',
+        'Biologia FGB',
+        'Biologia AP',
+        'História',
+        'Geografia',
+        'Filosofia/Sociologia',
+        'Arte',
+        'Educação Física',
+        'Redação'
+      ],
+      // Gerar turmas do Ensino Médio
+      turmas: this.gerarTurmas(),
       avisos: [],
       novoAviso: {
         titulo: '',
         mensagem: '',
-        materia: '',
+        disciplina: '',
         turma: '',
         dataEntrega: '',
         bimestre: '',
@@ -118,6 +152,31 @@ export default {
     this.carregarAvisos()
   },
   methods: {
+    // Função para gerar todas as turmas do Ensino Médio
+    gerarTurmas() {
+      const turmas = []
+      
+      // 1° ano: A até N (14 turmas)
+      const primeiroAno = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N']
+      for (const letra of primeiroAno) {
+        turmas.push(`1° Ano ${letra}`)
+      }
+      
+      // 2° ano: A até L (12 turmas)
+      const segundoAno = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
+      for (const letra of segundoAno) {
+        turmas.push(`2° Ano ${letra}`)
+      }
+      
+      // 3° ano: A até L (12 turmas)
+      const terceiroAno = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
+      for (const letra of terceiroAno) {
+        turmas.push(`3° Ano ${letra}`)
+      }
+      
+      return turmas
+    },
+    
     carregarAvisos() {
       const salvos = localStorage.getItem('avisos')
       if (salvos) {
@@ -130,9 +189,9 @@ export default {
           {
             id: 1,
             titulo: 'Prova Bimestral - Matemática',
-            mensagem: 'A prova bimestral de Matemática deve ser entregue até o prazo estipulado. A prova será sobre equações do 2º grau e geometria plana.',
-            materia: 'Matemática',
-            turma: '9° Ano A',
+            mensagem: 'A prova bimestral de Matemática deve ser entregue até o prazo estipulado.',
+            disciplina: 'Matemática',
+            turma: '1° Ano A',
             dataEntrega: '2026-04-15',
             dataEntregaFormatada: '15/04/2026',
             bimestre: '1° Bimestre',
@@ -142,9 +201,9 @@ export default {
           {
             id: 2,
             titulo: 'Prova Final - Português',
-            mensagem: 'Entrega da prova final de Português para correção. Conteúdo: análise sintática e interpretação de texto.',
-            materia: 'Português',
-            turma: '8° Ano B',
+            mensagem: 'Entrega da prova final de Português para correção.',
+            disciplina: 'Português',
+            turma: '2° Ano B',
             dataEntrega: '2026-04-22',
             dataEntregaFormatada: '22/04/2026',
             bimestre: '2° Bimestre',
@@ -157,7 +216,7 @@ export default {
     },
     
     criarAviso() {
-      if (!this.novoAviso.titulo || !this.novoAviso.mensagem || !this.novoAviso.materia || !this.novoAviso.turma || !this.novoAviso.dataEntrega || !this.novoAviso.bimestre || !this.novoAviso.semana) {
+      if (!this.novoAviso.titulo || !this.novoAviso.mensagem || !this.novoAviso.disciplina || !this.novoAviso.turma || !this.novoAviso.dataEntrega || !this.novoAviso.bimestre || !this.novoAviso.semana) {
         alert('Preencha todos os campos obrigatórios!')
         return
       }
@@ -179,7 +238,7 @@ export default {
         titulo: novo.titulo,
         mensagem: novo.mensagem,
         dataEntrega: this.formatarData(novo.dataEntrega),
-        materia: novo.materia,
+        disciplina: novo.disciplina,
         turma: novo.turma,
         bimestre: novo.bimestre,
         semana: novo.semana
@@ -200,7 +259,7 @@ export default {
       this.novoAviso = {
         titulo: '',
         mensagem: '',
-        materia: '',
+        disciplina: '',
         turma: '',
         dataEntrega: '',
         bimestre: '',
@@ -289,6 +348,17 @@ export default {
   border: 1px solid #ddd;
   border-radius: 8px;
   font-size: 14px;
+}
+
+.form-group select {
+  cursor: pointer;
+  background-color: white;
+}
+
+.tema-escuro .form-group select {
+  background-color: #2a2a2a;
+  border-color: #404040;
+  color: #e5e5e5;
 }
 
 .form-row {
@@ -394,5 +464,11 @@ export default {
 
 .tema-escuro .sem-avisos {
   background: #2a2a2a;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

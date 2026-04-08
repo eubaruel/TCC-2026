@@ -5,19 +5,6 @@
     </div>
     
     <form @submit.prevent="processarLogin" class="formulario_login">
-      <div class="tipo-usuario">
-        <label class="radio-label">
-          <input type="radio" value="professor" v-model="tipoUsuario" />
-          <span class="radio-custom"></span>
-          Professor
-        </label>
-        <label class="radio-label">
-          <input type="radio" value="processo_pedagogico" v-model="tipoUsuario" />
-          <span class="radio-custom"></span>
-          Processo Pedagógico
-        </label>
-      </div>
-
       <div class="campo_registro">
         <label for="registro_usuario">Registro</label>
         <input
@@ -27,7 +14,10 @@
           required
           autocomplete="username"
           placeholder="Digite seu registro"
+          maxlength="10"
+          @input="validarRegistro"
         />
+        <small v-if="erroRegistro" class="mensagem-erro">{{ erroRegistro }}</small>
       </div>
 
       <div class="campo_senha">
@@ -43,7 +33,7 @@
       </div>
 
       <button type="submit" class="botao_entrar">
-        Enviar
+        Entrar
       </button>
     </form>
   </div>
@@ -62,42 +52,87 @@ export default {
   },
   data() {
     return {
-      tipoUsuario: 'professor',
       registro_usuario: '',
-      senha_usuario: ''
+      senha_usuario: '',
+      erroRegistro: ''
     }
   },
   methods: {
-    processarLogin() {
-      // Simulação de login com base no tipo selecionado
-      let usuario = null
-      let tipo = null
+    validarRegistro() {
+      // Remove qualquer caractere que não seja número
+      this.registro_usuario = this.registro_usuario.replace(/[^0-9]/g, '')
       
-      if (this.tipoUsuario === 'professor') {
-        usuario = {
-          id: 1,
-          nome: this.registro_usuario || 'Professor',
-          registro: this.registro_usuario,
-          tipo: 'professor'
-        }
-        tipo = 'professor'
-      } else if (this.tipoUsuario === 'processo_pedagogico') {
-        usuario = {
-          id: 2,
-          nome: 'Processo Pedagógico',
-          registro: this.registro_usuario,
-          tipo: 'processo_pedagogico'
-        }
-        tipo = 'processo_pedagogico'
+      // Verifica se tem mais de 10 caracteres
+      if (this.registro_usuario.length > 10) {
+        this.registro_usuario = this.registro_usuario.slice(0, 10)
       }
       
-      this.authStore.user = usuario
-      this.authStore.userType = tipo
+      // Verifica se está vazio
+      if (this.registro_usuario.length === 0) {
+        this.erroRegistro = ''
+      } else if (this.registro_usuario.length > 10) {
+        this.erroRegistro = 'O registro não pode ter mais de 10 dígitos'
+      } else {
+        this.erroRegistro = ''
+      }
+    },
+    
+    validarCampos() {
+      if (!this.registro_usuario) {
+        this.erroRegistro = 'Campo registro é obrigatório'
+        return false
+      }
       
-      localStorage.setItem('usuarioLogado', JSON.stringify(usuario))
-      localStorage.setItem('userType', tipo)
+      if (this.registro_usuario.length < 1) {
+        this.erroRegistro = 'O registro deve ter pelo menos 1 dígito'
+        return false
+      }
       
-      this.router.push('/provas')
+      if (this.registro_usuario.length > 10) {
+        this.erroRegistro = 'O registro não pode ter mais de 10 dígitos'
+        return false
+      }
+      
+      if (!/^\d+$/.test(this.registro_usuario)) {
+        this.erroRegistro = 'O registro deve conter apenas números'
+        return false
+      }
+      
+      return true
+    },
+    
+    async processarLogin() {
+      this.erroRegistro = ''
+      
+      if (!this.validarCampos()) {
+        return
+      }
+      
+      // TODO: Substituir pela chamada real da API
+      // Por enquanto, simula o login buscando o usuário no localStorage
+      const usuariosSalvos = JSON.parse(localStorage.getItem('usuarios') || '[]')
+      const usuarioEncontrado = usuariosSalvos.find(
+        u => u.registro === this.registro_usuario && u.senha === this.senha_usuario
+      )
+      
+      if (usuarioEncontrado) {
+        const usuario = {
+          id: parseInt(this.registro_usuario),
+          nome: usuarioEncontrado.nome,
+          registro: this.registro_usuario,
+          tipo: usuarioEncontrado.tipo
+        }
+        
+        this.authStore.user = usuario
+        this.authStore.userType = usuario.tipo
+        
+        localStorage.setItem('usuarioLogado', JSON.stringify(usuario))
+        localStorage.setItem('userType', usuario.tipo)
+        
+        this.router.push('/provas')
+      } else {
+        alert('Registro ou senha inválidos!')
+      }
     }
   }
 }
@@ -130,27 +165,6 @@ export default {
 
 .formulario_login {
   padding: 20px 40px 40px 40px;
-}
-
-.tipo-usuario {
-  display: flex;
-  gap: 30px;
-  margin-bottom: 25px;
-  justify-content: center;
-}
-
-.radio-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #333;
-}
-
-.radio-label input {
-  width: auto;
-  margin: 0;
 }
 
 .campo_registro,
@@ -187,6 +201,13 @@ input::placeholder {
   font-size: 14px;
 }
 
+.mensagem-erro {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: #dc3545;
+}
+
 .botao_entrar {
   width: 100%;
   padding: 16px;
@@ -216,10 +237,6 @@ input::placeholder {
   
   .formulario_login {
     padding: 15px 30px 30px 30px;
-  }
-  
-  .tipo-usuario {
-    gap: 20px;
   }
   
   input {

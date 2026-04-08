@@ -12,7 +12,7 @@
         <p>{{ mensagem }}</p>
         <div class="alert-data">
           <span>📅 Data de entrega: {{ dataEntrega }}</span>
-          <span>📚 Matéria: {{ materia }}</span>
+          <span>📚 Disciplina: {{ disciplina }}</span>
           <span>🏫 Turma: {{ turma }}</span>
           <span>📆 Bimestre: {{ bimestre }}</span>
           <span>📋 Semana: {{ semana }}</span>
@@ -23,13 +23,13 @@
         @click="confirmarEntrega" 
         class="btn-confirmar"
       >
-        ✅ Confirmar Entrega
+        Confirmar Entrega
       </button>
       <span v-if="entregue" class="status-entregue">
-        ✓ Entregue em {{ dataConfirmacao }}
+        Entregue em {{ dataConfirmacao }}
       </span>
       <span v-if="tipoUsuario === 'processo_pedagogico'" class="status-aguardando">
-        ⏳ Aguardando confirmação
+        Aguardando confirmação
       </span>
     </div>
   </div>
@@ -55,7 +55,7 @@ export default {
       type: String,
       required: true
     },
-    materia: {
+    disciplina: {
       type: String,
       default: 'Não especificada'
     },

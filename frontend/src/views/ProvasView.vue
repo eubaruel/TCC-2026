@@ -6,7 +6,7 @@
     </div>
     
     <div class="alerts-section">
-      <h3>📢 Avisos de Provas</h3>
+      <h3>Avisos de Provas</h3>
       <div v-if="alerts.length === 0" class="sem-alerts">
         Nenhum aviso de prova no momento.
       </div>
@@ -18,7 +18,7 @@
           :titulo="alert.titulo"
           :mensagem="alert.mensagem"
           :dataEntrega="alert.dataEntrega"
-          :materia="alert.materia"
+          :disciplina="alert.disciplina"
           :turma="alert.turma"
           :bimestre="alert.bimestre"
           :semana="alert.semana"
@@ -79,8 +79,8 @@ export default {
             titulo: 'Prova Bimestral - Matemática',
             mensagem: 'A prova bimestral de Matemática deve ser entregue até o prazo estipulado.',
             dataEntrega: '15/04/2026',
-            materia: 'Matemática',
-            turma: '9° Ano A',
+            disciplina: 'Matemática',
+            turma: '1° Ano A',
             bimestre: '1° Bimestre',
             semana: 'G1 Objetiva',
             entregue: false
@@ -90,21 +90,10 @@ export default {
             titulo: 'Prova Final - Português',
             mensagem: 'Entrega da prova final de Português para correção.',
             dataEntrega: '22/04/2026',
-            materia: 'Português',
-            turma: '8° Ano B',
+            disciplina: 'Português',
+            turma: '2° Ano B',
             bimestre: '2° Bimestre',
             semana: 'G2 Dissertativa',
-            entregue: false
-          },
-          {
-            id: 3,
-            titulo: 'Prova de Recuperação - Ciências',
-            mensagem: 'Prova de recuperação deve ser entregue até a data limite.',
-            dataEntrega: '29/04/2026',
-            materia: 'Ciências',
-            turma: '7° Ano C',
-            bimestre: '3° Bimestre',
-            semana: 'G3 Dissertativa',
             entregue: false
           }
         ]
