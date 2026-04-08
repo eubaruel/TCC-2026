@@ -87,7 +87,12 @@
         <form @submit.prevent="salvarQuestao" class="form-questao">
           <div class="form-group">
             <label>Disciplina *</label>
-            <input type="text" v-model="novaQuestao.disciplina" required />
+            <select v-model="novaQuestao.disciplina" required>
+              <option value="">Selecione a disciplina</option>
+              <option v-for="disciplina in disciplinas" :key="disciplina" :value="disciplina">
+                {{ disciplina }}
+              </option>
+            </select>
           </div>
           
           <div class="form-group">
@@ -172,9 +177,11 @@
           <div class="form-group">
             <label>Dificuldade *</label>
             <select v-model="novaQuestao.dificuldade">
+              <option value="Muito Fácil">Muito Fácil</option>
               <option value="Fácil">Fácil</option>
               <option value="Médio">Médio</option>
               <option value="Difícil">Difícil</option>
+              <option value="Muito Difícil">Muito Difícil</option>
             </select>
           </div>
           
@@ -242,6 +249,28 @@ export default {
       buscou: false,
       resultados: [],
       minhasQuestoes: [],
+      // Lista de disciplinas definida pelo sistema
+      disciplinas: [
+        'Matemática FGB',
+        'Matemática AP',
+        'Português',
+        'Literatura',
+        'Inglês',
+        'Projeto de Vida',
+        'Eletiva',
+        'Física FGB',
+        'Física AP',
+        'Química FGB',
+        'Química AP',
+        'Biologia FGB',
+        'Biologia AP',
+        'História',
+        'Geografia',
+        'Filosofia/Sociologia',
+        'Arte',
+        'Educação Física',
+        'Redação'
+      ],
       novaQuestao: {
         disciplina: '',
         assunto: '',
@@ -314,7 +343,6 @@ export default {
     },
     
     montarAlternativasCompletas() {
-      // Monta o array completo de alternativas com A como correta
       const alternativas = [
         { letra: 'A', texto: this.novaQuestao.alternativaCorreta },
         { letra: 'B', texto: this.novaQuestao.alternativasDistratores[0].texto },
@@ -675,6 +703,17 @@ export default {
   border: 1px solid #ddd;
   border-radius: 8px;
   font-size: 14px;
+}
+
+.form-group select {
+  cursor: pointer;
+  background-color: white;
+}
+
+.tema-escuro .form-group select {
+  background-color: #2a2a2a;
+  border-color: #404040;
+  color: #e5e5e5;
 }
 
 .input-linhas {

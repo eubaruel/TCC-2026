@@ -1,11 +1,12 @@
 {
     "aluno":{
-        "id_hash":"",
-        "matricula_aluno":"",
+        "matricula_aluno":0,
         "nome_aluno":"",
         "turma":"",
         "serie":"",
         "situacao":"",
-        "email_aluno":""
+        "email_aluno":"",
+        "ativo":true
     }
 }
+

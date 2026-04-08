@@ -12,8 +12,10 @@
         <p>{{ mensagem }}</p>
         <div class="alert-data">
           <span>📅 Data de entrega: {{ dataEntrega }}</span>
-          <span>📚 Matéria: {{ materia }}</span>
+          <span>📚 Disciplina: {{ disciplina }}</span>
           <span>🏫 Turma: {{ turma }}</span>
+          <span>📆 Bimestre: {{ bimestre }}</span>
+          <span>📋 Semana: {{ semana }}</span>
         </div>
       </div>
       <button 
@@ -21,13 +23,13 @@
         @click="confirmarEntrega" 
         class="btn-confirmar"
       >
-        ✅ Confirmar Entrega
+        Confirmar Entrega
       </button>
       <span v-if="entregue" class="status-entregue">
-        ✓ Entregue em {{ dataConfirmacao }}
+        Entregue em {{ dataConfirmacao }}
       </span>
       <span v-if="tipoUsuario === 'processo_pedagogico'" class="status-aguardando">
-        ⏳ Aguardando confirmação
+        Aguardando confirmação
       </span>
     </div>
   </div>
@@ -53,11 +55,19 @@ export default {
       type: String,
       required: true
     },
-    materia: {
+    disciplina: {
       type: String,
       default: 'Não especificada'
     },
     turma: {
+      type: String,
+      default: 'Não especificada'
+    },
+    bimestre: {
+      type: String,
+      default: 'Não especificado'
+    },
+    semana: {
       type: String,
       default: 'Não especificada'
     },
@@ -93,13 +103,11 @@ export default {
         const dataAtual = new Date().toLocaleDateString('pt-BR')
         this.dataConfirmacao = dataAtual
         
-        // Salva no localStorage
         localStorage.setItem(`prova_${this.id}_entregue`, JSON.stringify({
           entregue: true,
           data: dataAtual
         }))
         
-        // Emite evento para o pai
         this.$emit('confirmado', this.id)
         
         alert('Prova confirmada com sucesso!')

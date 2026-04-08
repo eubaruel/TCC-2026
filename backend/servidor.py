@@ -1,0 +1,144 @@
+from flask import Flask, jsonify, request, send_from_directory
+from flask_cors import CORS
+
+from werkzeug.exceptions import HTTPException, NotFound
+
+from api.banco_de_dados.banco_de_dados import Banco_de_dados
+from api.utils.resposta_erro import resposta_erro
+
+from api.middlewares.aluno_middleware import Aluno_middleware
+
+from api.controles.aluno_controle import Aluno_controle
+
+from api.services.aluno_service import Aluno_service
+
+from api.DAOs.aluno_dao import Aluno_dao
+
+from api.roteador.aluno_rotas import Aluno_rotas
+
+import traceback
+
+class Servidor:
+    """
+    Classe principal do servidor Flask.
+
+    Responsável por inicializar middlewares, roteadores e gerenciar a aplicação.
+    """
+
+    def __init__(self, porta: int = 8080):
+        # 🔹 Porta em que o servidor irá rodar
+        self.__porta = porta
+
+        self.__app = Flask(__name__, static_folder= "static", static_url_path="")
+
+        # 🔹 Configuração de CORS (Cross-Origin Resource Sharing)
+        #    Permite que clientes de outros domínios/portas acessem sua API
+        #    Exemplo: permitir todos os domínios (somente para desenvolvimento)
+        CORS(self.__app, resources={r"/*": {"origins": "*"}})
+
+        # 🔹 Middlewares
+
+        self.__aluno_middleware = Aluno_middleware()
+
+        # 🔹 DAOs, Services e Controls serão inicializados após conexão com DB
+        self.__aluno_dao = None
+        self.__aluno_service = None
+        self.__aluno_controle = None
+        
+
+        self.__conexao_db = None
+
+    def init(self):
+        """
+        Inicializa a aplicação:
+        - Conexão com o banco
+        - Middlewares
+        - Roteadores
+        """
+
+        self.__conexao_db =  Banco_de_dados(uri= "***REMOVIDO***", 
+                                            nome_bd="tcc2026")
+
+
+        self.__conexao_db.conectar()
+
+        self.__error_middleware()
+
+        self.__setup_aluno()
+
+
+    def __setup_aluno(self):
+        """Configura o módulo Aluno (DAO, Service, Controle, Rotas)"""
+        print("⬆️  Setup Aluno")
+
+        # DAO recebe conexão global com o banco (injeção de dependência)
+        self.__aluno_dao = Aluno_dao(self.__conexao_db)
+
+        # Service recebe DAO (injeção de dependência)
+        self.__aluno_service = Aluno_service(self.__aluno_dao)
+
+        # Controle recebe Service (injeção de dependência)
+        self.__aluno_controle = Aluno_controle(self.__aluno_service)
+
+        # Router recebe Controle + Middlewares
+        aluno_roteador = Aluno_rotas(
+            self.__aluno_middleware,
+            self.__aluno_controle
+        )
+
+        print("⬆️  parou aqui")
+        # Registra rotas da entidade Aluno
+        self.__app.register_blueprint(aluno_roteador.criar_rotas(), url_prefix="/api/v1/alunos")
+        print("⬆️  Rotas registradas")
+
+    def __error_middleware(self):
+        """Middleware global de tratamento de erros"""
+        @self.__app.errorhandler(Exception)
+        def handle_error(error):
+
+            # 🔹 404 - Rota ou arquivo não encontrado
+            if isinstance(error, NotFound):
+                return error, 404
+
+            # 🔹 Captura ErrorResponse customizado
+            if isinstance(error, resposta_erro):
+                print("🟡 Server.error_middleware()")
+                # Extrai stack trace como string
+                stack_str = ''.join(traceback.format_exception(type(error), error, error.__traceback__))
+
+                resposta = {
+                    "success": False,
+                    "error": {
+                        "message": str(error),
+                        "code": getattr(error, "code", None),
+                        "details": getattr(error, "error", None)
+                    },
+                    "data": {
+                        "message": "Erro tratado pela aplicação",
+                        "stack": stack_str
+                    }
+                }
+                return jsonify(resposta), error.httpCode
+
+            # 🔹 Outros erros internos (não tratados)
+            stack_str = ''.join(traceback.format_exception(type(error), error, error.__traceback__))
+            print("🟡 Server.error_middleware()")
+            resposta = {
+                "success": False,
+                "error": {
+                    "message": str(error),
+                    "code": getattr(error, "code", None)
+                },
+                "data": {
+                    "message": "Ocorreu um erro interno no servidor",
+                    "stack": stack_str
+                }
+            }
+
+            return jsonify(resposta), 500
+        
+    def run(self):
+        """Inicia o servidor Flask na porta configurada"""
+        print(f"🚀 Servidor rodando em: http://127.0.0.1:{self.__porta}")
+        # ⚠️ debug=False é necessário para que o errorhandler global capture exceções
+        self.__app.run(port=self.__porta, debug=False)

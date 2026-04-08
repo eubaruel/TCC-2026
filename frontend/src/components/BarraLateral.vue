@@ -1,6 +1,6 @@
 <template>
-  <div 
-    class="sidebar" 
+  <div
+    class="sidebar"
     :class="{ 'sidebar-retraida': !hoverActive }"
     @mouseenter="hoverActive = true"
     @mouseleave="hoverActive = false"
@@ -10,103 +10,182 @@
         <img src="/logo_univap.ico" alt="Logo" class="logo-mini" />
         <span v-show="hoverActive" class="logo-texto">UNIVAP</span>
       </div>
-      
+
       <nav class="nav-menu">
         <!-- Menu para Professor -->
         <template v-if="isProfessor">
-          <router-link 
-            to="/provas" 
+          <router-link
+            to="/provas"
             class="nav-item"
             :class="{ 'nav-item-expandido': hoverActive }"
             active-class="nav-item-ativo"
           >
             <div class="nav-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 4H20V20H4V4Z" stroke="white" stroke-width="2" fill="none"/>
-                <path d="M8 8H16V10H8V8Z" fill="white"/>
-                <path d="M8 12H14V14H8V12Z" fill="white"/>
-                <path d="M8 16H12V18H8V16Z" fill="white"/>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M4 4H20V20H4V4Z"
+                  stroke="white"
+                  stroke-width="2"
+                  fill="none"
+                />
+                <path d="M8 8H16V10H8V8Z" fill="white" />
+                <path d="M8 12H14V14H8V12Z" fill="white" />
+                <path d="M8 16H12V18H8V16Z" fill="white" />
               </svg>
             </div>
             <span v-show="hoverActive" class="nav-texto">Provas</span>
           </router-link>
 
-          <router-link 
-            to="/questoes" 
+          <router-link
+            to="/questoes"
             class="nav-item"
             :class="{ 'nav-item-expandido': hoverActive }"
             active-class="nav-item-ativo"
           >
             <div class="nav-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M14 4H6C5.46957 4 4.96086 4.21071 4.58579 4.58579C4.21071 4.96086 4 5.46957 4 6V18C4 18.5304 4.21071 19.0391 4.58579 19.4142C4.96086 19.7893 5.46957 20 6 20H18C18.5304 20 19.0391 19.7893 19.4142 19.4142C19.7893 19.0391 20 18.5304 20 18V10" stroke="white" stroke-width="2" fill="none"/>
-                <path d="M15 4L20 9" stroke="white" stroke-width="2"/>
-                <path d="M12 12H8V16H12V12Z" stroke="white" stroke-width="2" fill="none"/>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M14 4H6C5.46957 4 4.96086 4.21071 4.58579 4.58579C4.21071 4.96086 4 5.46957 4 6V18C4 18.5304 4.21071 19.0391 4.58579 19.4142C4.96086 19.7893 5.46957 20 6 20H18C18.5304 20 19.0391 19.7893 19.4142 19.4142C19.7893 19.0391 20 18.5304 20 18V10"
+                  stroke="white"
+                  stroke-width="2"
+                  fill="none"
+                />
+                <path d="M15 4L20 9" stroke="white" stroke-width="2" />
+                <path
+                  d="M12 12H8V16H12V12Z"
+                  stroke="white"
+                  stroke-width="2"
+                  fill="none"
+                />
               </svg>
             </div>
             <span v-show="hoverActive" class="nav-texto">Questões</span>
           </router-link>
         </template>
-        
+
         <!-- Menu para Processo Pedagógico -->
         <template v-if="isProcessoPedagogico">
-          <router-link 
-            to="/provas" 
+          <router-link
+            to="/provas"
             class="nav-item"
             :class="{ 'nav-item-expandido': hoverActive }"
             active-class="nav-item-ativo"
           >
             <div class="nav-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 4H20V20H4V4Z" stroke="white" stroke-width="2" fill="none"/>
-                <path d="M8 8H16V10H8V8Z" fill="white"/>
-                <path d="M8 12H14V14H8V12Z" fill="white"/>
-                <path d="M8 16H12V18H8V16Z" fill="white"/>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M4 4H20V20H4V4Z"
+                  stroke="white"
+                  stroke-width="2"
+                  fill="none"
+                />
+                <path d="M8 8H16V10H8V8Z" fill="white" />
+                <path d="M8 12H14V14H8V12Z" fill="white" />
+                <path d="M8 16H12V18H8V16Z" fill="white" />
               </svg>
             </div>
             <span v-show="hoverActive" class="nav-texto">Provas</span>
           </router-link>
 
-          <router-link 
-            to="/avisos" 
+          <router-link
+            to="/avisos"
             class="nav-item"
             :class="{ 'nav-item-expandido': hoverActive }"
             active-class="nav-item-ativo"
           >
             <div class="nav-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L15 8L22 9L17 14L18 21L12 17.5L6 21L7 14L2 9L9 8L12 2Z" stroke="white" stroke-width="2" fill="none"/>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="size-6"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6.75 2.994v2.25m10.5-2.25v2.25m-14.252 13.5V7.491a2.25 2.25 0 0 1 2.25-2.25h13.5a2.25 2.25 0 0 1 2.25 2.25v11.251m-18 0a2.25 2.25 0 0 0 2.25 2.25h13.5a2.25 2.25 0 0 0 2.25-2.25m-18 0v-7.5a2.25 2.25 0 0 1 2.25-2.25h13.5a2.25 2.25 0 0 1 2.25 2.25v7.5m-6.75-6h2.25m-9 2.25h4.5m.002-2.25h.005v.006H12v-.006Zm-.001 4.5h.006v.006h-.006v-.005Zm-2.25.001h.005v.006H9.75v-.006Zm-2.25 0h.005v.005h-.006v-.005Zm6.75-2.247h.005v.005h-.005v-.005Zm0 2.247h.006v.006h-.006v-.006Zm2.25-2.248h.006V15H16.5v-.005Z"
+                />
               </svg>
             </div>
             <span v-show="hoverActive" class="nav-texto">Avisos</span>
           </router-link>
         </template>
-        
-        <!-- Configurações (para todos) -->
-        <router-link 
-          to="/configuracoes" 
+
+        <!-- Configurações (mesmo ícone para todos) -->
+        <router-link
+          to="/configuracoes"
           class="nav-item"
           :class="{ 'nav-item-expandido': hoverActive }"
           active-class="nav-item-ativo"
         >
           <div class="nav-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2" fill="none"/>
-              <path d="M19.4 15.5L18.2 16.7C17.9 17 17.5 17.2 17.1 17.2C16.7 17.2 16.3 17 16 16.7L12 12.7L8 16.7C7.7 17 7.3 17.2 6.9 17.2C6.5 17.2 6.1 17 5.8 16.7L4.6 15.5C4.3 15.2 4.1 14.8 4.1 14.4C4.1 14 4.3 13.6 4.6 13.3L8.6 9.3L4.6 5.3C4.3 5 4.1 4.6 4.1 4.2C4.1 3.8 4.3 3.4 4.6 3.1L5.8 1.9C6.1 1.6 6.5 1.4 6.9 1.4C7.3 1.4 7.7 1.6 8 1.9L12 5.9L16 1.9C16.3 1.6 16.7 1.4 17.1 1.4C17.5 1.4 17.9 1.6 18.2 1.9L19.4 3.1C19.7 3.4 19.9 3.8 19.9 4.2C19.9 4.6 19.7 5 19.4 5.3L15.4 9.3L19.4 13.3C19.7 13.6 19.9 14 19.9 14.4C19.9 14.8 19.7 15.2 19.4 15.5Z" stroke="white" stroke-width="2" fill="none"/>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="size-6"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.398.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894Z"
+              />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+              />
             </svg>
           </div>
           <span v-show="hoverActive" class="nav-texto">Configurações</span>
         </router-link>
       </nav>
-      
+
       <!-- Botão Sair na parte inferior -->
       <div class="logout-section">
-        <button @click="logout" class="logout-btn" :class="{ 'logout-btn-expandido': hoverActive }">
+        <button
+          @click="logout"
+          class="logout-btn"
+          :class="{ 'logout-btn-expandido': hoverActive }"
+        >
           <div class="nav-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="white" stroke-width="2" fill="none"/>
-              <path d="M16 17L21 12L16 7" stroke="white" stroke-width="2"/>
-              <path d="M21 12H9" stroke="white" stroke-width="2"/>
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9"
+                stroke="white"
+                stroke-width="2"
+                fill="none"
+              />
+              <path d="M16 17L21 12L16 7" stroke="white" stroke-width="2" />
+              <path d="M21 12H9" stroke="white" stroke-width="2" />
             </svg>
           </div>
           <span v-show="hoverActive" class="nav-texto">Sair</span>
@@ -117,34 +196,34 @@
 </template>
 
 <script>
-import { useAuthStore } from '@/stores/auth'
-import { useRouter } from 'vue-router'
+import { useAuthStore } from "@/stores/auth";
+import { useRouter } from "vue-router";
 
 export default {
-  name: 'BarraLateral',
+  name: "BarraLateral",
   setup() {
-    const authStore = useAuthStore()
-    const router = useRouter()
-    
+    const authStore = useAuthStore();
+    const router = useRouter();
+
     const logout = () => {
-      if (confirm('Tem certeza que deseja sair?')) {
-        authStore.logout()
-        router.push('/')
+      if (confirm("Tem certeza que deseja sair?")) {
+        authStore.logout();
+        router.push("/");
       }
-    }
-    
+    };
+
     return {
       isProfessor: authStore.isProfessor,
       isProcessoPedagogico: authStore.isProcessoPedagogico,
-      logout
-    }
+      logout,
+    };
   },
   data() {
     return {
-      hoverActive: false
-    }
-  }
-}
+      hoverActive: false,
+    };
+  },
+};
 </script>
 
 <style scoped>
@@ -174,7 +253,7 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 20px 0;
+  padding: 20px 0 0 0;
 }
 
 .logo-sidebar {
@@ -205,12 +284,13 @@ export default {
   flex-direction: column;
   gap: 10px;
   padding: 0 10px;
+  margin-bottom: 30px;
 }
 
 .logout-section {
-  padding: 10px 10px 20px 10px;
+  padding: 15px 10px 40px 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
-  margin-top: 65px;
+  margin-top: auto;
 }
 
 .logout-btn {
@@ -227,6 +307,7 @@ export default {
   border: none;
   width: 100%;
   cursor: pointer;
+  margin-top: 12px;
 }
 
 .logout-btn-expandido {
