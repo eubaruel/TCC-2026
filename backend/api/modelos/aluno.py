@@ -3,29 +3,13 @@ import re
 class Aluno:
     def __init__(self):
         
-        self.__id_hash = None #string
         self.__matricula_aluno = None #int
         self.__nome_aluno = None #string
         self.__turma = None #string
         self.__serie = None #int
         self.__situacao = None #string
         self.__email_aluno = None #string
-
-    @property
-    def id_hash(self):
-        return self.__id_hash
-
-    @id_hash.setter
-    def id_hash(self, value):
-        if value is None:
-            raise ValueError("Id nulo")
-
-        if not isinstance(value, str):
-            raise TypeError("Id deve ser uma string")
-
-        value = value.strip()
-        self.__id_hash = value
-
+        self.__ativo = None
 
     @property
     def matricula_aluno(self):
@@ -66,8 +50,8 @@ class Aluno:
             raise ValueError("Nome do aluno deve ter ao menos um sobrenome")
         
         for nome in value.split(): 
-            if len(nome) < 3:
-                raise ValueError("Cada parte do nome deve conter ao menos 3 caracteres")
+            if len(nome) < 2:
+                raise ValueError("Cada parte do nome deve conter ao menos 2 caracteres")
         
         self.__nome_aluno = value
 
@@ -121,8 +105,8 @@ class Aluno:
         if not isinstance(value, str):
             raise TypeError("Situação do aluno deve ser uma string")
         
-        if not value.isalpha():
-            raise ValueError("Situação do aluno não pode conter números")
+        if value.isnumeric():
+            raise ValueError("Situação do aluno deve conter letras")
 
         self.__situacao = value
 

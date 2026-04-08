@@ -15,6 +15,6 @@
         "ano":0,
         "bimestre":"APENAS '1° bimestre' ou '2° bimestre' ou '3° bimestre' ou '4° bimestre'",
         "data_de_aplicacao":"<USAR CALENDARIO>",
-        "id_questao":[1,2,3,4,5]
+        "questoes":["questao1","questao2","questao3","etc"]
     }
 }
