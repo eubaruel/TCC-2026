@@ -3,27 +3,12 @@ import bcrypt
 
 class Usuario:
     def __init__(self):
-        self.__id_hash = None
         self.__registro = None
         self.__nome = None
         self.__email = None
         self.__senha = None
         self.__role = None
         self.__ativo = None
-
-    @property
-    def id_hash(self):
-        return self.__id_hash
-    
-    @id_hash.setter
-    def id_hash(self,value):
-        if value is None:
-            raise ValueError("Id_hash nulo")
-        
-        if not isinstance(value, str):
-            raise TypeError("Id_hash deve ser uma string")
-        
-        self.__id_hash = value
 
     @property
     def registro(self):

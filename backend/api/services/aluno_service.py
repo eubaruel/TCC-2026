@@ -30,12 +30,12 @@ class Aluno_service:
         return self.__aluno_dao.consulta(filtro)
     
     
-    def atualizar(self, json_aluno: dict) -> bool:
+    def atualizar(self, json_aluno: dict, filtro) -> bool:
         print("🟣 aluno_service.atualizar()")
 
         obj_aluno = Aluno()
         self.setar_modelo_aluno(obj_aluno, json_aluno)
-        return self.__aluno_dao.atualizar(obj_aluno)
+        return self.__aluno_dao.atualizar(obj_aluno, filtro)
     
     
     def excluir(self, matricula_aluno: int) -> bool:
@@ -52,7 +52,7 @@ class Aluno_service:
         obj_aluno.serie = json_aluno.get("serie")
         obj_aluno.situacao = json_aluno.get("situacao")
         obj_aluno.email_aluno = json_aluno.get("email_aluno")
-        obj_aluno.ativo = json_aluno.get("ativo")
+        obj_aluno.ativo = True
 
 
 

@@ -9,15 +9,7 @@ class Aluno_dao:
 
     def criar(self, obj_aluno: Aluno) -> bool:
         print("✅ aluno_dao.criar()")
-        doc = {
-            "matricula_aluno": obj_aluno.matricula_aluno,
-            "nome_aluno": obj_aluno.nome_aluno,
-            "turma": obj_aluno.turma,
-            "serie": obj_aluno.serie,
-            "situacao": obj_aluno.situacao,
-            "email_aluno": obj_aluno.email_aluno,
-            "ativo":obj_aluno.ativo
-        }
+        doc = self.set_doc(obj_aluno)
 
         resultado = self.__colecao.insert_one(doc)
 
@@ -32,18 +24,10 @@ class Aluno_dao:
         resultado = list(self.__colecao.find(filtro, {"_id": 0}))
         return resultado
     
-    def atualizar(self, obj_aluno: Aluno) -> bool:
+    def atualizar(self, obj_aluno: Aluno, filtro=None) -> bool:
         print("✅ aluno_dao.atualizar()")
-        filtro = {"matricula_aluno":obj_aluno.matricula_aluno}
         doc = {
-            "$set": {
-                "nome_aluno": obj_aluno.nome_aluno,
-                "turma": obj_aluno.turma,
-                "serie": obj_aluno.serie,
-                "situacao": obj_aluno.situacao,
-                "email_aluno": obj_aluno.email_aluno,
-                "ativo":obj_aluno.ativo
-            }
+            "$set": self.set_doc(obj_aluno)
         }
 
         resultado = self.__colecao.update_one(filtro,doc)
@@ -74,6 +58,18 @@ class Aluno_dao:
         resultado = self.__colecao.find_one(filtro)
 
         return resultado is not None
+    
+
+    def set_doc(obj_aluno):
+        return {
+            "matricula_aluno": obj_aluno.matricula_aluno,
+            "nome_aluno": obj_aluno.nome_aluno,
+            "turma": obj_aluno.turma,
+            "serie": obj_aluno.serie,
+            "situacao": obj_aluno.situacao,
+            "email_aluno": obj_aluno.email_aluno,
+            "ativo":obj_aluno.ativo
+        }
 
         
 

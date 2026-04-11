@@ -6,7 +6,7 @@ class Aluno_middleware:
     def validar_body(self,f):
         @wraps(f)
         def decorated_function(*args,**kwargs):
-            print("🔷 aluno_middleware.validar_body_cadastro()")
+            print("🔷 aluno_middleware.validar_body()")
             body = request.get_json()
 
             if not body or 'aluno' not in body:
