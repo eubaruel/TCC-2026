@@ -25,7 +25,7 @@ class Usuario_controle:
         return jsonify({"success":True,
                         "message":"Cadastro realizado com sucesso",
                         "data":{
-                            "aluno":self._formatar_aluno(json_usuario)
+                            "aluno":self._formatar_usuario(json_usuario)
                             }
                         }),201
     
@@ -67,15 +67,37 @@ class Usuario_controle:
     def alterar(self):
         print("🔵 usuario_controle.alterar()") 
 
+        tipos = {
+            "registro":int,
+        }
+
+        campos_permitidos = {"registro","nome"}
+
+        filtro = {}
+
+        for key, value in request.args.items():
+            if key not in campos_permitidos or not value:
+                continue
+
+            conversor = tipos.get(key, str)
+
+            try:
+                filtro[key] = conversor(value)
+            except ValueError:
+                return jsonify({
+                    "success": False,
+                    "error": {"message": f"{key} inválido: {value}"}
+                }), 400
+
         json_usuario = request.json.get("usuario")
-        sucesso = self.__usuario_service.atualizar(json_usuario)
+        sucesso = self.__usuario_service.atualizar(json_usuario, filtro)
 
         if sucesso:
             return jsonify({
                 "sucesso": True,
                 "mensagem": "Atualizado com sucesso",
                 "data": {
-                    "aluno":self._formatar_aluno(json_usuario)               
+                    "aluno":self._formatar_usuario(json_usuario)               
                 }
             }), 200
         else:

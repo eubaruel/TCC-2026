@@ -61,8 +61,28 @@ class Aluno_controle:
     def alterar(self):
         print("🔵 aluno_controle.alterar()")
 
+        tipos = {"matricula_aluno": int}
+
+        campos_permitidos = {"matricula_aluno", "nome_aluno"}
+
+        filtro = {}
+
+        for key, value in request.args.items():
+            if key not in campos_permitidos or not value:
+                continue
+
+            conversor = tipos.get(key, str)
+
+            try:
+                filtro[key] = conversor(value)
+            except ValueError:
+                return jsonify({
+                    "success": False,
+                    "error": {"message": f"{key} inválido: {value}"}
+                }), 400
+
         json_aluno = request.json.get("aluno") 
-        sucesso = self.__aluno_service.atualizar(json_aluno)
+        sucesso = self.__aluno_service.atualizar(json_aluno, filtro)
         
         if sucesso:
             return jsonify({
