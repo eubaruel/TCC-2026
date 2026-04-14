@@ -1,0 +1,10 @@
+{
+    "usuario":{
+        "registro":0,
+        "nome":"",
+        "email":"",
+        "senha":"",
+        "role":"",
+        "ativo":true
+    }
+}

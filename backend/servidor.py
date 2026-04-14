@@ -51,9 +51,9 @@ class Servidor:
         self.__aluno_controle = None
 
         self.__usuario_middleware = Usuario_middleware()
-        self.__usuario_dao = Usuario_dao()
-        self.__usuario_service = Usuario_service()
-        self.__usuario_controle = Usuario_controle()
+        self.__usuario_dao = None
+        self.__usuario_service = None
+        self.__usuario_controle = None
         
 
         self.__conexao_db = None

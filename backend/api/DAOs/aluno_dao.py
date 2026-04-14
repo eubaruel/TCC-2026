@@ -60,7 +60,7 @@ class Aluno_dao:
         return resultado is not None
     
 
-    def set_doc(obj_aluno):
+    def set_doc(self, obj_aluno):
         return {
             "matricula_aluno": obj_aluno.matricula_aluno,
             "nome_aluno": obj_aluno.nome_aluno,

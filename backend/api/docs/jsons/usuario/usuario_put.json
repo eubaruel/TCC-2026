@@ -1,0 +1,9 @@
+{
+    "usuario":{
+        "registro":0,
+        "nome":"",
+        "email":"",
+        "role":"",
+        "ativo":true
+    }
+}
