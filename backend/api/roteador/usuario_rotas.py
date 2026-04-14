@@ -17,7 +17,7 @@ class Usuario_rotas:
 
         @self.__blueprint.route('/login',methods=['POST'])
         @self.__usuario_middleware.validar_login
-        def cadastrar():
+        def login():
             return self.__usuario_controle.login()
 
         @self.__blueprint.route('/',methods=['POST'])
@@ -30,7 +30,7 @@ class Usuario_rotas:
             return self.__usuario_controle.ler()
         
         @self.__blueprint.route('/',methods=['PUT'])
-        @self.__usuario_middleware.validar_body
+        @self.__usuario_middleware.validar_body_alterar
         def alterar():
             return self.__usuario_controle.alterar()
         

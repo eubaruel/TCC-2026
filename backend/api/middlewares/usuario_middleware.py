@@ -24,6 +24,27 @@ class Usuario_middleware:
             return f(*args,**kwargs)
         return decorated_function
     
+    def validar_body_alterar(self,f):
+        @wraps(f)
+        def decorated_function(*args,**kwargs):
+            print("🔷 usuario_middleware.validar_body()")
+            body = request.get_json()
+
+            if not body or 'usuario' not in body:
+                raise resposta_erro(400, "Erro na validação de dados", {"mensagem": "O campo 'usuario' é obrigatório!"})
+            
+            usuario = body['usuario']
+
+            campos_obrigatorios = ["registro","nome","email",
+                                "role","ativo"]
+            
+            for campo in campos_obrigatorios:
+                if campo not in usuario:
+                    raise resposta_erro(400, "Erro na validação de dados", {"mensagem": f"O campo '{campo}' é obrigatório!"})
+                
+            return f(*args,**kwargs)
+        return decorated_function
+    
     def validar_login(self,f):
         @wraps(f)
         def decorated_function(*args,**kwargs):

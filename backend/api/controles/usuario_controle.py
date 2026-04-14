@@ -15,7 +15,7 @@ class Usuario_controle:
             "successo": True,
             "mensagem":"Login efetuado com sucesso!",
             "data": resultado
-        }),201
+        }),200
     
     def cadastrar(self):
         print("🔵 usuario_controle.cadastrar()")
@@ -61,7 +61,7 @@ class Usuario_controle:
         return jsonify({
             "sucesso":True,
             "mensagem":"Executado com sucesso",
-            "data":{"alunos":consulta}
+            "data":{"usuários":consulta}
         }),200
     
     def alterar(self):
@@ -97,13 +97,13 @@ class Usuario_controle:
                 "sucesso": True,
                 "mensagem": "Atualizado com sucesso",
                 "data": {
-                    "aluno":self._formatar_usuario(json_usuario)               
+                    "usuario":self._formatar_usuario(json_usuario)               
                 }
             }), 200
         else:
             return jsonify({
                 "sucesso": False,
-                "erro": {"message": f"Não foi possível atualizar o usuário com o registro {json_usuario.get("usuario")}"},
+                "erro": {"message": f"Não foi possível atualizar o usuário com o registro {json_usuario.get("registro")}"},
             }), 404
         
     def deletar(self, registro):

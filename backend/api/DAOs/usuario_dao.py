@@ -6,10 +6,28 @@ class Usuario_dao:
         self.__banco_de_dados = banco_de_dados_dependency.get_banco_de_dados()
         self.__colecao = self.__banco_de_dados["usuarios"]
 
+    def login(self,obj_usuario :Usuario):
+        print("✅ usuario_dao.login()")
+
+        filtro = {
+            "registro":obj_usuario.registro,
+            "ativo":True
+        }
+
+        usuario = self.__colecao.find_one(filtro,{"_id":0})
+
+        if not usuario:
+            print("❌ Credenciais inválidas")
+            return None
+
+        print("✅ Login realizado com sucesso")
+        return usuario
+
     
     def criar(self, obj_usuario: Usuario) -> bool:
         print("✅ aluno_dao.criar()")
         doc = self.set_doc(obj_usuario)
+        doc['senha'] = obj_usuario.senha
 
         resultado = self.__colecao.insert_one(doc)
 
@@ -32,6 +50,17 @@ class Usuario_dao:
         }
 
         resultado = self.__colecao.update_one(filtro,doc)
+
+        if resultado.matched_count == 0:
+            print("❌ Nenhum usuário encontrado")
+            return False
+
+        if resultado.modified_count == 0:
+            print("⚠️ Usuário encontrado, mas nenhum dado foi alterado")
+            return False
+
+        print("✅ Usuário atualizado com sucesso")
+        return True
 
     def excluir(self, registro) -> bool:
         print("✅ usuario_dao.excluir()")
@@ -59,12 +88,11 @@ class Usuario_dao:
 
         return resultado is not None
 
-    def set_doc(obj_usuario):
+    def set_doc(self, obj_usuario):
         return {
             "registro": obj_usuario.registro,
             "nome":obj_usuario.nome,
             "email":obj_usuario.email,
-            "senha":obj_usuario.senha,
             "role":obj_usuario.role,
             "ativo":obj_usuario.ativo
         }
