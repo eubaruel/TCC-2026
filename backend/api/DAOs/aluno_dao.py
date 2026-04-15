@@ -18,6 +18,10 @@ class Aluno_dao:
         
         return True
     
+    def importar_excel(self, docs: list) -> bool:
+        print("✅ aluno_dao.importar_excel()")
+        self.__colecao.insert_many(docs)
+    
     def consulta(self, filtro=None):
         print("✅ aluno_dao.consulta()")
         filtro = filtro or {}

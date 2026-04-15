@@ -26,6 +26,11 @@ class Aluno_rotas:
         def cadastrar():
             return self.__aluno_controle.cadastrar()
         
+        @self.__blueprint.route('/excel',methods=['POST'])
+        #@self.jwt_middleware.validar_token
+        def importar():
+            return self.__aluno_controle.importar()
+        
         @self.__blueprint.route('/',methods=['GET'])
         #@self.jwt_middleware.validar_token
         def ler():
