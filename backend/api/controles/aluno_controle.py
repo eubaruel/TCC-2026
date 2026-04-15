@@ -1,5 +1,6 @@
 from flask import request,jsonify
 from api.services.aluno_service import Aluno_service
+import pandas as pd
 
 class Aluno_controle:
     def __init__(self, aluno_service:Aluno_service):
@@ -17,6 +18,31 @@ class Aluno_controle:
                             "aluno":self._formatar_aluno(json_aluno)
                             }
                         }),201
+    
+    def importar(self):
+        print("🔵 aluno_controle.importar()")
+
+        arquivo = next(request.files.values(), None)
+        if not arquivo:
+            return jsonify({
+                "sucesso":False,
+                "erro":{"mensagem": "Arquivo não enviado"}
+            }),400
+        
+        if not arquivo.filename.endswith(".xlsx"):
+            return jsonify({
+                "sucesso":False,
+                "erro":{"mensagem": "Formato inváldo"}
+            }),400
+        
+        df = pd.read_excel(arquivo)
+        resultado = self.__aluno_service.importar_excel(df)
+
+        return jsonify({
+            "sucesso":True,
+            "mensagem":"Executado com sucesso",
+            "data":{"alunos inseridos":resultado}
+        }),200
     
     
     def ler(self):
@@ -43,8 +69,8 @@ class Aluno_controle:
                 filtro[key] = conversor(value)
             except ValueError:
                 return jsonify({
-                    "success": False,
-                    "error": {"message": f"{key} inválido: {value}"}
+                    "sucesso": False,
+                    "erro": {"mensagem": f"{key} inválido: {value}"}
                 }), 400
     
         
@@ -77,8 +103,8 @@ class Aluno_controle:
                 filtro[key] = conversor(value)
             except ValueError:
                 return jsonify({
-                    "success": False,
-                    "error": {"message": f"{key} inválido: {value}"}
+                    "successo": False,
+                    "erro": {"mensagem": f"{key} inválido: {value}"}
                 }), 400
 
         json_aluno = request.json.get("aluno") 
