@@ -4,6 +4,7 @@ import TelaPrincipal from '@/components/TelaPrincipal.vue'
 import ProvasView from '@/views/ProvasView.vue'
 import QuestoesView from '@/views/QuestoesView.vue'
 import AvisosView from '@/views/AvisosView.vue'
+import GestaoUsuarios from '@/views/GestaoUsuarios.vue'
 import ConfiGuracoes from '@/views/ConfiGuracoes.vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -33,6 +34,12 @@ const routes = [
         path: 'avisos',
         name: 'AvisosView',
         component: AvisosView,
+        meta: { requiresProcesso: true }
+      },
+      {
+        path: 'usuarios',
+        name: 'GestaoUsuarios',
+        component: GestaoUsuarios,
         meta: { requiresProcesso: true }
       },
       {

@@ -332,8 +332,8 @@ export default {
       }
       return true
     },
-    
-    validarLinhasResposta() {
+      
+      validarLinhasResposta() {
       const linhas = this.novaQuestao.linhasResposta
       if (!Number.isInteger(linhas) || linhas < 1 || linhas > 100) {
         alert('A quantidade de linhas deve ser um número inteiro entre 1 e 100!')
@@ -344,7 +344,7 @@ export default {
     
     montarAlternativasCompletas() {
       const alternativas = [
-        { letra: 'A', texto: this.novaQuestao.alternativaCorreta },
+        { letra: 'A', texto: this.novaQuestao.alternativaCorreta }, 
         { letra: 'B', texto: this.novaQuestao.alternativasDistratores[0].texto },
         { letra: 'C', texto: this.novaQuestao.alternativasDistratores[1].texto },
         { letra: 'D', texto: this.novaQuestao.alternativasDistratores[2].texto },
