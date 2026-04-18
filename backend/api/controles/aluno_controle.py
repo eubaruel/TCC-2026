@@ -121,7 +121,7 @@ class Aluno_controle:
         else:
             return jsonify({
                 "sucesso": False,
-                "erro": {"message": f"Não foi possível atualizar o aluno com a matricula {json_aluno.get("matricula_aluno")}"},
+                "erro": {"mensagem": f"Não foi possível atualizar o aluno com a matricula {json_aluno.get("matricula_aluno")}"},
             }), 404
     
     def deletar(self, matricula_aluno):
@@ -135,7 +135,7 @@ class Aluno_controle:
         else:
             return jsonify({
                 "sucesso": False,
-                "erro": {"message": f"Não existe aluno com a matrícula {matricula_aluno}"}
+                "erro": {"mensagem": f"Não existe aluno com a matrícula {matricula_aluno}"}
             }), 404
         
     def _formatar_aluno(self, aluno):

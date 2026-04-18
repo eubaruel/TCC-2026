@@ -20,7 +20,7 @@ class Aluno_service:
         if matricula_existe:
             raise resposta_erro(
                 400,
-                "Matrícula repitida",
+                "Matrícula repetida",
                 {"mensagem":f"O aluno com a matrícula {obj_aluno.matricula_aluno} já está cadastrado"}
             )
         return self.__aluno_dao.criar(obj_aluno)

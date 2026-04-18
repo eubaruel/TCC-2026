@@ -23,6 +23,12 @@ from api.services.usuario_service import Usuario_service
 from api.DAOs.usuario_dao import Usuario_dao
 from api.roteador.usuario_rotas import Usuario_rotas
 
+from api.middlewares.disciplina_middleware import Disciplina_middleware
+from api.controles.disciplina_controle import Disciplina_controle
+from api.services.disciplina_service import Disciplina_service
+from api.DAOs.disciplina_dao import Disciplina_dao
+from api.roteador.disciplina_rotas import Disciplina_rotas
+
 import traceback
 
 class Servidor:
@@ -54,7 +60,11 @@ class Servidor:
         self.__usuario_dao = None
         self.__usuario_service = None
         self.__usuario_controle = None
-        
+
+        self.__disciplina_middleware = Disciplina_middleware()
+        self.__disciplina_dao = None
+        self.__disciplina_service = None
+        self.__disciplina_controle = None
 
         self.__conexao_db = None
 
@@ -77,6 +87,8 @@ class Servidor:
         self.__setup_aluno()
 
         self.__setup_usuario()
+
+        self.__setup_disciplina()
 
 
     def __setup_aluno(self):
@@ -103,7 +115,7 @@ class Servidor:
         print("⬆️  Rotas registradas")
 
     def __setup_usuario(self):
-        """Configura o módulo Aluno (DAO, Service, Controle, Rotas)"""
+        """Configura o módulo Usuário (DAO, Service, Controle, Rotas)"""
         print("⬆️  Setup usuário")
 
         # DAO recebe conexão global com o banco (injeção de dependência
@@ -124,6 +136,24 @@ class Servidor:
         # Registra rotas da entidade Usuário
         self.__app.register_blueprint(usuario_roteador.criar_rotas(), url_prefix="/api/v1/usuarios")
         print("⬆️  Rotas registradas")
+
+
+    def __setup_disciplina(self):
+        """Configura o módulo Usuário (DAO, Service, Controle, Rotas)"""
+        print("⬆️  Setup disciplina")
+
+        self.__disciplina_dao = Disciplina_dao(self.__conexao_db)
+        self.__disciplina_service = Disciplina_service(self.__disciplina_dao)
+        self.__disciplina_controle = Disciplina_controle(self.__disciplina_service)
+
+        disciplina_roteador = Disciplina_rotas(
+            self.__disciplina_middleware,
+            self.__disciplina_controle
+        )
+
+        self.__app.register_blueprint(disciplina_roteador.criar_rotas(), url_prefix="/api/v1/disciplinas")
+        print("⬆️  Rotas registradas")
+        
 
     def __error_middleware(self):
         """Middleware global de tratamento de erros"""
