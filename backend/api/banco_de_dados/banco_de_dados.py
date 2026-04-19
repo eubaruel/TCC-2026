@@ -29,5 +29,12 @@ class Banco_de_dados:
         client = self.conectar()
         return client[self.nome_bd]
 
+    def fechar_conexao(self):
+        try: 
+            if Banco_de_dados.__client:
+                Banco_de_dados.__client.close()
+        except Exception:
+            print("Banco de dados não conectado")
+
 
 

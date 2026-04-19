@@ -35,15 +35,15 @@ class Disciplina_controle:
             if key not in campos_permitidos or not value:
                 continue
 
-                conversor = tipos.get(key, str)
+            conversor = tipos.get(key, str)
 
-                try:
-                    filtro[key] = conversor(value)
-                except ValueError:
-                    return jsonify({
-                        "sucesso": False,
-                        "erro": {"mensagem": f"{key} inválido: {value}"}
-                    }), 400
+            try:
+                filtro[key] = conversor(value)
+            except ValueError:
+                return jsonify({
+                    "sucesso": False,
+                    "erro": {"mensagem": f"{key} inválido: {value}"}
+                }), 400
         
         consulta = self.__disciplina_service.consulta(filtro)
 
@@ -56,35 +56,26 @@ class Disciplina_controle:
     def alterar(self):
         print("🔵 disciplina_controle.alterar()")
 
-        tipos = {"codigo_disciplina": int}
-
         campos_permitidos = {"codigo_disciplina"}
 
         filtro = {}
 
         for key, value in request.args.items():
             if key not in campos_permitidos or not value:
-                continue
-
-        conversor = tipos.get(key, str)
-
-        try:
-            filtro[key] = conversor(value)
-        except ValueError: 
-            return jsonify({
+                return jsonify({
                 "sucesso": False,
-                "erro": {"mensagem": f"{key} inválido: {value}"}
-            }), 400
+                "erro": {"mensagem": "Dado para filtragem inválido"}
+            }), 404
         
         json_disciplina = request.json.get("disciplina")
-        sucesso = self.__disciplina_service.atualizar(json_disciplina)
+        sucesso = self.__disciplina_service.atualizar(json_disciplina, filtro)
 
         if sucesso:
             return jsonify({
                 "sucesso": True,
                 "mensagem": "Atualizado com sucesso",
                 "data": {
-                    "aluno":self.formatar_disciplina(json_disciplina)
+                    "disciplina":self.formatar_disciplina(json_disciplina)
                 }
             }), 200
         else:
@@ -108,15 +99,22 @@ class Disciplina_controle:
             }), 404
     
 
+    #TÁ DANDO ERRADO AINDA, FALTA ARRUMAR
+
     def formatar_disciplina(self,disciplina):
-        return {
+        professor = disciplina.get("professor")
+        
+        formatado = {
             "codigo_disciplina":disciplina.get("codigo_disciplina"),
             "nome_disciplina":disciplina.get("nome_disciplina"),
-            "professor":{
-                "registro":disciplina.get("professor[registro]"),
-                "nome":disciplina.get("professor[nome]")
-            },
             "turma":disciplina.get("turma"),
-            "alunos":disciplina.get("alunos")
+            "alunos":disciplina.get("alunos"),
+            "professor": {
+                "registro":professor.get("registro"),
+                "nome":professor.get("nome")
+            },
         }
+        
+        return formatado
+
 

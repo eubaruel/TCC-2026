@@ -25,7 +25,7 @@ def main():
         # Inicia servidor Flask
         servidor.run()
 
-        print("🚫 Servidor finalizado")
+        servidor.close()
     except Exception as error:
         print("❌ Erro ao iniciar o servidor:", error)
 

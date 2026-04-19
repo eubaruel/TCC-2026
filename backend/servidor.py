@@ -207,3 +207,7 @@ class Servidor:
         print(f"🚀 Servidor rodando em: http://127.0.0.1:{self.__porta}")
         # ⚠️ debug=False é necessário para que o errorhandler global capture exceções
         self.__app.run(port=self.__porta, debug=False)
+
+    def close(self):
+        print("❌ Conexão com o servidor encerrada")
+        self.__conexao_db.fechar_conexao()
