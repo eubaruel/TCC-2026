@@ -145,11 +145,14 @@ export default {
       const resultado = await this.authStore.login(registroNum, this.senha_usuario)
       
       if (!resultado.success) {
-        alert(resultado.message)
+        window.$modal.abrir({
+          titulo: "Erro",
+          mensagem: resultado.message,
+          tipo: "alerta"
+        });
         return
       }
       
-      // Redireciona para a tela principal, que exibirá o modal se necessário
       this.router.push('/provas')
     },
     
@@ -164,7 +167,11 @@ export default {
     
     enviarRecuperacao() {
       if (!this.recuperarEmail) {
-        alert('Digite seu email')
+        window.$modal.abrir({
+          titulo: "Atenção",
+          mensagem: "Digite seu email",
+          tipo: "alerta"
+        });
         return
       }
       
@@ -173,7 +180,11 @@ export default {
       )
       
       if (!usuario) {
-        alert('Email não encontrado')
+        window.$modal.abrir({
+          titulo: "Erro",
+          mensagem: "Email não encontrado",
+          tipo: "alerta"
+        });
         return
       }
       
@@ -184,7 +195,11 @@ export default {
       
       this.usersStore.resetarSenha(usuario.id, senhaTemporaria)
       
-      alert(`Sua senha foi redefinida. Use sua data de nascimento como senha.`)
+      window.$modal.abrir({
+        titulo: "Sucesso",
+        mensagem: `Sua senha foi redefinida. Use sua data de nascimento como senha: ${senhaTemporaria}`,
+        tipo: "alerta"
+      });
       this.fecharModal()
     }
   }

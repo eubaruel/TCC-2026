@@ -11,29 +11,38 @@
       </div>
     </div>
 
-    <!-- Modal Primeiro Acesso (trocar senha) - AGORA NA TELA PRINCIPAL -->
-    <div v-if="mostrarModalTrocarSenha" class="modal-overlay" @click="fecharModalTrocarSenha">
+    <!-- Modal Primeiro Acesso (trocar senha) -->
+    <div v-if="mostrarModalTrocarSenha" class="modal-overlay">
       <div class="modal-container">
         <div class="modal-header">
           <h3>Primeiro Acesso</h3>
-          <button @click="fecharModalTrocarSenha" class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
           <p>Por segurança, você precisa alterar sua senha antes de continuar.</p>
           <div class="form-group-modal">
             <label>Nova Senha *</label>
-            <input type="password" v-model="novaSenha" placeholder="Digite sua nova senha" />
+            <input 
+              type="password" 
+              v-model="novaSenha" 
+              placeholder="Digite sua nova senha" 
+              @click.stop
+            />
             <small class="helper-text">Mínimo 6 caracteres, 1 maiúscula, 1 número e 1 caractere especial</small>
           </div>
           <div class="form-group-modal">
             <label>Confirmar Nova Senha *</label>
-            <input type="password" v-model="confirmarSenha" placeholder="Confirme sua nova senha" />
+            <input 
+              type="password" 
+              v-model="confirmarSenha" 
+              placeholder="Confirme sua nova senha" 
+              @click.stop
+            />
           </div>
           <p v-if="erroSenha" class="mensagem-erro">{{ erroSenha }}</p>
         </div>
         <div class="modal-footer">
           <button @click="confirmarTrocaSenha" class="btn-modal-salvar">Alterar Senha</button>
-          <button @click="fecharModalTrocarSenha" class="btn-modal-cancelar">Sair</button>
+          <button @click="fecharModalTrocarSenha" class="btn-modal-cancelar">Cancelar</button>
         </div>
       </div>
     </div>
@@ -145,6 +154,11 @@ export default {
       const sucesso = await this.authStore.trocarSenha(this.novaSenha)
       
       if (sucesso) {
+        window.$modal.abrir({
+          titulo: "Sucesso",
+          mensagem: "Senha alterada com sucesso!",
+          tipo: "alerta"
+        });
         this.mostrarModalTrocarSenha = false
         this.novaSenha = ''
         this.confirmarSenha = ''
@@ -154,9 +168,16 @@ export default {
     },
     
     fecharModalTrocarSenha() {
-      this.mostrarModalTrocarSenha = false
-      this.authStore.logout()
-      this.router.push('/')
+      window.$modal.abrir({
+        titulo: "Cancelar",
+        mensagem: "Você será desconectado. Tem certeza?",
+        tipo: "confirmacao",
+        onConfirm: () => {
+          this.mostrarModalTrocarSenha = false
+          this.authStore.logout()
+          this.router.push('/')
+        }
+      });
     }
   }
 }
@@ -215,7 +236,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 10000;
 }
 
 .modal-container {
@@ -226,6 +247,11 @@ export default {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
 }
 
+.tema-escuro .modal-container {
+  background: #2a2a2a;
+  color: #e5e5e5;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -234,18 +260,14 @@ export default {
   border-bottom: 1px solid #e0e0e0;
 }
 
+.tema-escuro .modal-header {
+  border-bottom-color: #404040;
+}
+
 .modal-header h3 {
   font-size: 18px;
   font-weight: 600;
   margin: 0;
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #999;
 }
 
 .modal-body {
@@ -271,6 +293,12 @@ export default {
   font-size: 14px;
 }
 
+.tema-escuro .form-group-modal input {
+  background: #1a1a1a;
+  border-color: #404040;
+  color: #e5e5e5;
+}
+
 .helper-text {
   display: block;
   margin-top: 5px;
@@ -292,6 +320,10 @@ export default {
   justify-content: flex-end;
 }
 
+.tema-escuro .modal-footer {
+  border-top-color: #404040;
+}
+
 .btn-modal-salvar {
   padding: 10px 20px;
   background: #28a745;
@@ -299,6 +331,11 @@ export default {
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-modal-salvar:hover {
+  background: #218838;
 }
 
 .btn-modal-cancelar {
@@ -307,6 +344,11 @@ export default {
   border: 1px solid #ddd;
   border-radius: 6px;
   cursor: pointer;
+}
+
+.tema-escuro .btn-modal-cancelar {
+  border-color: #404040;
+  color: #e5e5e5;
 }
 
 @media (min-width: 769px) {

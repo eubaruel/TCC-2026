@@ -226,34 +226,52 @@
 </template>
 
 <script>
-import { useAuthStore } from "@/stores/auth";
-import { useRouter } from "vue-router";
+import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
 
 export default {
-  name: "BarraLateral",
+  name: 'BarraLateral',
   setup() {
-    const authStore = useAuthStore();
-    const router = useRouter();
-
+    const authStore = useAuthStore()
+    const router = useRouter()
+    
     const logout = () => {
-      if (confirm("Tem certeza que deseja sair?")) {
-        authStore.logout();
-        router.push("/");
-      }
-    };
-
+      console.log('Logout chamado') // Debug
+      console.log('Usuário antes do logout:', authStore.user)
+      console.log('Tipo de usuário:', authStore.userType)
+      
+      window.$modal.abrir({
+        titulo: "Confirmar Saída",
+        mensagem: "Tem certeza que deseja sair?",
+        tipo: "confirmacao",
+        onConfirm: () => {
+          console.log('Confirmado logout')
+          authStore.logout()
+          console.log('Usuário após logout:', authStore.user)
+          router.push('/').then(() => {
+            console.log('Redirecionado para login')
+          }).catch(err => {
+            console.error('Erro no redirecionamento:', err)
+          })
+        },
+        onCancel: () => {
+          console.log('Logout cancelado')
+        }
+      });
+    }
+    
     return {
       isProfessor: authStore.isProfessor,
       isProcessoPedagogico: authStore.isProcessoPedagogico,
-      logout,
-    };
+      logout
+    }
   },
   data() {
     return {
-      hoverActive: false,
-    };
-  },
-};
+      hoverActive: false
+    }
+  }
+}
 </script>
 
 <style scoped>

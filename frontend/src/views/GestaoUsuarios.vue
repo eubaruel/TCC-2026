@@ -5,26 +5,24 @@
       <div class="header-line"></div>
     </div>
 
-    <!-- Botão para criar novo usuário -->
     <div class="actions-bar">
       <button @click="abrirModalCriar" class="btn-criar">+ Novo Usuário</button>
     </div>
 
-    <!-- Tabs para separar professores e processo pedagógico -->
     <div class="tabs-container">
       <button
         @click="abaAtiva = 'professores'"
         class="tab-btn"
         :class="{ ativo: abaAtiva === 'professores' }"
       >
-        Professores ({{ professores ? professores.length : 0 }})
+        Professores ({{ professores.length }})
       </button>
       <button
         @click="abaAtiva = 'processo'"
         class="tab-btn"
         :class="{ ativo: abaAtiva === 'processo' }"
       >
-        Processo Pedagógico ({{ processo ? processo.length : 0 }})
+        Processo Pedagógico ({{ processo.length }})
       </button>
     </div>
 
@@ -39,7 +37,12 @@
             placeholder="Buscar por registro..."
             @input="buscarPorRegistroProfessor"
           />
-          <div v-if="sugestoesRegistroProfessor && sugestoesRegistroProfessor.length" class="sugestoes">
+          <div
+            v-if="
+              sugestoesRegistroProfessor && sugestoesRegistroProfessor.length
+            "
+            class="sugestoes"
+          >
             <div
               v-for="(sug, idx) in sugestoesRegistroProfessor"
               :key="idx"
@@ -59,7 +62,10 @@
             placeholder="Buscar por nome..."
             @input="buscarPorNomeProfessor"
           />
-          <div v-if="sugestoesNomeProfessor && sugestoesNomeProfessor.length" class="sugestoes">
+          <div
+            v-if="sugestoesNomeProfessor && sugestoesNomeProfessor.length"
+            class="sugestoes"
+          >
             <div
               v-for="(sug, idx) in sugestoesNomeProfessor"
               :key="idx"
@@ -83,7 +89,10 @@
 
         <div class="filtro-group">
           <label>Disciplina</label>
-          <select v-model="filtrosProfessores.disciplina" @change="filtrarProfessores">
+          <select
+            v-model="filtrosProfessores.disciplina"
+            @change="filtrarProfessores"
+          >
             <option value="">Todas as disciplinas</option>
             <option v-for="disc in disciplinas" :key="disc" :value="disc">
               {{ disc }}
@@ -108,7 +117,10 @@
             placeholder="Buscar por registro..."
             @input="buscarPorRegistroProcesso"
           />
-          <div v-if="sugestoesRegistroProcesso && sugestoesRegistroProcesso.length" class="sugestoes">
+          <div
+            v-if="sugestoesRegistroProcesso && sugestoesRegistroProcesso.length"
+            class="sugestoes"
+          >
             <div
               v-for="(sug, idx) in sugestoesRegistroProcesso"
               :key="idx"
@@ -128,7 +140,10 @@
             placeholder="Buscar por nome..."
             @input="buscarPorNomeProcesso"
           />
-          <div v-if="sugestoesNomeProcesso && sugestoesNomeProcesso.length" class="sugestoes">
+          <div
+            v-if="sugestoesNomeProcesso && sugestoesNomeProcesso.length"
+            class="sugestoes"
+          >
             <div
               v-for="(sug, idx) in sugestoesNomeProcesso"
               :key="idx"
@@ -158,7 +173,10 @@
 
     <!-- Lista de Professores -->
     <div v-if="abaAtiva === 'professores'" class="lista-usuarios">
-      <div v-if="!professoresFiltrados || professoresFiltrados.length === 0" class="sem-resultados">
+      <div
+        v-if="!professoresFiltrados || professoresFiltrados.length === 0"
+        class="sem-resultados"
+      >
         Nenhum professor encontrado.
       </div>
       <div v-else>
@@ -179,7 +197,7 @@
                 <strong>Disciplina:</strong> {{ user.disciplina || "Nenhuma" }}
               </p>
               <p>
-                <strong>Status:</strong>
+                <strong>Status: </strong>
                 <span :class="user.ativo ? 'status-ativo' : 'status-inativo'">
                   {{ user.ativo ? "Ativo" : "Inativo" }}
                 </span>
@@ -200,7 +218,10 @@
 
     <!-- Lista de Processo Pedagógico -->
     <div v-if="abaAtiva === 'processo'" class="lista-usuarios">
-      <div v-if="!processoFiltrados || processoFiltrados.length === 0" class="sem-resultados">
+      <div
+        v-if="!processoFiltrados || processoFiltrados.length === 0"
+        class="sem-resultados"
+      >
         Nenhum usuário do processo pedagógico encontrado.
       </div>
       <div v-else>
@@ -218,7 +239,7 @@
               <p><strong>Registro:</strong> {{ user.registro }}</p>
               <p><strong>Email:</strong> {{ user.email }}</p>
               <p>
-                <strong>Status:</strong>
+                <strong>Status: </strong>
                 <span :class="user.ativo ? 'status-ativo' : 'status-inativo'">
                   {{ user.ativo ? "Ativo" : "Inativo" }}
                 </span>
@@ -238,11 +259,13 @@
     </div>
 
     <!-- Modal Criar/Editar Usuário -->
-    <div v-if="modalUsuarioAberto" class="modal-overlay" @click="fecharModalUsuario">
+    <div v-if="modalUsuarioAberto" class="modal-overlay">
       <div class="modal-container modal-horizontal">
         <div class="modal-header">
           <h3>{{ modoEdicao ? "Editar Usuário" : "Novo Usuário" }}</h3>
-          <button @click="fecharModalUsuario" class="modal-close">&times;</button>
+          <button @click="fecharModalUsuario" class="modal-close">
+            &times;
+          </button>
         </div>
         <div class="modal-body">
           <form @submit.prevent="salvarUsuario">
@@ -255,6 +278,7 @@
                   :disabled="modoEdicao"
                   required
                   placeholder="Número de registro"
+                  @click.stop
                 />
               </div>
 
@@ -265,6 +289,7 @@
                   v-model="formUsuario.nome"
                   required
                   placeholder="Nome e sobrenome"
+                  @click.stop
                 />
               </div>
 
@@ -275,18 +300,31 @@
                   v-model="formUsuario.email"
                   required
                   placeholder="email@escola.com"
+                  @click.stop
                 />
               </div>
 
               <div class="form-group-modal">
                 <label>Data de Nascimento</label>
-                <input type="date" v-model="formUsuario.dataNascimento" />
-                <small class="helper-text">Usada como senha temporária</small>
+                <input
+                  type="date"
+                  v-model="formUsuario.dataNascimento"
+                  @click.stop
+                />
+                <small class="helper-text"
+                  >Usada como senha temporária (formato: DD/MM/AAAA -> senha:
+                  DDMMAAAA)</small
+                >
               </div>
 
               <div class="form-group-modal">
                 <label>Tipo de Usuário *</label>
-                <select v-model="formUsuario.role" required @change="onRoleChange">
+                <select
+                  v-model="formUsuario.role"
+                  required
+                  @change="onRoleChange"
+                  @click.stop
+                >
                   <option value="Professor">Professor</option>
                   <option value="Processo pedagógico">
                     Processo Pedagógico
@@ -294,9 +332,12 @@
                 </select>
               </div>
 
-              <div class="form-group-modal" v-if="formUsuario.role === 'Professor'">
+              <div
+                class="form-group-modal"
+                v-if="formUsuario.role === 'Professor'"
+              >
                 <label>Disciplina *</label>
-                <select v-model="disciplinaSelecionada" required>
+                <select v-model="disciplinaSelecionada" required @click.stop>
                   <option value="">Selecione a disciplina</option>
                   <option v-for="disc in disciplinas" :key="disc" :value="disc">
                     {{ disc }}
@@ -313,6 +354,7 @@
                   type="text"
                   v-model="formUsuario.senha"
                   placeholder="Deixe em branco para usar data de nascimento"
+                  @click.stop
                 />
               </div>
             </div>
@@ -333,7 +375,7 @@
     </div>
 
     <!-- Modal Confirmar Exclusão -->
-    <div v-if="modalExcluirAberto" class="modal-overlay" @click="fecharModalExcluir">
+    <div v-if="modalExcluirAberto" class="modal-overlay">
       <div class="modal-container">
         <div class="modal-header">
           <h3>Confirmar Exclusão</h3>
@@ -341,7 +383,9 @@
         <div class="modal-body">
           <p>
             Tem certeza que deseja excluir o usuário
-            <strong>{{ usuarioParaExcluir ? usuarioParaExcluir.nome : '' }}</strong>
+            <strong>{{
+              usuarioParaExcluir ? usuarioParaExcluir.nome : ""
+            }}</strong>
             ?
           </p>
           <p class="info-text">
@@ -374,7 +418,6 @@ export default {
     return {
       abaAtiva: "professores",
 
-      // Filtros para professores
       filtrosProfessores: {
         registro: "",
         nome: "",
@@ -384,7 +427,6 @@ export default {
       sugestoesRegistroProfessor: [],
       sugestoesNomeProfessor: [],
 
-      // Filtros para processo pedagógico
       filtrosProcesso: {
         registro: "",
         nome: "",
@@ -393,13 +435,10 @@ export default {
       sugestoesRegistroProcesso: [],
       sugestoesNomeProcesso: [],
 
-      // Modal
       modalUsuarioAberto: false,
       modalExcluirAberto: false,
       modoEdicao: false,
       usuarioParaExcluir: null,
-
-      // Formulário
       disciplinaSelecionada: "",
       formUsuario: {
         registro: null,
@@ -411,7 +450,6 @@ export default {
         senha: "",
       },
 
-      // Lista de disciplinas
       disciplinas: [
         "Matemática FGB",
         "Matemática AP",
@@ -446,28 +484,30 @@ export default {
       let resultado = this.professores ? [...this.professores] : [];
 
       if (this.filtrosProfessores.registro) {
-        resultado = resultado.filter((u) =>
-          u.registro && u.registro.toString().includes(this.filtrosProfessores.registro)
+        resultado = resultado.filter(
+          (u) =>
+            u.registro &&
+            u.registro.toString().includes(this.filtrosProfessores.registro),
         );
       }
 
       if (this.filtrosProfessores.nome) {
         const termo = this.filtrosProfessores.nome.toLowerCase();
-        resultado = resultado.filter((u) =>
-          u.nome && u.nome.toLowerCase().includes(termo)
+        resultado = resultado.filter(
+          (u) => u.nome && u.nome.toLowerCase().includes(termo),
         );
       }
 
       if (this.filtrosProfessores.email) {
         const termo = this.filtrosProfessores.email.toLowerCase();
-        resultado = resultado.filter((u) =>
-          u.email && u.email.toLowerCase().includes(termo)
+        resultado = resultado.filter(
+          (u) => u.email && u.email.toLowerCase().includes(termo),
         );
       }
 
       if (this.filtrosProfessores.disciplina) {
         resultado = resultado.filter(
-          (u) => u.disciplina === this.filtrosProfessores.disciplina
+          (u) => u.disciplina === this.filtrosProfessores.disciplina,
         );
       }
 
@@ -477,22 +517,24 @@ export default {
       let resultado = this.processo ? [...this.processo] : [];
 
       if (this.filtrosProcesso.registro) {
-        resultado = resultado.filter((u) =>
-          u.registro && u.registro.toString().includes(this.filtrosProcesso.registro)
+        resultado = resultado.filter(
+          (u) =>
+            u.registro &&
+            u.registro.toString().includes(this.filtrosProcesso.registro),
         );
       }
 
       if (this.filtrosProcesso.nome) {
         const termo = this.filtrosProcesso.nome.toLowerCase();
-        resultado = resultado.filter((u) =>
-          u.nome && u.nome.toLowerCase().includes(termo)
+        resultado = resultado.filter(
+          (u) => u.nome && u.nome.toLowerCase().includes(termo),
         );
       }
 
       if (this.filtrosProcesso.email) {
         const termo = this.filtrosProcesso.email.toLowerCase();
-        resultado = resultado.filter((u) =>
-          u.email && u.email.toLowerCase().includes(termo)
+        resultado = resultado.filter(
+          (u) => u.email && u.email.toLowerCase().includes(termo),
         );
       }
 
@@ -503,7 +545,17 @@ export default {
     this.usersStore.fetchUsers();
   },
   methods: {
-    // Filtros Professores
+    formatarDataParaSenha(dataNascimento) {
+      if (!dataNascimento) return null;
+      // Converte de AAAA-MM-DD para DDMMAAAA
+      const partes = dataNascimento.split("-");
+      if (partes.length === 3) {
+        // partes[0] = ano, partes[1] = mês, partes[2] = dia
+        return `${partes[2]}${partes[1]}${partes[0]}`;
+      }
+      return dataNascimento.replace(/\D/g, "");
+    },
+
     buscarPorRegistroProfessor() {
       const termo = this.filtrosProfessores.registro;
       if (termo && termo.length > 0) {
@@ -551,7 +603,6 @@ export default {
       this.sugestoesNomeProfessor = [];
     },
 
-    // Filtros Processo
     buscarPorRegistroProcesso() {
       const termo = this.filtrosProcesso.registro;
       if (termo && termo.length > 0) {
@@ -648,8 +699,19 @@ export default {
                 : null,
           };
           this.usersStore.updateUser(this.formUsuario.id, updates);
-          alert("Usuário atualizado com sucesso!");
+          window.$modal.abrir({
+            titulo: "Sucesso",
+            mensagem: "Usuário atualizado com sucesso!",
+            tipo: "alerta",
+          });
         } else {
+          let senhaTemporaria = this.formUsuario.senha || null;
+          if (!senhaTemporaria && this.formUsuario.dataNascimento) {
+            senhaTemporaria = this.formatarDataParaSenha(
+              this.formUsuario.dataNascimento,
+            );
+          }
+
           const userData = {
             registro: this.formUsuario.registro,
             nome: this.formUsuario.nome,
@@ -660,27 +722,46 @@ export default {
                 ? this.disciplinaSelecionada
                 : null,
             dataNascimento: this.formUsuario.dataNascimento,
-            senha: this.formUsuario.senha || null,
+            senha: senhaTemporaria,
           };
           this.usersStore.createUser(userData);
-          alert("Usuário criado com sucesso!");
+          window.$modal.abrir({
+            titulo: "Sucesso",
+            mensagem: "Usuário criado com sucesso!",
+            tipo: "alerta",
+          });
         }
         this.fecharModalUsuario();
         this.usersStore.fetchUsers();
       } catch (error) {
-        alert(error.message);
+        window.$modal.abrir({
+          titulo: "Erro",
+          mensagem: error.message,
+          tipo: "alerta",
+        });
       }
     },
 
     confirmarExcluir(user) {
       this.usuarioParaExcluir = user;
-      this.modalExcluirAberto = true;
+      window.$modal.abrir({
+        titulo: "Confirmar Exclusão",
+        mensagem: `Tem certeza que deseja excluir o usuário ${user.nome}? O usuário será desativado, mas seus dados permanecerão no sistema.`,
+        tipo: "confirmacao",
+        onConfirm: () => {
+          this.excluirUsuario();
+        },
+      });
     },
 
     excluirUsuario() {
       if (this.usuarioParaExcluir) {
         this.usersStore.softDeleteUser(this.usuarioParaExcluir.id);
-        alert(`Usuário ${this.usuarioParaExcluir.nome} foi desativado.`);
+        window.$modal.abrir({
+          titulo: "Sucesso",
+          mensagem: `Usuário ${this.usuarioParaExcluir.nome} foi desativado.`,
+          tipo: "alerta",
+        });
         this.fecharModalExcluir();
         this.usersStore.fetchUsers();
       }
@@ -699,7 +780,6 @@ export default {
 </script>
 
 <style scoped>
-/* Estilos permanecem os mesmos do código anterior */
 .gestao-usuarios-container {
   max-width: 1200px;
   margin: 0 auto;
@@ -924,16 +1004,16 @@ export default {
   color: #6c757d;
 }
 
+.usuario-detalhes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  font-size: 14px;
+}
+
 .usuario-detalhes p {
   margin: 0;
   color: #666;
-  display: flex;
-  align-items: center;
-  gap: 8px;  /* ADICIONA ESPAÇO ENTRE O LABEL E O VALOR */
-}
-
-.usuario-detalhes p strong {
-  min-width: 70px;  /* LARGURA FIXA PARA OS LABELS */
 }
 
 .tema-escuro .usuario-detalhes p {
@@ -1000,7 +1080,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 10000;
 }
 
 .modal-container {

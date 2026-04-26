@@ -4,74 +4,92 @@
       <h2>Questões</h2>
       <div class="header-line"></div>
     </div>
-    
+
     <div class="questoes-tabs">
-      <button 
-        @click="abaAtiva = 'buscar'" 
+      <button
+        @click="abaAtiva = 'buscar'"
         class="tab-btn"
         :class="{ ativo: abaAtiva === 'buscar' }"
       >
         Buscar Questão
       </button>
-      <button 
-        @click="abaAtiva = 'cadastrar'" 
+      <button
+        @click="abaAtiva = 'cadastrar'"
         class="tab-btn"
         :class="{ ativo: abaAtiva === 'cadastrar' }"
       >
         Cadastrar Questão
       </button>
-      <button 
-        @click="abaAtiva = 'minhas'" 
+      <button
+        @click="abaAtiva = 'minhas'"
         class="tab-btn"
         :class="{ ativo: abaAtiva === 'minhas' }"
       >
         Minhas Questões
       </button>
     </div>
-    
+
     <div class="tab-content">
       <!-- Buscar Questões -->
       <div v-if="abaAtiva === 'buscar'" class="buscar-questoes">
         <div class="search-box">
-          <input 
-            type="text" 
-            v-model="busca" 
+          <input
+            type="text"
+            v-model="busca"
             placeholder="Buscar por disciplina, assunto, autor ou texto..."
             class="search-input"
           />
           <button @click="buscarQuestoes" class="btn-buscar">Buscar</button>
         </div>
-        
+
         <div class="resultados" v-if="resultados.length > 0">
-          <div v-for="questao in resultados" :key="questao.id" class="questao-card">
+          <div
+            v-for="questao in resultados"
+            :key="questao.id"
+            class="questao-card"
+          >
             <div class="questao-header">
               <span class="disciplina">{{ questao.disciplina }}</span>
               <span class="tipo-questao" :class="questao.tipo">
-                {{ questao.tipo === 'objetiva' ? 'Objetiva' : 'Dissertativa' }}
+                {{ questao.tipo === "objetiva" ? "Objetiva" : "Dissertativa" }}
               </span>
               <span class="dificuldade" :class="questao.dificuldade">
                 {{ questao.dificuldade }}
               </span>
             </div>
             <div class="questao-metadata">
-              <span v-if="questao.autor" class="autor">Autor: {{ questao.autor }}</span>
-              <span class="data-criacao">Criada em: {{ questao.dataCriacao }}</span>
+              <span v-if="questao.autor" class="autor"
+                >Autor: {{ questao.autor }}</span
+              >
+              <span class="data-criacao"
+                >Criada em: {{ questao.dataCriacao }}</span
+              >
             </div>
             <p class="questao-texto">{{ questao.texto }}</p>
             <div v-if="questao.tipo === 'objetiva'" class="alternativas">
               <p><strong>Alternativas:</strong></p>
               <ul>
-                <li v-for="alt in questao.alternativas" :key="alt.letra" 
-                    :class="{ correta: alt.letra === 'A' }">
+                <li
+                  v-for="alt in questao.alternativas"
+                  :key="alt.letra"
+                  :class="{ correta: alt.letra === 'A' }"
+                >
                   {{ alt.letra }}) {{ alt.texto }}
                 </li>
               </ul>
             </div>
             <div v-else class="linhas-resposta">
-              <p><strong>Linhas para resposta:</strong> {{ questao.linhasResposta }} linhas</p>
+              <p>
+                <strong>Linhas para resposta:</strong>
+                {{ questao.linhasResposta }} linhas
+              </p>
             </div>
             <div class="questao-footer">
-              <button v-if="isProfessor" @click="usarQuestao(questao)" class="btn-usar">
+              <button
+                v-if="isProfessor"
+                @click="usarQuestao(questao)"
+                class="btn-usar"
+              >
                 Usar em Prova
               </button>
             </div>
@@ -81,7 +99,7 @@
           Nenhuma questão encontrada.
         </div>
       </div>
-      
+
       <!-- Cadastrar Questão -->
       <div v-if="abaAtiva === 'cadastrar'" class="cadastrar-questao">
         <form @submit.prevent="salvarQuestao" class="form-questao">
@@ -89,91 +107,112 @@
             <label>Disciplina *</label>
             <select v-model="novaQuestao.disciplina" required>
               <option value="">Selecione a disciplina</option>
-              <option v-for="disciplina in disciplinas" :key="disciplina" :value="disciplina">
+              <option
+                v-for="disciplina in disciplinas"
+                :key="disciplina"
+                :value="disciplina"
+              >
                 {{ disciplina }}
               </option>
             </select>
           </div>
-          
+
           <div class="form-group">
             <label>Assunto *</label>
             <input type="text" v-model="novaQuestao.assunto" required />
           </div>
-          
+
           <div class="form-group">
             <label>Autor (opcional)</label>
-            <input 
-              type="text" 
-              v-model="novaQuestao.autor" 
+            <input
+              type="text"
+              v-model="novaQuestao.autor"
               placeholder="Ex: ENEM, Unicamp, ITA, etc"
             />
             <small class="helper-text">
-              Coloque a fonte da questão se não foi você que a criou. 
-              Se foi você que escreveu, deixe em branco.
+              Coloque a fonte da questão se não foi você que a criou. Se foi
+              você que escreveu, deixe em branco.
             </small>
           </div>
-          
+
           <div class="form-group">
             <label>Tipo de Questão *</label>
             <div class="radio-group">
               <label class="radio-label">
-                <input type="radio" value="objetiva" v-model="novaQuestao.tipo" />
+                <input
+                  type="radio"
+                  value="objetiva"
+                  v-model="novaQuestao.tipo"
+                />
                 Objetiva
               </label>
               <label class="radio-label">
-                <input type="radio" value="dissertativa" v-model="novaQuestao.tipo" />
+                <input
+                  type="radio"
+                  value="dissertativa"
+                  v-model="novaQuestao.tipo"
+                />
                 Dissertativa
               </label>
             </div>
           </div>
-          
+
           <div class="form-group">
             <label>Enunciado da Questão *</label>
             <textarea v-model="novaQuestao.texto" rows="5" required></textarea>
           </div>
-          
+
           <!-- Campo para questão objetiva -->
           <div v-if="novaQuestao.tipo === 'objetiva'" class="objetiva-fields">
             <div class="form-group">
               <label>Alternativa Correta *</label>
-              <input 
-                type="text" 
-                v-model="novaQuestao.alternativaCorreta" 
+              <input
+                type="text"
+                v-model="novaQuestao.alternativaCorreta"
                 placeholder="Digite o texto da alternativa correta"
                 required
               />
             </div>
-            
+
             <div class="form-group">
               <label>Alternativas</label>
-              <div v-for="(alt, idx) in novaQuestao.alternativasDistratores" :key="idx" class="alternativa-item">
-                <input 
-                  type="text" 
-                  v-model="alt.texto" 
-                  :placeholder="`Digite o texto da alternativa ${idx + 1}`" 
+              <div
+                v-for="(alt, idx) in novaQuestao.alternativasDistratores"
+                :key="idx"
+                class="alternativa-item"
+              >
+                <input
+                  type="text"
+                  v-model="alt.texto"
+                  :placeholder="`Digite o texto da alternativa ${idx + 1}`"
                   required
                 />
               </div>
             </div>
           </div>
-          
+
           <!-- Campo para questão dissertativa -->
-          <div v-if="novaQuestao.tipo === 'dissertativa'" class="dissertativa-fields">
+          <div
+            v-if="novaQuestao.tipo === 'dissertativa'"
+            class="dissertativa-fields"
+          >
             <div class="form-group">
               <label>Quantidade de Linhas para Resposta *</label>
-              <input 
-                type="number" 
-                v-model.number="novaQuestao.linhasResposta" 
-                min="1" 
+              <input
+                type="number"
+                v-model.number="novaQuestao.linhasResposta"
+                min="1"
                 max="100"
                 step="1"
                 required
                 class="input-linhas"
               />
-              <small class="helper-text">Digite um número inteiro entre 1 e 100 linhas</small>
+              <small class="helper-text"
+                >Digite um número inteiro entre 1 e 100 linhas</small
+              >
             </div>
           </div>
-          
+
           <div class="form-group">
             <label>Dificuldade *</label>
             <select v-model="novaQuestao.dificuldade">
@@ -184,47 +223,72 @@
               <option value="Muito Difícil">Muito Difícil</option>
             </select>
           </div>
-          
-          <button type="submit" class="btn-salvar-questao">Salvar Questão</button>
+
+          <button type="submit" class="btn-salvar-questao">
+            Salvar Questão
+          </button>
         </form>
       </div>
-      
+
       <!-- Minhas Questões -->
       <div v-if="abaAtiva === 'minhas'" class="minhas-questoes">
         <div v-if="minhasQuestoes.length === 0" class="sem-questoes">
           Você ainda não cadastrou nenhuma questão.
         </div>
         <div v-else>
-          <div v-for="questaoItem in minhasQuestoes" :key="questaoItem.id" class="questao-card minhas">
+          <div
+            v-for="questaoItem in minhasQuestoes"
+            :key="questaoItem.id"
+            class="questao-card minhas"
+          >
             <div class="questao-header">
               <span class="disciplina">{{ questaoItem.disciplina }}</span>
               <span class="tipo-questao" :class="questaoItem.tipo">
-                {{ questaoItem.tipo === 'objetiva' ? 'Objetiva' : 'Dissertativa' }}
+                {{
+                  questaoItem.tipo === "objetiva" ? "Objetiva" : "Dissertativa"
+                }}
               </span>
               <span class="dificuldade" :class="questaoItem.dificuldade">
                 {{ questaoItem.dificuldade }}
               </span>
             </div>
             <div class="questao-metadata">
-              <span v-if="questaoItem.autor" class="autor">Autor: {{ questaoItem.autor }}</span>
-              <span class="data-criacao">Criada em: {{ questaoItem.dataCriacao }}</span>
+              <span v-if="questaoItem.autor" class="autor"
+                >Autor: {{ questaoItem.autor }}</span
+              >
+              <span class="data-criacao"
+                >Criada em: {{ questaoItem.dataCriacao }}</span
+              >
             </div>
             <p class="questao-texto">{{ questaoItem.texto }}</p>
             <div v-if="questaoItem.tipo === 'objetiva'" class="alternativas">
               <p><strong>Alternativas:</strong></p>
               <ul>
-                <li v-for="alt in questaoItem.alternativas" :key="alt.letra" 
-                    :class="{ correta: alt.letra === 'A' }">
+                <li
+                  v-for="alt in questaoItem.alternativas"
+                  :key="alt.letra"
+                  :class="{ correta: alt.letra === 'A' }"
+                >
                   {{ alt.letra }}) {{ alt.texto }}
                 </li>
               </ul>
             </div>
             <div v-else class="linhas-resposta">
-              <p><strong>Linhas para resposta:</strong> {{ questaoItem.linhasResposta }} linhas</p>
+              <p>
+                <strong>Linhas para resposta:</strong>
+                {{ questaoItem.linhasResposta }} linhas
+              </p>
             </div>
             <div class="questao-actions">
-              <button @click="editarQuestao(questaoItem)" class="btn-editar">Editar</button>
-              <button @click="excluirQuestao(questaoItem.id)" class="btn-excluir">Excluir</button>
+              <button @click="editarQuestao(questaoItem)" class="btn-editar">
+                Editar
+              </button>
+              <button
+                @click="excluirQuestao(questaoItem.id)"
+                class="btn-excluir"
+              >
+                Excluir
+              </button>
             </div>
           </div>
         </div>
@@ -234,143 +298,156 @@
 </template>
 
 <script>
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from "@/stores/auth";
 
 export default {
-  name: 'QuestoesView',
+  name: "QuestoesView",
   setup() {
-    const authStore = useAuthStore()
-    return { authStore }
+    const authStore = useAuthStore();
+    return { authStore };
   },
   data() {
     return {
-      abaAtiva: 'buscar',
-      busca: '',
+      abaAtiva: "buscar",
+      busca: "",
       buscou: false,
       resultados: [],
       minhasQuestoes: [],
-      // Lista de disciplinas definida pelo sistema
-      disciplinas: [
-        'Matemática FGB',
-        'Matemática AP',
-        'Português',
-        'Literatura',
-        'Inglês',
-        'Projeto de Vida',
-        'Eletiva',
-        'Física FGB',
-        'Física AP',
-        'Química FGB',
-        'Química AP',
-        'Biologia FGB',
-        'Biologia AP',
-        'História',
-        'Geografia',
-        'Filosofia/Sociologia',
-        'Arte',
-        'Educação Física',
-        'Redação'
-      ],
       novaQuestao: {
-        disciplina: '',
-        assunto: '',
-        autor: '',
-        tipo: 'objetiva',
-        texto: '',
-        alternativaCorreta: '',
+        disciplina: "",
+        assunto: "",
+        autor: "",
+        tipo: "objetiva",
+        texto: "",
+        alternativaCorreta: "",
         alternativasDistratores: [
-          { texto: '' },
-          { texto: '' },
-          { texto: '' },
-          { texto: '' }
+          { texto: "" },
+          { texto: "" },
+          { texto: "" },
+          { texto: "" },
         ],
         linhasResposta: 10,
-        dificuldade: 'Médio'
-      }
-    }
+        dificuldade: "Médio",
+      },
+    };
   },
   computed: {
     isProfessor() {
-      return this.authStore.isProfessor
-    }
+      return this.authStore.isProfessor;
+    },
   },
   mounted() {
-    this.carregarMinhasQuestoes()
+    this.carregarMinhasQuestoes();
   },
   methods: {
     carregarMinhasQuestoes() {
-      const salvas = localStorage.getItem('questoes')
+      const salvas = localStorage.getItem("questoes");
       if (salvas) {
-        const todas = JSON.parse(salvas)
-        const usuario = this.authStore.user
-        this.minhasQuestoes = todas.filter(q => q.autorId === usuario?.id)
+        const todas = JSON.parse(salvas);
+        const usuario = this.authStore.user;
+        this.minhasQuestoes = todas.filter((q) => q.autorId === usuario?.id);
       }
     },
-    
+
     buscarQuestoes() {
-      this.buscou = true
-      const todas = JSON.parse(localStorage.getItem('questoes') || '[]')
-      const termoBusca = this.busca.toLowerCase()
-      this.resultados = todas.filter(q => 
-        q.disciplina?.toLowerCase().includes(termoBusca) ||
-        q.assunto?.toLowerCase().includes(termoBusca) ||
-        q.autor?.toLowerCase().includes(termoBusca) ||
-        q.texto?.toLowerCase().includes(termoBusca)
-      )
+      this.buscou = true;
+      const todas = JSON.parse(localStorage.getItem("questoes") || "[]");
+      const termoBusca = this.busca.toLowerCase();
+      this.resultados = todas.filter(
+        (q) =>
+          q.disciplina?.toLowerCase().includes(termoBusca) ||
+          q.assunto?.toLowerCase().includes(termoBusca) ||
+          q.autor?.toLowerCase().includes(termoBusca) ||
+          q.texto?.toLowerCase().includes(termoBusca),
+      );
     },
-    
+
     validarAlternativasObjetiva() {
       if (!this.novaQuestao.alternativaCorreta.trim()) {
-        alert('Preencha a alternativa correta!')
-        return false
+        window.$modal.abrir({
+          titulo: "Atenção",
+          mensagem: "Preencha a alternativa correta!",
+          tipo: "alerta",
+        });
+        return false;
       }
-      
-      const alternativasVazias = this.novaQuestao.alternativasDistratores.filter(a => !a.texto.trim())
+
+      const alternativasVazias =
+        this.novaQuestao.alternativasDistratores.filter((a) => !a.texto.trim());
       if (alternativasVazias.length > 0) {
-        alert('Preencha todas as alternativas!')
-        return false
+        window.$modal.abrir({
+          titulo: "Atenção",
+          mensagem: "Preencha todas as alternativas!",
+          tipo: "alerta",
+        });
+        return false;
       }
-      return true
+      return true;
     },
-      
-      validarLinhasResposta() {
-      const linhas = this.novaQuestao.linhasResposta
+
+    validarLinhasResposta() {
+      const linhas = this.novaQuestao.linhasResposta;
       if (!Number.isInteger(linhas) || linhas < 1 || linhas > 100) {
-        alert('A quantidade de linhas deve ser um número inteiro entre 1 e 100!')
-        return false
+        window.$modal.abrir({
+          titulo: "Atenção",
+          mensagem:
+            "A quantidade de linhas deve ser um número inteiro entre 1 e 100!",
+          tipo: "alerta",
+        });
+        return false;
       }
-      return true
+      return true;
     },
-    
+
     montarAlternativasCompletas() {
       const alternativas = [
-        { letra: 'A', texto: this.novaQuestao.alternativaCorreta }, 
-        { letra: 'B', texto: this.novaQuestao.alternativasDistratores[0].texto },
-        { letra: 'C', texto: this.novaQuestao.alternativasDistratores[1].texto },
-        { letra: 'D', texto: this.novaQuestao.alternativasDistratores[2].texto },
-        { letra: 'E', texto: this.novaQuestao.alternativasDistratores[3].texto }
-      ]
-      return alternativas
+        { letra: "A", texto: this.novaQuestao.alternativaCorreta },
+        {
+          letra: "B",
+          texto: this.novaQuestao.alternativasDistratores[0].texto,
+        },
+        {
+          letra: "C",
+          texto: this.novaQuestao.alternativasDistratores[1].texto,
+        },
+        {
+          letra: "D",
+          texto: this.novaQuestao.alternativasDistratores[2].texto,
+        },
+        {
+          letra: "E",
+          texto: this.novaQuestao.alternativasDistratores[3].texto,
+        },
+      ];
+      return alternativas;
     },
-    
+
     salvarQuestao() {
-      if (!this.novaQuestao.disciplina || !this.novaQuestao.assunto || !this.novaQuestao.texto) {
-        alert('Preencha todos os campos obrigatórios!')
-        return
+      if (
+        !this.novaQuestao.disciplina ||
+        !this.novaQuestao.assunto ||
+        !this.novaQuestao.texto
+      ) {
+        window.$modal.abrir({
+          titulo: "Atenção",
+          mensagem: "Preencha todos os campos obrigatórios!",
+          tipo: "alerta",
+        });
+        return;
       }
-      
-      if (this.novaQuestao.tipo === 'objetiva') {
+
+      if (this.novaQuestao.tipo === "objetiva") {
         if (!this.validarAlternativasObjetiva()) {
-          return
+          return;
         }
       }
-      
-      if (this.novaQuestao.tipo === 'dissertativa') {
+
+      if (this.novaQuestao.tipo === "dissertativa") {
         if (!this.validarLinhasResposta()) {
-          return
+          return;
         }
       }
-      
+
       const nova = {
         id: Date.now(),
         disciplina: this.novaQuestao.disciplina,
@@ -381,63 +458,98 @@ export default {
         dificuldade: this.novaQuestao.dificuldade,
         autorId: this.authStore.user?.id,
         autorNome: this.authStore.user?.nome,
-        dataCriacao: new Date().toLocaleDateString('pt-BR'),
-        alternativas: this.novaQuestao.tipo === 'objetiva' 
-          ? this.montarAlternativasCompletas()
-          : [],
-        linhasResposta: this.novaQuestao.tipo === 'dissertativa' 
-          ? this.novaQuestao.linhasResposta 
-          : null
-      }
-      
-      const todas = JSON.parse(localStorage.getItem('questoes') || '[]')
-      todas.push(nova)
-      localStorage.setItem('questoes', JSON.stringify(todas))
-      
-      alert('Questão salva com sucesso!')
-      this.carregarMinhasQuestoes()
-      this.resetarFormulario()
-      this.abaAtiva = 'minhas'
+        dataCriacao: new Date().toLocaleDateString("pt-BR"),
+        alternativas:
+          this.novaQuestao.tipo === "objetiva"
+            ? this.montarAlternativasCompletas()
+            : [],
+        linhasResposta:
+          this.novaQuestao.tipo === "dissertativa"
+            ? this.novaQuestao.linhasResposta
+            : null,
+      };
+
+      const todas = JSON.parse(localStorage.getItem("questoes") || "[]");
+      todas.push(nova);
+      localStorage.setItem("questoes", JSON.stringify(todas));
+
+      window.$modal.abrir({
+        titulo: "Sucesso",
+        mensagem: "Questão salva com sucesso!",
+        tipo: "alerta",
+      });
+
+      this.carregarMinhasQuestoes();
+      this.resetarFormulario();
+      this.abaAtiva = "minhas";
     },
-    
+
     resetarFormulario() {
       this.novaQuestao = {
-        disciplina: '',
-        assunto: '',
-        autor: '',
-        tipo: 'objetiva',
-        texto: '',
-        alternativaCorreta: '',
+        disciplina: "",
+        assunto: "",
+        autor: "",
+        tipo: "objetiva",
+        texto: "",
+        alternativaCorreta: "",
         alternativasDistratores: [
-          { texto: '' },
-          { texto: '' },
-          { texto: '' },
-          { texto: '' }
+          { texto: "" },
+          { texto: "" },
+          { texto: "" },
+          { texto: "" },
         ],
         linhasResposta: 10,
-        dificuldade: 'Médio'
+        dificuldade: "Médio",
+      };
+    },
+
+    adicionarAlternativa() {
+      const letras = ["E", "F", "G", "H", "I", "J"];
+      const proximaLetra = letras[this.novaQuestao.alternativas.length - 4];
+      if (proximaLetra && this.novaQuestao.alternativas.length < 5) {
+        this.novaQuestao.alternativas.push({ letra: proximaLetra, texto: "" });
       }
     },
-    
+
     editarQuestao(questaoItem) {
-      alert(`Editar questão: ${questaoItem.texto.substring(0, 50)}...`)
+      window.$modal.abrir({
+        titulo: "Editar Questão",
+        mensagem: `Editar questão: ${questaoItem.texto.substring(0, 50)}...`,
+        tipo: "alerta",
+      });
     },
-    
+
     excluirQuestao(id) {
-      if (confirm('Tem certeza que deseja excluir esta questão?')) {
-        const todas = JSON.parse(localStorage.getItem('questoes') || '[]')
-        const filtradas = todas.filter(q => q.id !== id)
-        localStorage.setItem('questoes', JSON.stringify(filtradas))
-        this.carregarMinhasQuestoes()
-        alert('Questão excluída com sucesso!')
-      }
+      window.$modal.abrir({
+        titulo: "Confirmar Exclusão",
+        mensagem: "Tem certeza que deseja excluir esta questão?",
+        tipo: "confirmacao",
+        onConfirm: () => {
+          const todas = JSON.parse(localStorage.getItem("questoes") || "[]");
+          const filtradas = todas.filter((q) => q.id !== id);
+          localStorage.setItem("questoes", JSON.stringify(filtradas));
+          this.carregarMinhasQuestoes();
+          window.$modal.abrir({
+            titulo: "Sucesso",
+            mensagem: "Questão excluída com sucesso!",
+            tipo: "alerta",
+          });
+        },
+      });
     },
-    
+
     usarQuestao(questaoItem) {
-      alert(`Questão "${questaoItem.texto.substring(0, 50)}..." adicionada à prova!`)
-    }
-  }
-}
+      window.$modal.abrir({
+        titulo: "Adicionar à Prova",
+        mensagem: `Questão "${questaoItem.texto.substring(
+          0,
+          50,
+        )}..." adicionada à prova!`,
+        tipo: "alerta",
+      });
+    },
+  },
+};
 </script>
 
 <style scoped>
@@ -649,7 +761,9 @@ export default {
   border-top: 1px solid #eee;
 }
 
-.btn-usar, .btn-editar, .btn-excluir {
+.btn-usar,
+.btn-editar,
+.btn-excluir {
   padding: 6px 12px;
   border: none;
   border-radius: 6px;
@@ -697,7 +811,9 @@ export default {
   font-weight: 500;
 }
 
-.form-group input, .form-group textarea, .form-group select {
+.form-group input,
+.form-group textarea,
+.form-group select {
   width: 100%;
   padding: 12px;
   border: 1px solid #ddd;
@@ -768,7 +884,8 @@ export default {
   cursor: pointer;
 }
 
-.sem-resultados, .sem-questoes {
+.sem-resultados,
+.sem-questoes {
   text-align: center;
   padding: 40px;
   color: #888;
@@ -779,17 +896,17 @@ export default {
     flex-direction: column;
     gap: 8px;
   }
-  
+
   .questao-metadata {
     flex-direction: column;
     gap: 8px;
   }
-  
+
   .radio-group {
     flex-direction: column;
     gap: 10px;
   }
-  
+
   .input-linhas {
     width: 100%;
   }
