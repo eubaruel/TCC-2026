@@ -113,25 +113,55 @@
           >
             <div class="nav-icon">
               <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
+                width="24"
+                height="24"
                 viewBox="0 0 24 24"
-                stroke-width="1.5"
-                stroke="currentColor"
-                class="size-6"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
               >
                 <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M6.75 2.994v2.25m10.5-2.25v2.25m-14.252 13.5V7.491a2.25 2.25 0 0 1 2.25-2.25h13.5a2.25 2.25 0 0 1 2.25 2.25v11.251m-18 0a2.25 2.25 0 0 0 2.25 2.25h13.5a2.25 2.25 0 0 0 2.25-2.25m-18 0v-7.5a2.25 2.25 0 0 1 2.25-2.25h13.5a2.25 2.25 0 0 1 2.25 2.25v7.5m-6.75-6h2.25m-9 2.25h4.5m.002-2.25h.005v.006H12v-.006Zm-.001 4.5h.006v.006h-.006v-.005Zm-2.25.001h.005v.006H9.75v-.006Zm-2.25 0h.005v.005h-.006v-.005Zm6.75-2.247h.005v.005h-.005v-.005Zm0 2.247h.006v.006h-.006v-.006Zm2.25-2.248h.006V15H16.5v-.005Z"
+                  d="M12 2L15 8L22 9L17 14L18 21L12 17.5L6 21L7 14L2 9L9 8L12 2Z"
+                  stroke="white"
+                  stroke-width="2"
+                  fill="none"
                 />
               </svg>
             </div>
             <span v-show="hoverActive" class="nav-texto">Avisos</span>
           </router-link>
+
+          <router-link
+            to="/usuarios"
+            class="nav-item"
+            :class="{ 'nav-item-expandido': hoverActive }"
+            active-class="nav-item-ativo"
+          >
+            <div class="nav-icon">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12Z"
+                  stroke="white"
+                  stroke-width="2"
+                  fill="none"
+                />
+                <path
+                  d="M5 20V19C5 15.13 8.13 12 12 12C15.87 12 19 15.13 19 19V20"
+                  stroke="white"
+                  stroke-width="2"
+                />
+              </svg>
+            </div>
+            <span v-show="hoverActive" class="nav-texto">Usuários</span>
+          </router-link>
         </template>
 
-        <!-- Configurações (mesmo ícone para todos) -->
+        <!-- Configurações (para todos os usuários) -->
         <router-link
           to="/configuracoes"
           class="nav-item"
@@ -196,34 +226,52 @@
 </template>
 
 <script>
-import { useAuthStore } from "@/stores/auth";
-import { useRouter } from "vue-router";
+import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
 
 export default {
-  name: "BarraLateral",
+  name: 'BarraLateral',
   setup() {
-    const authStore = useAuthStore();
-    const router = useRouter();
-
+    const authStore = useAuthStore()
+    const router = useRouter()
+    
     const logout = () => {
-      if (confirm("Tem certeza que deseja sair?")) {
-        authStore.logout();
-        router.push("/");
-      }
-    };
-
+      console.log('Logout chamado') // Debug
+      console.log('Usuário antes do logout:', authStore.user)
+      console.log('Tipo de usuário:', authStore.userType)
+      
+      window.$modal.abrir({
+        titulo: "Confirmar Saída",
+        mensagem: "Tem certeza que deseja sair?",
+        tipo: "confirmacao",
+        onConfirm: () => {
+          console.log('Confirmado logout')
+          authStore.logout()
+          console.log('Usuário após logout:', authStore.user)
+          router.push('/').then(() => {
+            console.log('Redirecionado para login')
+          }).catch(err => {
+            console.error('Erro no redirecionamento:', err)
+          })
+        },
+        onCancel: () => {
+          console.log('Logout cancelado')
+        }
+      });
+    }
+    
     return {
       isProfessor: authStore.isProfessor,
       isProcessoPedagogico: authStore.isProcessoPedagogico,
-      logout,
-    };
+      logout
+    }
   },
   data() {
     return {
-      hoverActive: false,
-    };
-  },
-};
+      hoverActive: false
+    }
+  }
+}
 </script>
 
 <style scoped>
@@ -354,5 +402,37 @@ export default {
 .nav-item-ativo {
   background-color: rgba(255, 255, 255, 0.2);
   border-left: 3px solid white;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .sidebar-retraida {
+    width: 60px;
+  }
+
+  .sidebar:not(.sidebar-retraida) {
+    width: 220px;
+  }
+
+  .logo-mini {
+    width: 32px;
+    height: 32px;
+  }
+
+  .logo-texto {
+    font-size: 16px;
+  }
+
+  .nav-item {
+    padding: 10px;
+  }
+
+  .nav-texto {
+    font-size: 13px;
+  }
+
+  .logout-btn {
+    padding: 10px;
+  }
 }
 </style>

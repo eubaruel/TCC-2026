@@ -4,31 +4,47 @@
       <h2 class="titulo-pagina">Configurações</h2>
       <div class="header-line"></div>
     </div>
-    
+
     <div class="configuracoes-grid">
       <!-- Card de Tema -->
       <div class="card-configuracao">
         <div class="card-header">
           <div class="card-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/>
-              <path d="M12 3V1M12 23V21M21 12H23M1 12H3M18.36 5.64L19.78 4.22M4.22 19.78L5.64 18.36M18.36 18.36L19.78 19.78M4.22 4.22L5.64 5.64" stroke="currentColor" stroke-width="2"/>
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="5"
+                stroke="currentColor"
+                stroke-width="2"
+              />
+              <path
+                d="M12 3V1M12 23V21M21 12H23M1 12H3M18.36 5.64L19.78 4.22M4.22 19.78L5.64 18.36M18.36 18.36L19.78 19.78M4.22 4.22L5.64 5.64"
+                stroke="currentColor"
+                stroke-width="2"
+              />
             </svg>
           </div>
           <h3>Aparência</h3>
         </div>
         <div class="card-conteudo">
           <div class="opcoes-tema">
-            <button 
-              @click="selecionarTema('tema-claro')" 
+            <button
+              @click="selecionarTema('tema-claro')"
               class="botao-tema"
               :class="{ ativo: temaSelecionado === 'tema-claro' }"
             >
               <div class="tema-preview claro"></div>
               <span>Claro</span>
             </button>
-            <button 
-              @click="selecionarTema('tema-escuro')" 
+            <button
+              @click="selecionarTema('tema-escuro')"
               class="botao-tema"
               :class="{ ativo: temaSelecionado === 'tema-escuro' }"
             >
@@ -43,8 +59,17 @@
       <div class="card-configuracao">
         <div class="card-header">
           <div class="card-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.36 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.63 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z" fill="currentColor"/>
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.36 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.63 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z"
+                fill="currentColor"
+              />
             </svg>
           </div>
           <h3>Notificações</h3>
@@ -52,14 +77,14 @@
         <div class="card-conteudo">
           <div class="opcao-config">
             <label class="switch">
-              <input type="checkbox" v-model="notificacoesEmailSelecionado">
+              <input type="checkbox" v-model="notificacoesEmailSelecionado" />
               <span class="slider round"></span>
             </label>
             <span>Receber notificações por email</span>
           </div>
           <div class="opcao-config">
             <label class="switch">
-              <input type="checkbox" v-model="notificacoesSistemaSelecionado">
+              <input type="checkbox" v-model="notificacoesSistemaSelecionado" />
               <span class="slider round"></span>
             </label>
             <span>Notificações do sistema</span>
@@ -72,9 +97,7 @@
       <button @click="salvarConfiguracoes" class="btn-salvar">
         Salvar Configurações
       </button>
-      <button @click="cancelarAlteracoes" class="btn-cancelar">
-        Cancelar
-      </button>
+      <button @click="cancelarAlteracoes" class="btn-cancelar">Cancelar</button>
     </div>
   </div>
 </template>
@@ -89,11 +112,23 @@ export default {
       notificacoesSistema: true,
       temaSelecionado: 'tema-claro',
       notificacoesEmailSelecionado: true,
-      notificacoesSistemaSelecionado: true
+      notificacoesSistemaSelecionado: true,
+      temAlteracoes: false,
+      navegacaoPendente: null,
+      mostrarModal: false
     }
+  },
+  watch: {
+    temaSelecionado() { this.verificarAlteracoes() },
+    notificacoesEmailSelecionado() { this.verificarAlteracoes() },
+    notificacoesSistemaSelecionado() { this.verificarAlteracoes() }
   },
   mounted() {
     this.carregarConfiguracoes()
+    window.addEventListener('beforeunload', this.handleBeforeUnload)
+  },
+  beforeUnmount() {
+    window.removeEventListener('beforeunload', this.handleBeforeUnload)
   },
   methods: {
     carregarConfiguracoes() {
@@ -116,6 +151,15 @@ export default {
       }
     },
     
+    verificarAlteracoes() {
+      this.temAlteracoes = 
+        this.temaSelecionado !== this.temaAtual ||
+        this.notificacoesEmailSelecionado !== this.notificacoesEmail ||
+        this.notificacoesSistemaSelecionado !== this.notificacoesSistema
+      
+      this.$emit('configuracao-alterada', this.temAlteracoes)
+    },
+    
     selecionarTema(tema) {
       this.temaSelecionado = tema
     },
@@ -131,13 +175,68 @@ export default {
       
       window.dispatchEvent(new CustomEvent('tema-mudou', { detail: { tema: this.temaAtual } }))
       
-      alert('Configurações salvas com sucesso!')
+      this.temAlteracoes = false
+      this.$emit('configuracao-alterada', false)
+      
+      window.$modal.abrir({
+        titulo: "Configurações",
+        mensagem: "Configurações salvas com sucesso!",
+        tipo: "pequeno"
+      });
+      setTimeout(() => {
+        const modal = document.querySelector('.modal-overlay');
+        if (modal) modal.click();
+      }, 1500);
     },
     
     cancelarAlteracoes() {
       this.temaSelecionado = this.temaAtual
       this.notificacoesEmailSelecionado = this.notificacoesEmail
       this.notificacoesSistemaSelecionado = this.notificacoesSistema
+      this.temAlteracoes = false
+      this.$emit('configuracao-alterada', false)
+    },
+    
+    handleBeforeUnload(event) {
+      if (this.temAlteracoes) {
+        event.preventDefault()
+        event.returnValue = 'Há configurações que não foram salvas.'
+      }
+    },
+    
+    salvarESair() {
+      this.salvarConfiguracoes()
+      this.mostrarModal = false
+      if (this.navegacaoPendente) {
+        this.navegacaoPendente.next()
+        this.navegacaoPendente = null
+      }
+    },
+    
+    descartarESair() {
+      this.mostrarModal = false
+      if (this.navegacaoPendente) {
+        this.navegacaoPendente.next()
+        this.navegacaoPendente = null
+      }
+    }
+  },
+  beforeRouteLeave(to, from, next) {
+    if (this.temAlteracoes) {
+      window.$modal.abrir({
+        titulo: "Configurações não salvas",
+        mensagem: "Há configurações que não foram salvas. O que você deseja fazer?",
+        tipo: "confirmacao",
+        onConfirm: () => {
+          this.salvarConfiguracoes()
+          next()
+        },
+        onCancel: () => {
+          next()
+        }
+      });
+    } else {
+      next()
     }
   }
 }

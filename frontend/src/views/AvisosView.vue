@@ -4,26 +4,40 @@
       <h2>Avisos de Provas</h2>
       <div class="header-line"></div>
     </div>
-    
+
     <div class="criar-aviso">
       <h3>Criar Novo Aviso</h3>
       <form @submit.prevent="criarAviso" class="form-aviso">
         <div class="form-group">
           <label>Título do Aviso *</label>
-          <input type="text" v-model="novoAviso.titulo" required placeholder="Ex: Prova Bimestral - Matemática" />
+          <input
+            type="text"
+            v-model="novoAviso.titulo"
+            required
+            placeholder="Ex: Prova Bimestral - Matemática"
+          />
         </div>
-        
+
         <div class="form-group">
           <label>Mensagem *</label>
-          <textarea v-model="novoAviso.mensagem" rows="3" required placeholder="Detalhes sobre a prova..."></textarea>
+          <textarea
+            v-model="novoAviso.mensagem"
+            rows="3"
+            required
+            placeholder="Detalhes sobre a prova..."
+          ></textarea>
         </div>
-        
+
         <div class="form-row">
           <div class="form-group">
             <label>Disciplina *</label>
             <select v-model="novoAviso.disciplina" required>
               <option value="">Selecione a disciplina</option>
-              <option v-for="disciplina in disciplinas" :key="disciplina" :value="disciplina">
+              <option
+                v-for="disciplina in disciplinas"
+                :key="disciplina"
+                :value="disciplina"
+              >
                 {{ disciplina }}
               </option>
             </select>
@@ -38,7 +52,7 @@
             </select>
           </div>
         </div>
-        
+
         <div class="form-row">
           <div class="form-group">
             <label>Data de Entrega *</label>
@@ -55,7 +69,7 @@
             </select>
           </div>
         </div>
-        
+
         <div class="form-group">
           <label>Semana da Prova *</label>
           <select v-model="novoAviso.semana" required>
@@ -68,11 +82,11 @@
             <option value="G3 Objetiva">G3 Objetiva</option>
           </select>
         </div>
-        
+
         <button type="submit" class="btn-criar">Publicar Aviso</button>
       </form>
     </div>
-    
+
     <div class="avisos-lista">
       <h3>Avisos Publicados</h3>
       <div v-if="avisos.length === 0" class="sem-avisos">
@@ -88,12 +102,17 @@
           <div class="aviso-detalhes">
             <span>📚 {{ aviso.disciplina }}</span>
             <span>🏫 {{ aviso.turma }}</span>
-            <span>📅 Entrega: {{ aviso.dataEntregaFormatada || aviso.dataEntrega }}</span>
+            <span
+              >📅 Entrega:
+              {{ aviso.dataEntregaFormatada || aviso.dataEntrega }}</span
+            >
             <span>📆 {{ aviso.bimestre }}</span>
             <span>📋 {{ aviso.semana }}</span>
           </div>
           <div class="aviso-actions">
-            <button @click="excluirAviso(aviso.id)" class="btn-excluir-aviso">Excluir</button>
+            <button @click="excluirAviso(aviso.id)" class="btn-excluir-aviso">
+              Excluir
+            </button>
           </div>
         </div>
       </div>
@@ -102,185 +121,256 @@
 </template>
 
 <script>
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from "@/stores/auth";
 
 export default {
-  name: 'AvisosView',
+  name: "AvisosView",
   setup() {
-    const authStore = useAuthStore()
-    return { authStore }
+    const authStore = useAuthStore();
+    return { authStore };
   },
   data() {
     return {
-      // Lista de disciplinas disponíveis - VOCÊ PODE EDITAR AQUI
-      disciplinas: [
-        'Matemática FGB',
-        'Matemática AP',
-        'Português',
-        'Literatura',
-        'Inglês',
-        'Projeto de Vida',
-        'Eletiva',
-        'Física FGB',
-        'Física AP',
-        'Química FGB',
-        'Química AP',
-        'Biologia FGB',
-        'Biologia AP',
-        'História',
-        'Geografia',
-        'Filosofia/Sociologia',
-        'Arte',
-        'Educação Física',
-        'Redação'
-      ],
-      // Gerar turmas do Ensino Médio
-      turmas: this.gerarTurmas(),
       avisos: [],
+      disciplinas: [
+        "Matemática FGB",
+        "Matemática AP",
+        "Português",
+        "Literatura",
+        "Inglês",
+        "Projeto de Vida",
+        "Eletiva",
+        "Física FGB",
+        "Física AP",
+        "Química FGB",
+        "Química AP",
+        "Biologia FGB",
+        "Biologia AP",
+        "História",
+        "Geografia",
+        "Filosofia/Sociologia",
+        "Arte",
+        "Educação Física",
+        "Redação",
+      ],
+      turmas: [],
       novoAviso: {
-        titulo: '',
-        mensagem: '',
-        disciplina: '',
-        turma: '',
-        dataEntrega: '',
-        bimestre: '',
-        semana: ''
-      }
-    }
+        titulo: "",
+        mensagem: "",
+        materia: "",
+        turma: "",
+        dataEntrega: "",
+        bimestre: "",
+        semana: "",
+      },
+    };
   },
   mounted() {
-    this.carregarAvisos()
+    this.carregarAvisos();
+    this.gerarTurmas();
   },
   methods: {
-    // Função para gerar todas as turmas do Ensino Médio
     gerarTurmas() {
-      const turmas = []
-      
-      // 1° ano: A até N (14 turmas)
-      const primeiroAno = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N']
+      const turmasLista = [];
+      const primeiroAno = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+      ];
       for (const letra of primeiroAno) {
-        turmas.push(`1° Ano ${letra}`)
+        turmasLista.push(`1° Ano ${letra}`);
       }
-      
-      // 2° ano: A até L (12 turmas)
-      const segundoAno = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
+      const segundoAno = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+      ];
       for (const letra of segundoAno) {
-        turmas.push(`2° Ano ${letra}`)
+        turmasLista.push(`2° Ano ${letra}`);
       }
-      
-      // 3° ano: A até L (12 turmas)
-      const terceiroAno = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
+      const terceiroAno = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+      ];
       for (const letra of terceiroAno) {
-        turmas.push(`3° Ano ${letra}`)
+        turmasLista.push(`3° Ano ${letra}`);
       }
-      
-      return turmas
+      this.turmas = turmasLista;
     },
-    
+
     carregarAvisos() {
-      const salvos = localStorage.getItem('avisos')
+      const salvos = localStorage.getItem("avisos");
       if (salvos) {
-        this.avisos = JSON.parse(salvos).map(aviso => ({
+        this.avisos = JSON.parse(salvos).map((aviso) => ({
           ...aviso,
-          dataEntregaFormatada: this.formatarData(aviso.dataEntrega)
-        }))
+          dataEntregaFormatada: this.formatarData(aviso.dataEntrega),
+        }));
       } else {
         this.avisos = [
           {
             id: 1,
-            titulo: 'Prova Bimestral - Matemática',
-            mensagem: 'A prova bimestral de Matemática deve ser entregue até o prazo estipulado.',
-            disciplina: 'Matemática',
-            turma: '1° Ano A',
-            dataEntrega: '2026-04-15',
-            dataEntregaFormatada: '15/04/2026',
-            bimestre: '1° Bimestre',
-            semana: 'G1 Objetiva',
-            dataCriacao: '10/04/2026'
+            titulo: "Prova Bimestral - Matemática",
+            mensagem:
+              "A prova bimestral de Matemática deve ser entregue até o prazo estipulado.",
+            materia: "Matemática FGB",
+            turma: "1° Ano A",
+            dataEntrega: "2026-04-15",
+            dataEntregaFormatada: "15/04/2026",
+            bimestre: "1° Bimestre",
+            semana: "G1 Objetiva",
+            dataCriacao: "10/04/2026",
           },
           {
             id: 2,
-            titulo: 'Prova Final - Português',
-            mensagem: 'Entrega da prova final de Português para correção.',
-            disciplina: 'Português',
-            turma: '2° Ano B',
-            dataEntrega: '2026-04-22',
-            dataEntregaFormatada: '22/04/2026',
-            bimestre: '2° Bimestre',
-            semana: 'G2 Dissertativa',
-            dataCriacao: '12/04/2026'
-          }
-        ]
-        localStorage.setItem('avisos', JSON.stringify(this.avisos))
+            titulo: "Prova Final - Português",
+            mensagem: "Entrega da prova final de Português para correção.",
+            materia: "Português",
+            turma: "2° Ano B",
+            dataEntrega: "2026-04-22",
+            dataEntregaFormatada: "22/04/2026",
+            bimestre: "2° Bimestre",
+            semana: "G2 Dissertativa",
+            dataCriacao: "12/04/2026",
+          },
+        ];
+        localStorage.setItem("avisos", JSON.stringify(this.avisos));
       }
     },
-    
+
     criarAviso() {
-      if (!this.novoAviso.titulo || !this.novoAviso.mensagem || !this.novoAviso.disciplina || !this.novoAviso.turma || !this.novoAviso.dataEntrega || !this.novoAviso.bimestre || !this.novoAviso.semana) {
-        alert('Preencha todos os campos obrigatórios!')
-        return
+      if (
+        !this.novoAviso.titulo ||
+        !this.novoAviso.mensagem ||
+        !this.novoAviso.materia ||
+        !this.novoAviso.turma ||
+        !this.novoAviso.dataEntrega ||
+        !this.novoAviso.bimestre ||
+        !this.novoAviso.semana
+      ) {
+        window.$modal.abrir({
+          titulo: "Atenção",
+          mensagem: "Preencha todos os campos obrigatórios!",
+          tipo: "alerta",
+        });
+        return;
       }
-      
+
       const novo = {
         id: Date.now(),
-        ...this.novoAviso,
+        titulo: this.novoAviso.titulo,
+        mensagem: this.novoAviso.mensagem,
+        materia: this.novoAviso.materia,
+        turma: this.novoAviso.turma,
+        dataEntrega: this.novoAviso.dataEntrega,
         dataEntregaFormatada: this.formatarData(this.novoAviso.dataEntrega),
-        dataCriacao: new Date().toLocaleDateString('pt-BR'),
-        entregue: false
-      }
-      
-      this.avisos.unshift(novo)
-      localStorage.setItem('avisos', JSON.stringify(this.avisos))
-      
-      const alerts = JSON.parse(localStorage.getItem('alerts') || '[]')
+        bimestre: this.novoAviso.bimestre,
+        semana: this.novoAviso.semana,
+        dataCriacao: new Date().toLocaleDateString("pt-BR"),
+        entregue: false,
+      };
+
+      // Salva nos avisos
+      this.avisos.unshift(novo);
+      localStorage.setItem("avisos", JSON.stringify(this.avisos));
+
+      // Salva nos alerts para os professores
+      const alerts = JSON.parse(localStorage.getItem("alerts") || "[]");
       alerts.push({
         id: novo.id,
         titulo: novo.titulo,
         mensagem: novo.mensagem,
         dataEntrega: this.formatarData(novo.dataEntrega),
-        disciplina: novo.disciplina,
+        materia: novo.materia,
         turma: novo.turma,
         bimestre: novo.bimestre,
-        semana: novo.semana
-      })
-      localStorage.setItem('alerts', JSON.stringify(alerts))
-      
-      this.resetarFormulario()
-      alert('Aviso publicado com sucesso!')
+        semana: novo.semana,
+        entregue: false,
+      });
+      localStorage.setItem("alerts", JSON.stringify(alerts));
+
+      console.log("Aviso criado:", novo); // Debug
+      console.log("Alerts atualizados:", alerts); // Debug
+
+      this.resetarFormulario();
+
+      window.$modal.abrir({
+        titulo: "Sucesso",
+        mensagem: "Aviso publicado com sucesso!",
+        tipo: "alerta",
+      });
     },
-    
+
     formatarData(data) {
-      if (!data) return ''
-      const [ano, mes, dia] = data.split('-')
-      return `${dia}/${mes}/${ano}`
+      if (!data) return "";
+      const [ano, mes, dia] = data.split("-");
+      return `${dia}/${mes}/${ano}`;
     },
-    
+
     resetarFormulario() {
       this.novoAviso = {
-        titulo: '',
-        mensagem: '',
-        disciplina: '',
-        turma: '',
-        dataEntrega: '',
-        bimestre: '',
-        semana: ''
-      }
+        titulo: "",
+        mensagem: "",
+        materia: "",
+        turma: "",
+        dataEntrega: "",
+        bimestre: "",
+        semana: "",
+      };
     },
-    
+
     excluirAviso(id) {
-      if (confirm('Tem certeza que deseja excluir este aviso?')) {
-        this.avisos = this.avisos.filter(a => a.id !== id)
-        localStorage.setItem('avisos', JSON.stringify(this.avisos))
-        
-        const alerts = JSON.parse(localStorage.getItem('alerts') || '[]')
-        const novosAlerts = alerts.filter(a => a.id !== id)
-        localStorage.setItem('alerts', JSON.stringify(novosAlerts))
-        
-        alert('Aviso excluído com sucesso!')
-      }
-    }
-  }
-}
+      window.$modal.abrir({
+        titulo: "Confirmar Exclusão",
+        mensagem: "Tem certeza que deseja excluir este aviso?",
+        tipo: "confirmacao",
+        onConfirm: () => {
+          this.avisos = this.avisos.filter((a) => a.id !== id);
+          localStorage.setItem("avisos", JSON.stringify(this.avisos));
+
+          const alerts = JSON.parse(localStorage.getItem("alerts") || "[]");
+          const novosAlerts = alerts.filter((a) => a.id !== id);
+          localStorage.setItem("alerts", JSON.stringify(novosAlerts));
+
+          window.$modal.abrir({
+            titulo: "Sucesso",
+            mensagem: "Aviso excluído com sucesso!",
+            tipo: "alerta",
+          });
+        },
+      });
+    },
+  },
+};
 </script>
 
 <style scoped>
@@ -343,7 +433,9 @@ export default {
   font-size: 14px;
 }
 
-.form-group input, .form-group textarea, .form-group select {
+.form-group input,
+.form-group textarea,
+.form-group select {
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 8px;

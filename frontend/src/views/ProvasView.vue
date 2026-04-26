@@ -4,7 +4,7 @@
       <h2>Provas</h2>
       <div class="header-line"></div>
     </div>
-    
+
     <div class="alerts-section">
       <h3>Avisos de Provas</h3>
       <div v-if="alerts.length === 0" class="sem-alerts">
@@ -32,87 +32,136 @@
 </template>
 
 <script>
-import AlertProva from '@/components/AlertProva.vue'
-import { useAuthStore } from '@/stores/auth'
+import AlertProva from "@/components/AlertProva.vue";
+import { useAuthStore } from "@/stores/auth";
 
 export default {
-  name: 'ProvasView',
+  name: "ProvasView",
   components: {
-    AlertProva
+    AlertProva,
   },
   setup() {
-    const authStore = useAuthStore()
-    return { authStore }
+    const authStore = useAuthStore();
+    return { authStore };
   },
   data() {
     return {
-      alerts: []
-    }
+      alerts: [],
+    };
   },
   computed: {
     userType() {
-      return this.authStore.userType
-    }
+      return this.authStore.userType;
+    },
   },
   mounted() {
-    this.carregarAlerts()
+    this.carregarAlerts();
   },
   methods: {
     carregarAlerts() {
-      const alertsSalvos = localStorage.getItem('alerts')
+      const alertsSalvos = localStorage.getItem("alerts");
+      console.log("Alerts salvos no localStorage:", alertsSalvos); // Debug
+
       if (alertsSalvos) {
-        const todosAlerts = JSON.parse(alertsSalvos)
-        
-        if (this.userType === 'professor') {
-          const entregues = JSON.parse(localStorage.getItem('entregues') || '{}')
-          this.alerts = todosAlerts.map(alert => ({
+        const todosAlerts = JSON.parse(alertsSalvos);
+        console.log("Todos alerts:", todosAlerts); // Debug
+
+        if (this.userType === "professor") {
+          const entregues = JSON.parse(
+            localStorage.getItem("entregues") || "{}",
+          );
+          console.log("Entregues:", entregues); // Debug
+
+          this.alerts = todosAlerts.map((alert) => ({
             ...alert,
-            entregue: entregues[alert.id] || false
-          }))
+            entregue: entregues[alert.id] || false,
+          }));
         } else {
-          this.alerts = todosAlerts
+          this.alerts = todosAlerts;
         }
+        console.log("Alerts carregados para exibição:", this.alerts); // Debug
       } else {
+        // Alerts padrão para primeiro acesso
         this.alerts = [
           {
             id: 1,
-            titulo: 'Prova Bimestral - Matemática',
-            mensagem: 'A prova bimestral de Matemática deve ser entregue até o prazo estipulado.',
-            dataEntrega: '15/04/2026',
-            disciplina: 'Matemática',
-            turma: '1° Ano A',
-            bimestre: '1° Bimestre',
-            semana: 'G1 Objetiva',
-            entregue: false
+            titulo: "Prova Bimestral - Matemática",
+            mensagem:
+              "A prova bimestral de Matemática deve ser entregue até o prazo estipulado.",
+            dataEntrega: "15/04/2026",
+            materia: "Matemática FGB",
+            turma: "1° Ano A",
+            bimestre: "1° Bimestre",
+            semana: "G1 Objetiva",
+            entregue: false,
           },
           {
             id: 2,
-            titulo: 'Prova Final - Português',
-            mensagem: 'Entrega da prova final de Português para correção.',
-            dataEntrega: '22/04/2026',
-            disciplina: 'Português',
-            turma: '2° Ano B',
-            bimestre: '2° Bimestre',
-            semana: 'G2 Dissertativa',
-            entregue: false
-          }
-        ]
-        localStorage.setItem('alerts', JSON.stringify(this.alerts))
+            titulo: "Prova Final - Português",
+            mensagem: "Entrega da prova final de Português para correção.",
+            dataEntrega: "22/04/2026",
+            materia: "Português",
+            turma: "2° Ano B",
+            bimestre: "2° Bimestre",
+            semana: "G2 Dissertativa",
+            entregue: false,
+          },
+          {
+            id: 3,
+            titulo: "Prova de Recuperação - Ciências",
+            mensagem:
+              "Prova de recuperação deve ser entregue até a data limite.",
+            dataEntrega: "29/04/2026",
+            materia: "Ciências",
+            turma: "3° Ano A",
+            bimestre: "3° Bimestre",
+            semana: "G3 Objetiva",
+            entregue: false,
+          },
+        ];
+        localStorage.setItem("alerts", JSON.stringify(this.alerts));
       }
     },
-    
+
     onConfirmado(id) {
-      const entregues = JSON.parse(localStorage.getItem('entregues') || '{}')
-      entregues[id] = true
-      localStorage.setItem('entregues', JSON.stringify(entregues))
-      
-      const alert = this.alerts.find(a => a.id === id)
-      if (alert) {
-        alert.entregue = true
-      }
-    }
-  }
-}
+      window.$modal.abrir({
+        titulo: "Confirmar Entrega",
+        mensagem: "Tem certeza que deseja confirmar a entrega desta prova?",
+        tipo: "confirmacao",
+        onConfirm: () => {
+          // Atualiza entregues
+          const entregues = JSON.parse(
+            localStorage.getItem("entregues") || "{}",
+          );
+          entregues[id] = true;
+          localStorage.setItem("entregues", JSON.stringify(entregues));
+
+          // Atualiza o alert local
+          const alert = this.alerts.find((a) => a.id === id);
+          if (alert) {
+            alert.entregue = true;
+          }
+
+          // Também atualiza no localStorage dos alerts
+          const todosAlerts = JSON.parse(
+            localStorage.getItem("alerts") || "[]",
+          );
+          const alertIndex = todosAlerts.findIndex((a) => a.id === id);
+          if (alertIndex !== -1) {
+            todosAlerts[alertIndex].entregue = true;
+            localStorage.setItem("alerts", JSON.stringify(todosAlerts));
+          }
+
+          window.$modal.abrir({
+            titulo: "Sucesso",
+            mensagem: "Prova confirmada com sucesso!",
+            tipo: "alerta",
+          });
+        },
+      });
+    },
+  },
+};
 </script>
 
 <style scoped>

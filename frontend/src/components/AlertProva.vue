@@ -2,9 +2,19 @@
   <div class="alert-prova" :class="{ entregue: entregue }">
     <div class="alert-content">
       <div class="alert-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 8V12L15 15M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2 22 6.477 22 12 17.523 22 12 22Z" stroke="currentColor" stroke-width="2"/>
-          <path d="M12 6V12L15 15" stroke="currentColor" stroke-width="2"/>
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M12 8V12L15 15M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2 22 6.477 22 12 17.523 22 12 22Z"
+            stroke="currentColor"
+            stroke-width="2"
+          />
+          <path d="M12 6V12L15 15" stroke="currentColor" stroke-width="2" />
         </svg>
       </div>
       <div class="alert-info">
@@ -18,9 +28,9 @@
           <span>📋 Semana: {{ semana }}</span>
         </div>
       </div>
-      <button 
-        v-if="!entregue && tipoUsuario === 'professor'" 
-        @click="confirmarEntrega" 
+      <button
+        v-if="!entregue && tipoUsuario === 'professor'"
+        @click="confirmarEntrega"
         class="btn-confirmar"
       >
         Confirmar Entrega
@@ -28,7 +38,10 @@
       <span v-if="entregue" class="status-entregue">
         Entregue em {{ dataConfirmacao }}
       </span>
-      <span v-if="tipoUsuario === 'processo_pedagogico'" class="status-aguardando">
+      <span
+        v-if="tipoUsuario === 'processo_pedagogico'"
+        class="status-aguardando"
+      >
         Aguardando confirmação
       </span>
     </div>
@@ -37,84 +50,95 @@
 
 <script>
 export default {
-  name: 'AlertProva',
+  name: "AlertProva",
   props: {
     id: {
       type: Number,
-      required: true
+      required: true,
     },
     titulo: {
       type: String,
-      required: true
+      required: true,
     },
     mensagem: {
       type: String,
-      required: true
+      required: true,
     },
     dataEntrega: {
       type: String,
-      required: true
+      required: true,
     },
     disciplina: {
       type: String,
-      default: 'Não especificada'
+      default: "Não especificada",
     },
     turma: {
       type: String,
-      default: 'Não especificada'
+      default: "Não especificada",
     },
     bimestre: {
       type: String,
-      default: 'Não especificado'
+      default: "Não especificado",
     },
     semana: {
       type: String,
-      default: 'Não especificada'
+      default: "Não especificada",
     },
     tipoUsuario: {
       type: String,
-      required: true
+      required: true,
     },
     entregueInicial: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
   data() {
     return {
       entregue: this.entregueInicial,
-      dataConfirmacao: null
-    }
+      dataConfirmacao: null,
+    };
   },
   mounted() {
     if (this.entregue) {
-      const entregueSalvo = localStorage.getItem(`prova_${this.id}_entregue`)
+      const entregueSalvo = localStorage.getItem(`prova_${this.id}_entregue`);
       if (entregueSalvo) {
-        const data = JSON.parse(entregueSalvo)
-        this.dataConfirmacao = data.data
+        const data = JSON.parse(entregueSalvo);
+        this.dataConfirmacao = data.data;
       }
     }
   },
   methods: {
     confirmarEntrega() {
-      const confirmado = confirm('Tem certeza que deseja confirmar a entrega desta prova?')
-      if (confirmado) {
-        this.entregue = true
-        const dataAtual = new Date().toLocaleDateString('pt-BR')
-        this.dataConfirmacao = dataAtual
-        
-        localStorage.setItem(`prova_${this.id}_entregue`, JSON.stringify({
-          entregue: true,
-          data: dataAtual
-        }))
-        
-        this.$emit('confirmado', this.id)
-        
-        alert('Prova confirmada com sucesso!')
-      }
-    }
-  }
-}
+      window.$modal.abrir({
+        titulo: "Confirmar Entrega",
+        mensagem: "Tem certeza que deseja confirmar a entrega desta prova?",
+        tipo: "confirmacao",
+        onConfirm: () => {
+          this.entregue = true;
+          const dataAtual = new Date().toLocaleDateString("pt-BR");
+          this.dataConfirmacao = dataAtual;
+
+          localStorage.setItem(
+            `prova_${this.id}_entregue`,
+            JSON.stringify({
+              entregue: true,
+              data: dataAtual,
+            }),
+          );
+
+          this.$emit("confirmado", this.id);
+
+          window.$modal.abrir({
+            titulo: "Sucesso",
+            mensagem: "Prova confirmada com sucesso!",
+            tipo: "alerta",
+          });
+        },
+      });
+    },
+  },
+};
 </script>
 
 <style scoped>

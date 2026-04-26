@@ -1,3 +1,8 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
@@ -7,14 +12,16 @@ from api.banco_de_dados.banco_de_dados import Banco_de_dados
 from api.utils.resposta_erro import resposta_erro
 
 from api.middlewares.aluno_middleware import Aluno_middleware
-
 from api.controles.aluno_controle import Aluno_controle
-
 from api.services.aluno_service import Aluno_service
-
 from api.DAOs.aluno_dao import Aluno_dao
-
 from api.roteador.aluno_rotas import Aluno_rotas
+
+from api.middlewares.usuario_middleware import Usuario_middleware
+from api.controles.usuario_controle import Usuario_controle
+from api.services.usuario_service import Usuario_service
+from api.DAOs.usuario_dao import Usuario_dao
+from api.roteador.usuario_rotas import Usuario_rotas
 
 import traceback
 
@@ -25,7 +32,7 @@ class Servidor:
     Responsável por inicializar middlewares, roteadores e gerenciar a aplicação.
     """
 
-    def __init__(self, porta: int = 8080):
+    def __init__(self, porta):
         # 🔹 Porta em que o servidor irá rodar
         self.__porta = porta
 
@@ -39,11 +46,14 @@ class Servidor:
         # 🔹 Middlewares
 
         self.__aluno_middleware = Aluno_middleware()
-
-        # 🔹 DAOs, Services e Controls serão inicializados após conexão com DB
         self.__aluno_dao = None
         self.__aluno_service = None
         self.__aluno_controle = None
+
+        self.__usuario_middleware = Usuario_middleware()
+        self.__usuario_dao = None
+        self.__usuario_service = None
+        self.__usuario_controle = None
         
 
         self.__conexao_db = None
@@ -56,8 +66,8 @@ class Servidor:
         - Roteadores
         """
 
-        self.__conexao_db =  Banco_de_dados(uri= "***REMOVIDO***", 
-                                            nome_bd="tcc2026")
+        self.__conexao_db =  Banco_de_dados(uri=os.getenv("URI_BD"),
+                                            nome_bd=os.getenv("NOME_BD"))
 
 
         self.__conexao_db.conectar()
@@ -65,6 +75,8 @@ class Servidor:
         self.__error_middleware()
 
         self.__setup_aluno()
+
+        self.__setup_usuario()
 
 
     def __setup_aluno(self):
@@ -86,9 +98,31 @@ class Servidor:
             self.__aluno_controle
         )
 
-        print("⬆️  parou aqui")
         # Registra rotas da entidade Aluno
         self.__app.register_blueprint(aluno_roteador.criar_rotas(), url_prefix="/api/v1/alunos")
+        print("⬆️  Rotas registradas")
+
+    def __setup_usuario(self):
+        """Configura o módulo Aluno (DAO, Service, Controle, Rotas)"""
+        print("⬆️  Setup usuário")
+
+        # DAO recebe conexão global com o banco (injeção de dependência
+        self.__usuario_dao = Usuario_dao(self.__conexao_db)
+
+        # Service recebe DAO (injeção de dependência)
+        self.__usuario_service = Usuario_service(self.__usuario_dao)
+
+        # Controle recebe Service (injeção de dependência)
+        self.__usuario_controle = Usuario_controle(self.__usuario_service)
+
+        # Router recebe Controle + Middlewares
+        usuario_roteador = Usuario_rotas(
+            self.__usuario_middleware,
+            self.__usuario_controle
+        )
+
+        # Registra rotas da entidade Usuário
+        self.__app.register_blueprint(usuario_roteador.criar_rotas(), url_prefix="/api/v1/usuarios")
         print("⬆️  Rotas registradas")
 
     def __error_middleware(self):
@@ -139,6 +173,7 @@ class Servidor:
         
     def run(self):
         """Inicia o servidor Flask na porta configurada"""
+        print("✅ Servidor iniciado com sucesso")
         print(f"🚀 Servidor rodando em: http://127.0.0.1:{self.__porta}")
         # ⚠️ debug=False é necessário para que o errorhandler global capture exceções
         self.__app.run(port=self.__porta, debug=False)

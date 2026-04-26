@@ -1,5 +1,6 @@
 from flask import request,jsonify
 from api.services.aluno_service import Aluno_service
+import pandas as pd
 
 class Aluno_controle:
     def __init__(self, aluno_service:Aluno_service):
@@ -11,12 +12,37 @@ class Aluno_controle:
 
         json_aluno = request.json.get("aluno")
         cadastro = self.__aluno_service.criar(json_aluno)
-        return jsonify({"success":True,
-                        "message":"Cadastro realizado com sucesso",
+        return jsonify({"successo":True,
+                        "mensagem":"Cadastro realizado com sucesso",
                         "data":{
                             "aluno":self._formatar_aluno(json_aluno)
                             }
                         }),201
+    
+    def importar(self):
+        print("🔵 aluno_controle.importar()")
+
+        arquivo = next(request.files.values(), None)
+        if not arquivo:
+            return jsonify({
+                "sucesso":False,
+                "erro":{"mensagem": "Arquivo não enviado"}
+            }),400
+        
+        if not arquivo.filename.endswith(".xlsx"):
+            return jsonify({
+                "sucesso":False,
+                "erro":{"mensagem": "Formato inváldo"}
+            }),400
+        
+        df = pd.read_excel(arquivo)
+        resultado = self.__aluno_service.importar_excel(df)
+
+        return jsonify({
+            "sucesso":True,
+            "mensagem":"Executado com sucesso",
+            "data":{"alunos inseridos":resultado}
+        }),200
     
     
     def ler(self):
@@ -24,7 +50,8 @@ class Aluno_controle:
 
         tipos = {
             "matricula_aluno": int,
-            "serie":int
+            "serie":int,
+            "ativo":bool
         }
 
         campos_permitidos = {"matricula_aluno", "nome_aluno",
@@ -42,39 +69,59 @@ class Aluno_controle:
                 filtro[key] = conversor(value)
             except ValueError:
                 return jsonify({
-                    "success": False,
-                    "error": {"message": f"{key} inválido: {value}"}
+                    "sucesso": False,
+                    "erro": {"mensagem": f"{key} inválido: {value}"}
                 }), 400
     
         
-        leitura = self.__aluno_service.consulta(filtro)
+        consulta = self.__aluno_service.consulta(filtro)
         
 
         return jsonify({
-            "success":True,
-            "message":"Executado com sucesso",
-            "data":{"alunos":leitura}
+            "sucesso":True,
+            "mensagem":"Executado com sucesso",
+            "data":{"alunos":consulta}
         }),200
     
     
     def alterar(self):
         print("🔵 aluno_controle.alterar()")
 
+        tipos = {"matricula_aluno": int}
+
+        campos_permitidos = {"matricula_aluno", "nome_aluno"}
+
+        filtro = {}
+
+        for key, value in request.args.items():
+            if key not in campos_permitidos or not value:
+                continue
+
+            conversor = tipos.get(key, str)
+
+            try:
+                filtro[key] = conversor(value)
+            except ValueError:
+                return jsonify({
+                    "successo": False,
+                    "erro": {"mensagem": f"{key} inválido: {value}"}
+                }), 400
+
         json_aluno = request.json.get("aluno") 
-        sucesso = self.__aluno_service.atualizar(json_aluno)
+        sucesso = self.__aluno_service.atualizar(json_aluno, filtro)
         
         if sucesso:
             return jsonify({
-                "success": True,
-                "message": "Atualizado com sucesso",
+                "sucesso": True,
+                "mensagem": "Atualizado com sucesso",
                 "data": {
                     "aluno":self._formatar_aluno(json_aluno)               
                 }
             }), 200
         else:
             return jsonify({
-                "success": False,
-                "error": {"message": f"Não foi possível atualizar o aluno com a matricula {json_aluno.get("matricula_aluno")}"},
+                "sucesso": False,
+                "erro": {"message": f"Não foi possível atualizar o aluno com a matricula {json_aluno.get("matricula_aluno")}"},
             }), 404
     
     def deletar(self, matricula_aluno):
@@ -82,13 +129,13 @@ class Aluno_controle:
         excluiu = self.__aluno_service.excluir(matricula_aluno)
         if excluiu:
             return jsonify({
-            "success": True,
-            "message": "Excluído com sucesso"
+            "sucesso": True,
+            "mensagem": "Excluído com sucesso"
         }), 204
         else:
             return jsonify({
-                "success": False,
-                "error": {"message": f"Não existe aluno com a matrícula {matricula_aluno}"}
+                "sucesso": False,
+                "erro": {"message": f"Não existe aluno com a matrícula {matricula_aluno}"}
             }), 404
         
     def _formatar_aluno(self, aluno):

@@ -3,27 +3,12 @@ import bcrypt
 
 class Usuario:
     def __init__(self):
-        self.__id_hash = None
         self.__registro = None
         self.__nome = None
         self.__email = None
         self.__senha = None
         self.__role = None
         self.__ativo = None
-
-    @property
-    def id_hash(self):
-        return self.__id_hash
-    
-    @id_hash.setter
-    def id_hash(self,value):
-        if value is None:
-            raise ValueError("Id_hash nulo")
-        
-        if not isinstance(value, str):
-            raise TypeError("Id_hash deve ser uma string")
-        
-        self.__id_hash = value
 
     @property
     def registro(self):
@@ -117,6 +102,9 @@ class Usuario:
         
         self.__senha = value
 
+    def set_senha_hash(self, hash_senha: str):
+        self.__senha = hash_senha
+
 
     @property
     def role(self):
@@ -130,12 +118,12 @@ class Usuario:
         if not isinstance(value, str):
             raise TypeError("Role deve ser uma string")
     
-        value = value.strip().lower()
+        value = value.strip().capitalize()
 
         if len(value) == 0:
             raise ValueError("Role não pode ser vazio")
 
-        roles_validos = {"admin", "professor", "aluno"}
+        roles_validos = {"Professor", "Processo pedagógico"}
 
         if value not in roles_validos:
             raise ValueError(f"Role inválido. Valores permitidos: {roles_validos}")
@@ -157,17 +145,20 @@ class Usuario:
         
         self.__ativo = value
 
-    def to_dict(email,senha,role):
-        return {
-            "email":email,
-            "senha":senha,
-            "role":role
-        }
-    
-    @staticmethod
-    def from_dict(data):
-        usuario = Usuario()
-        usuario._Usuario__id_hash = data.get("id_hash")
-        usuario._Usuario__email = data.get("email")
-        usuario._Usuario__senha = data.get("senha")
-        usuario._Usuario__role = data.get("role")
+    def gerar_hash_senha(self):
+        if self.__senha is None:
+            raise ValueError("Senha não definida")
+        
+        self.__senha = bcrypt.hashpw(
+            self.__senha.encode(),
+            bcrypt.gensalt()
+        ).decode()
+
+    def verificar_senha(self, senha_digitada: str) -> bool:
+        if self.__senha is None:
+            return False
+
+        return bcrypt.checkpw(
+            senha_digitada.encode(),
+            self.__senha.encode()
+        )

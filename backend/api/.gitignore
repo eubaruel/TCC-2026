@@ -1,2 +1,10 @@
 /__pycache__
 professores_disciplinas.csv
+/banco_de_dados/__pycache__
+/controles/__pycache__
+/DAOs/__pycache__
+/controles/__pycache__
+/middlewares/__pycache__
+/modelos/__pycache__
+/roteador/__pycache__
+/services/__pycache__

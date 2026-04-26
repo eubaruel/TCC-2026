@@ -3,10 +3,9 @@
         "matricula_aluno":0,
         "nome_aluno":"",
         "turma":"",
-        "serie":"",
+        "serie":0,
         "situacao":"",
         "email_aluno":"",
         "ativo":true
     }
 }
-
