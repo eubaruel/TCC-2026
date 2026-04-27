@@ -1,0 +1,328 @@
+[33mcommit 642daaa5fd9641299cbc1a58d3f7b2722655b0b8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdev[m[33m, [m[1;31morigin/dev[m[33m)[m
+Author: Jean Machado <jeanmachadobrasil@gmail.com>
+Date:   Wed Apr 15 18:17:57 2026 -0300
+
+    Criando aba para controle de usuários
+
+[33mcommit c19f5afbca2debcce6e65549fb5d90666e4ff20a[m
+Merge: 3ed1165 d0a56bb
+Author: Vitor Doring Leitão <vitordoringleitao@gmail.com>
+Date:   Tue Apr 14 21:48:25 2026 -0300
+
+    Merge pull request #14 from VitorDoring/dev
+    
+    Criação da importação por excel para alunos
+
+[33mcommit d0a56bb962b08189fec0e37efe8dcb77f3d2bc44[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Tue Apr 14 21:47:10 2026 -0300
+
+    Criação da importação por excel para alunos
+
+[33mcommit 3ed116542add4cbf8a32deaf2cb95f10539c72e4[m
+Merge: bc6792d 08badb9
+Author: Vitor Doring Leitão <vitordoringleitao@gmail.com>
+Date:   Mon Apr 13 22:46:12 2026 -0300
+
+    Merge pull request #13 from VitorDoring/dev
+    
+    Correção de bugs fluxo usuário e encriptação de senha em hash
+
+[33mcommit 08badb9595d38ce1d2df84411d73e9f98249ee2e[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Mon Apr 13 22:44:36 2026 -0300
+
+    Correção de bugs fluxo usuário e encriptação de senha em hash
+
+[33mcommit bc6792d3a3c268a7ccc0f7d6d1ee7b6efb2658c9[m
+Merge: 97ee5a0 341a1c9
+Author: Vitor Doring Leitão <vitordoringleitao@gmail.com>
+Date:   Sat Apr 11 14:45:33 2026 -0300
+
+    Merge pull request #12 from VitorDoring/dev
+    
+    Criação fluxo usuário (sem teste realizado)
+
+[33mcommit 341a1c92807b29a8d36f3dc0663a5d2a2dfb577e[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Sat Apr 11 14:42:32 2026 -0300
+
+    Criacao fluxo usuario
+
+[33mcommit 97ee5a000406f469aaf80e0437dde215126a3a49[m
+Merge: 45cddcc e36dc05
+Author: Jean Machado <jeanmachadobrasil@gmail.com>
+Date:   Wed Apr 8 08:05:48 2026 -0300
+
+    Merge branch 'dev' of https://github.com/LucasBaruelCestaro/TCC-2026 into dev
+
+[33mcommit 45cddcc0d86e26c7974307e3a9220fb7331c8517[m
+Author: Jean Machado <jeanmachadobrasil@gmail.com>
+Date:   Wed Apr 8 08:05:25 2026 -0300
+
+    Unificando formulário de login e adicionando Disciplinas e Turmas no sistema
+
+[33mcommit fc4eda8c9582f83d040064d2bbc9775327863462[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Sat Apr 4 11:12:30 2026 -0300
+
+    Criação parcial do fluxo usuario
+
+[33mcommit e36dc05257b939a090dbe207a0b0722965417086[m
+Merge: f8a53b2 2d2ae0f
+Author: Vitor Doring Leitão <vitordoringleitao@gmail.com>
+Date:   Fri Apr 3 21:42:51 2026 -0300
+
+    Merge pull request #10 from VitorDoring/dev
+    
+    padronizacao json aluno
+
+[33mcommit 2d2ae0f2b0422b9beb862f304de69e0661abd21f[m
+Merge: cf165f4 7894bfa
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Fri Apr 3 21:41:38 2026 -0300
+
+    criando json aluno padrao
+
+[33mcommit cf165f448bc865d28bb568b23e911799c246fb5c[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Fri Apr 3 21:38:30 2026 -0300
+
+    adicionando json padrao aluno
+
+[33mcommit f8a53b21b5debed171b6f1cea65b7ae21f9054d1[m
+Merge: cb97788 7894bfa
+Author: Vitor Doring Leitão <vitordoringleitao@gmail.com>
+Date:   Fri Apr 3 21:16:44 2026 -0300
+
+    Merge pull request #9 from VitorDoring/dev
+    
+    tarefas: criação da classe de servidor, correção de bugs do fluxo aluno
+
+[33mcommit 7894bfa042bd892e5474b8cc464c2bfabc339740[m
+Merge: afaa763 cb97788
+Author: Vitor Doring Leitão <vitordoringleitao@gmail.com>
+Date:   Fri Apr 3 21:15:19 2026 -0300
+
+    Merge branch 'LucasBaruelCestaro:dev' into dev
+
+[33mcommit afaa7635e7d82a5876a735e4a3446a2cd67a85d1[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Fri Apr 3 21:14:10 2026 -0300
+
+    alteração no delete aluno para soft delete
+
+[33mcommit dfc214a6d5eb4329276ccbedf38c6dcaa1d664ec[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Fri Apr 3 20:40:46 2026 -0300
+
+    tarefas: criação da classe de servidor, correção de bugs do fluxo aluno
+
+[33mcommit cb97788f8f84c6cdea2ae1e65593e62eb1c7c726[m
+Author: Jean Machado <jeanmachadobrasil@gmail.com>
+Date:   Wed Apr 1 17:46:30 2026 -0300
+
+    Atualizando placeholders do campo de criar avisos
+
+[33mcommit 741dc71d4bc531c3bf9c729be616a7b31c684326[m
+Author: Jean Machado <jeanmachadobrasil@gmail.com>
+Date:   Wed Apr 1 17:21:03 2026 -0300
+
+    Removendo arquivo de anotações
+
+[33mcommit 65e9340e94338d33cdf22136b12b37e54afe0b90[m
+Author: Jean Machado <jeanmachadobrasil@gmail.com>
+Date:   Wed Apr 1 17:18:26 2026 -0300
+
+    Atualizando SVG da barra lateral e adicionando opção de seleção de bimestre na criação de avisos
+
+[33mcommit f5c8dfda829667a27e1c8a021085c7deb86e278f[m
+Author: Jean Machado <jeanmachadobrasil@gmail.com>
+Date:   Wed Apr 1 16:41:58 2026 -0300
+
+    Atualizando opções da barra lateral e criando funcionalidades para a página de questões
+
+[33mcommit 0951fa6da146286abc1c6e691e617268365bbb9b[m
+Merge: 4649ca8 c555f97
+Author: Jean Machado <jeanmachadobrasil@gmail.com>
+Date:   Wed Apr 1 16:39:23 2026 -0300
+
+    Merge branch 'dev' of https://github.com/LucasBaruelCestaro/TCC-2026 into dev
+
+[33mcommit 4649ca82a9dc29cf9d67e11b8e2de563a09acab0[m
+Merge: 63f437d daf03bc
+Author: Jean Machado <jeanmachadobrasil@gmail.com>
+Date:   Wed Apr 1 16:39:11 2026 -0300
+
+    Merge branch 'main' of https://github.com/LucasBaruelCestaro/TCC-2026 into dev
+
+[33mcommit c555f979ed3b34965d8f5027f78981d256092ecf[m
+Merge: 7d17710 6c3d0c9
+Author: Vitor Doring Leitão <vitordoringleitao@gmail.com>
+Date:   Wed Apr 1 15:12:16 2026 -0300
+
+    classe de conexão com a db
+    
+    classe de conexão com a database
+
+[33mcommit 6c3d0c9695cad5b595f987fea45485d4abc7ba44[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Wed Apr 1 15:10:38 2026 -0300
+
+    classe de conexão com a database
+
+[33mcommit 7d1771030b31699ac2e34e5b131d6d73c3dfb752[m
+Merge: 63f437d 04468f8
+Author: Vitor Doring Leitão <vitordoringleitao@gmail.com>
+Date:   Wed Apr 1 14:58:44 2026 -0300
+
+    fluxo aluno quase finalizado
+    
+    Criação do aluno service, restando apenas o DAO
+
+[33mcommit 04468f844e6e38f4606fe7aebc9bab36c7808bb0[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Wed Apr 1 14:56:47 2026 -0300
+
+    fluxo aluno quase finalizado
+
+[33mcommit 63f437d672f60ea544bdeee0f95990d5796fd1ca[m
+Merge: 508068e cfba862
+Author: Vitor Doring Leitão <vitordoringleitao@gmail.com>
+Date:   Thu Mar 26 00:37:50 2026 -0300
+
+    criacao de camadas da estrutura
+    
+    Criação de arquivos da estrutura MVCS e criação quase completa do fluxo aluno
+
+[33mcommit cfba862294e2915bbfab75fd1ac9dd646a3b054c[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Thu Mar 26 00:36:13 2026 -0300
+
+    criacao de camadas da estrutura
+
+[33mcommit 508068e41f79e412bd6bac135688815c2cf94724[m
+Merge: 4002ef1 e2f73ea
+Author: Vitor Doring Leitão <vitordoringleitao@gmail.com>
+Date:   Wed Mar 25 16:44:23 2026 -0300
+
+    Merge pull request #4 from VitorDoring/dev
+    
+    tarefas: muitas
+
+[33mcommit e2f73ead7fdd93c63bd0cdff6fbc2760e855d7d1[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Wed Mar 25 16:38:24 2026 -0300
+
+    tarefas: muitas
+
+[33mcommit daf03bc5ed3c07d754fe41f78c95e422c726693c[m
+Merge: d5114fc 4002ef1
+Author: Vitor Doring Leitão <vitordoringleitao@gmail.com>
+Date:   Tue Mar 24 10:09:47 2026 -0300
+
+    Merge pull request #3 from LucasBaruelCestaro/dev
+    
+    criacao de mais modelos
+
+[33mcommit 4002ef1925c428081b3077375c6b352cac3131a7[m
+Author: Jean Machado <jeanmachadobrasil@gmail.com>
+Date:   Mon Mar 23 18:20:03 2026 -0300
+
+    Criando menu de opções e implementando navegação entre páginas pela sidebar
+
+[33mcommit c94519ef7a2efea29b5de95825432708be326252[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Mon Mar 23 17:01:20 2026 -0300
+
+    padronizacao dos jsons e criacao do error_response
+
+[33mcommit 5e67e581c082a6728a87ad151528aa1597d850ec[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Mon Mar 23 15:48:41 2026 -0300
+
+    corrigindo bugs e criacao de testes de modelo
+
+[33mcommit 498bc86b9783e3aedefc1878a077d085c19f2d91[m
+Author: Jean Machado <jeanmachadobrasil@gmail.com>
+Date:   Thu Mar 19 20:26:26 2026 -0300
+
+    Removendo logo padrão do Vue
+
+[33mcommit f5c8fbac43adcece3c77664a9ded8346b4039616[m
+Author: Jean Machado <jeanmachadobrasil@gmail.com>
+Date:   Thu Mar 19 20:16:46 2026 -0300
+
+    Atualizando a logo e o título do site
+
+[33mcommit cfd8b8d73aa6572311443a9a8da569d7faa88d92[m
+Author: Jean Machado <jeanmachadobrasil@gmail.com>
+Date:   Thu Mar 19 10:23:53 2026 -0300
+
+    Criação de tela de login para o frontend
+
+[33mcommit ea443fee45a51f06ecad34a0d3cf3ccc6b4692e9[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Sat Mar 14 18:31:41 2026 -0300
+
+    finalizando modelos
+
+[33mcommit b0dfbd4420c6ab12b95910b312bae1b7044b8e0a[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Wed Mar 11 16:11:11 2026 -0300
+
+    finalizando modelos responsavel, aluno, disciplina e professor
+
+[33mcommit d5114fcc6ebd2d964b168b915e83e816aad9f050[m
+Author: Lucas Baruel <157977553+LucasBaruelCestaro@users.noreply.github.com>
+Date:   Mon Mar 9 17:39:19 2026 -0300
+
+    Update project architecture description in README
+
+[33mcommit 53124ce21c6705e0e507ba431d7bf320a2a7d86a[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Mon Mar 9 16:25:34 2026 -0300
+
+    criacao de mais modelos
+
+[33mcommit 1889d9f0372693e0d09024ca32ec97da907bcf8d[m
+Merge: 8849e8e db45c3b
+Author: Vitor Doring Leitão <vitordoringleitao@gmail.com>
+Date:   Tue Mar 3 15:57:27 2026 -0300
+
+    Merge pull request #2 from LucasBaruelCestaro/dev
+    
+    prova-modelo e questao-modelo parcialmente finalizados
+
+[33mcommit db45c3b2bef91c5dd7493a022f65bbabe5f882c9[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Tue Mar 3 15:53:49 2026 -0300
+
+    prova-modelo e questao-modelo parcialmente finalizados
+
+[33mcommit 8849e8e64a82dda3f1b98af00e3eb79e4a2fd485[m
+Author: Lucas Baruel Cestaro <lucasbaruel9@gmail.com>
+Date:   Mon Mar 2 18:31:35 2026 -0300
+
+    README adicionado
+
+[33mcommit 16a8e64ce83f0551944d1f81c84c9a3dbcd67701[m
+Merge: f066536 4f2aa23
+Author: Vitor Doring Leitão <vitordoringleitao@gmail.com>
+Date:   Mon Mar 2 17:11:07 2026 -0300
+
+    Merge pull request #1 from LucasBaruelCestaro/dev
+    
+    inicio da criacao dos modelos sistema base
+
+[33mcommit 4f2aa23407602c3c3b20d2fb3434310198a67c4e[m
+Author: Doring <vitordoringleitao@gmail.com>
+Date:   Mon Mar 2 17:08:51 2026 -0300
+
+    inicio da criacao dos modelos sistema base
+
+[33mcommit f0665362fc916982402cc19473254ac367336283[m
+Author: Lucas Baruel Cestaro <lucasbaruel9@gmail.com>
+Date:   Thu Feb 26 16:25:42 2026 -0300
+
+    estrutura de pastas e inicialização do Vue.js
