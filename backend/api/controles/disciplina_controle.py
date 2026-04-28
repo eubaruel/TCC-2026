@@ -66,6 +66,8 @@ class Disciplina_controle:
                 "sucesso": False,
                 "erro": {"mensagem": "Dado para filtragem inválido"}
             }), 404
+
+            filtro = {"codigo_disciplina":value}
         
         json_disciplina = request.json.get("disciplina")
         sucesso = self.__disciplina_service.atualizar(json_disciplina, filtro)

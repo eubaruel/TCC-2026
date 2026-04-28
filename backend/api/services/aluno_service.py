@@ -46,9 +46,6 @@ class Aluno_service:
                 obj_aluno.situacao = linha["situação"]
                 obj_aluno.email_aluno = linha["email"]
                 obj_aluno.ativo = True
-                
-                if pd.isna(linha["nome"]):
-                    continue
 
                 if self.__aluno_dao.campo_existe("matricula_aluno",obj_aluno.matricula_aluno):
                     continue

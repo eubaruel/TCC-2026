@@ -2,6 +2,7 @@ from api.modelos.usuario import Usuario
 from api.DAOs.usuario_dao import Usuario_dao
 
 from api.utils.resposta_erro import resposta_erro
+import pandas as pd
 
 class Usuario_service:
     def __init__(self, usuario_dao_dependency: Usuario_dao):
@@ -44,7 +45,51 @@ class Usuario_service:
             }
         }
         
-    
+    def importar_excel(self, df) ->int:
+        print("🟣 aluno_service.importar_excel()")
+
+        docs = []
+        
+        inseridos = 0
+
+        for _, linha in df.iterrows():
+            if linha.isnull().any():
+                print("❌ Linha com valor nulo:", linha)
+                continue
+            try:
+                obj_usuario = Usuario()
+
+                obj_usuario.registro = int(linha["registro"])
+                obj_usuario.nome = linha["nome"]
+                obj_usuario.email = linha["email"]
+                obj_usuario.senha = linha["senha"]
+                obj_usuario.gerar_hash_senha()
+                obj_usuario.role = linha["role"]
+                obj_usuario.ativo = True
+
+                if self.__usuario_dao.campo_existe("registro",obj_usuario.registro):
+                    continue
+
+                doc = {
+                    "registro": obj_usuario.registro,
+                    "nome": obj_usuario.nome,
+                    "email": obj_usuario.email,
+                    "senha": obj_usuario.senha,
+                    "role": obj_usuario.role,
+                    "ativo":obj_usuario.ativo
+                }
+
+                docs.append(doc)
+                inseridos += 1
+
+            except Exception as e:
+                print(f"Erro na linha: {linha} → {e}")
+                continue
+
+        print(docs)
+        self.__usuario_dao.importar_excel(docs)
+
+        return inseridos
     
     def criar(self, json_usuario: dict) -> bool:
         print("🟣 usuario_service.criar()")
@@ -58,7 +103,7 @@ class Usuario_service:
         if registro_existe:
             raise resposta_erro(
                 400,
-                "Registro repitido",
+                "Registro repetido",
                 {'mensagem':f'O funcionário com o registro {obj_usuario.registro} já está cadastrado'}
             )
         return self.__usuario_dao.criar(obj_usuario)

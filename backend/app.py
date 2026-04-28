@@ -16,7 +16,7 @@ Responsabilidades:
 
 def main():
     try:
-        # Cria instância do servidor na porta 8080
+        # Cria instância do servidor na porta fornecida pela .env
         servidor = Servidor(porta=int(os.getenv("PORTA",8080)))
 
         # Inicializa servidor (DB, middlewares, roteadores)
@@ -24,7 +24,8 @@ def main():
 
         # Inicia servidor Flask
         servidor.run()
-
+        
+        # Fecha a conexão com o banco de dados após encerrar o servidor
         servidor.close()
     except Exception as error:
         print("❌ Erro ao iniciar o servidor:", error)

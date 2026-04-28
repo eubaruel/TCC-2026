@@ -3,10 +3,10 @@
         "codigo_disciplina":"",
         "nome_disciplina":"",
         "professor":{
-            "registro_professor":0,
-            "nome_professor":""
+            "registro":0,
+            "nome":""
         },
         "turma":"",
-        "alunos":["<matricula1>","<matricula2>","etc..."]
+        "alunos":[0,2,3,"etc..."]
     }
 }

@@ -36,6 +36,10 @@ class Usuario_dao:
         
         return True
     
+    def importar_excel(self, docs: list) -> bool:
+        print("✅ usuario_dao.importar_excel()")
+        self.__colecao.insert_many(docs)
+    
 
     def consulta(self, filtro=None):
         print("✅ usuario_dao.consulta()")
