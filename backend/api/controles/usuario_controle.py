@@ -1,5 +1,6 @@
 from flask import request,jsonify
 from api.services.usuario_service import Usuario_service
+import pandas as pd
 
 class Usuario_controle:
     def __init__(self, usuario_service:Usuario_service):
@@ -28,6 +29,32 @@ class Usuario_controle:
                             "aluno":self._formatar_usuario(json_usuario)
                             }
                         }),201
+    
+    def importar(self):
+        print("🔵 aluno_controle.importar()")
+
+        arquivo = next(request.files.values(), None)
+        if not arquivo:
+            return jsonify({
+                "sucesso":False,
+                "erro":{"mensagem": "Arquivo não enviado"}
+            }),400
+        
+        if not arquivo.filename.endswith(".xlsx"):
+            return jsonify({
+                "sucesso":False,
+                "erro":{"mensagem": "Formato inváldo"}
+            }),400
+        
+        df = pd.read_excel(arquivo)
+        resultado = self.__usuario_service.importar_excel(df)
+
+        return jsonify({
+            "sucesso":True,
+            "mensagem":"Executado com sucesso",
+            "data":{"usuarios inseridos":resultado}
+        }),200
+    
     
     def ler(self):
         print("🔵 usuario_controle.ler()")
@@ -105,6 +132,11 @@ class Usuario_controle:
                 "sucesso": False,
                 "erro": {"message": f"Não foi possível atualizar o usuário com o registro {json_usuario.get("registro")}"},
             }), 404
+        
+    #def alterarSenha(self):
+        #print("🔵 usuario_controle.alterarSenha()") 
+
+        #USUÁRIO DEVE MANDAR SENHA ATUAL E SENHA NOVA
         
     def deletar(self, registro):
         print("🔵 usuario_controle.deletar()")

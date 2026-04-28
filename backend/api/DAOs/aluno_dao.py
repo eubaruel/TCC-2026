@@ -20,6 +20,7 @@ class Aluno_dao:
     
     def importar_excel(self, docs: list) -> bool:
         print("✅ aluno_dao.importar_excel()")
+        self.__colecao.delete_many({})
         self.__colecao.insert_many(docs)
     
     def consulta(self, filtro=None):

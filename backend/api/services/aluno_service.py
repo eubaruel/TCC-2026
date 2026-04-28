@@ -20,7 +20,7 @@ class Aluno_service:
         if matricula_existe:
             raise resposta_erro(
                 400,
-                "Matrícula repitida",
+                "Matrícula repetida",
                 {"mensagem":f"O aluno com a matrícula {obj_aluno.matricula_aluno} já está cadastrado"}
             )
         return self.__aluno_dao.criar(obj_aluno)
@@ -46,9 +46,6 @@ class Aluno_service:
                 obj_aluno.situacao = linha["situação"]
                 obj_aluno.email_aluno = linha["email"]
                 obj_aluno.ativo = True
-                
-                if pd.isna(linha["nome"]):
-                    continue
 
                 if self.__aluno_dao.campo_existe("matricula_aluno",obj_aluno.matricula_aluno):
                     continue
