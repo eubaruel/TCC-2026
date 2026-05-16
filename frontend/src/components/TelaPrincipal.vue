@@ -331,11 +331,6 @@ export default {
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-modal-salvar:hover {
-  background: #218838;
 }
 
 .btn-modal-cancelar {
@@ -344,11 +339,6 @@ export default {
   border: 1px solid #ddd;
   border-radius: 6px;
   cursor: pointer;
-}
-
-.tema-escuro .btn-modal-cancelar {
-  border-color: #404040;
-  color: #e5e5e5;
 }
 
 @media (min-width: 769px) {
