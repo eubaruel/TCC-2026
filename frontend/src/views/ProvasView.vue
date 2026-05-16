@@ -1,172 +1,35 @@
 <template>
   <div class="provas-container">
     <div class="page-header">
-      <h2>Provas</h2>
+      <h2>Montar Prova</h2>
       <div class="header-line"></div>
     </div>
-
-    <div class="alerts-section">
-      <h3>Avisos de Provas</h3>
-      <div v-if="alerts.length === 0" class="sem-alerts">
-        Nenhum aviso de prova no momento.
-      </div>
-      <div v-else>
-        <AlertProva
-          v-for="alert in alerts"
-          :key="alert.id"
-          :id="alert.id"
-          :titulo="alert.titulo"
-          :mensagem="alert.mensagem"
-          :dataEntrega="alert.dataEntrega"
-          :disciplina="alert.disciplina"
-          :turma="alert.turma"
-          :bimestre="alert.bimestre"
-          :semana="alert.semana"
-          :tipoUsuario="userType"
-          :entregueInicial="alert.entregue"
-          @confirmado="onConfirmado"
-        />
+    
+    <div class="provas-content">
+      <div class="card-desenvolvimento">
+        <div class="card-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 8V12L15 15M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2 22 6.477 22 12 17.523 22 12 22Z" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M12 6V12L15 15" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <h3>Funcionalidade em Desenvolvimento</h3>
+        <p>Em breve você poderá montar suas provas selecionando questões do banco de questões.</p>
+        <p class="info-text">Aguardem novidades em breve!</p>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import AlertProva from "@/components/AlertProva.vue";
-import { useAuthStore } from "@/stores/auth";
-
 export default {
-  name: "ProvasView",
-  components: {
-    AlertProva,
-  },
-  setup() {
-    const authStore = useAuthStore();
-    return { authStore };
-  },
-  data() {
-    return {
-      alerts: [],
-    };
-  },
-  computed: {
-    userType() {
-      return this.authStore.userType;
-    },
-  },
-  mounted() {
-    this.carregarAlerts();
-  },
-  methods: {
-    carregarAlerts() {
-      const alertsSalvos = localStorage.getItem("alerts");
-      console.log("Alerts salvos no localStorage:", alertsSalvos); // Debug
-
-      if (alertsSalvos) {
-        const todosAlerts = JSON.parse(alertsSalvos);
-        console.log("Todos alerts:", todosAlerts); // Debug
-
-        if (this.userType === "professor") {
-          const entregues = JSON.parse(
-            localStorage.getItem("entregues") || "{}",
-          );
-          console.log("Entregues:", entregues); // Debug
-
-          this.alerts = todosAlerts.map((alert) => ({
-            ...alert,
-            entregue: entregues[alert.id] || false,
-          }));
-        } else {
-          this.alerts = todosAlerts;
-        }
-        console.log("Alerts carregados para exibição:", this.alerts); // Debug
-      } else {
-        // Alerts padrão para primeiro acesso
-        this.alerts = [
-          {
-            id: 1,
-            titulo: "Prova Bimestral - Matemática",
-            mensagem:
-              "A prova bimestral de Matemática deve ser entregue até o prazo estipulado.",
-            dataEntrega: "15/04/2026",
-            materia: "Matemática FGB",
-            turma: "1° Ano A",
-            bimestre: "1° Bimestre",
-            semana: "G1 Objetiva",
-            entregue: false,
-          },
-          {
-            id: 2,
-            titulo: "Prova Final - Português",
-            mensagem: "Entrega da prova final de Português para correção.",
-            dataEntrega: "22/04/2026",
-            materia: "Português",
-            turma: "2° Ano B",
-            bimestre: "2° Bimestre",
-            semana: "G2 Dissertativa",
-            entregue: false,
-          },
-          {
-            id: 3,
-            titulo: "Prova de Recuperação - Ciências",
-            mensagem:
-              "Prova de recuperação deve ser entregue até a data limite.",
-            dataEntrega: "29/04/2026",
-            materia: "Ciências",
-            turma: "3° Ano A",
-            bimestre: "3° Bimestre",
-            semana: "G3 Objetiva",
-            entregue: false,
-          },
-        ];
-        localStorage.setItem("alerts", JSON.stringify(this.alerts));
-      }
-    },
-
-    onConfirmado(id) {
-      window.$modal.abrir({
-        titulo: "Confirmar Entrega",
-        mensagem: "Tem certeza que deseja confirmar a entrega desta prova?",
-        tipo: "confirmacao",
-        onConfirm: () => {
-          // Atualiza entregues
-          const entregues = JSON.parse(
-            localStorage.getItem("entregues") || "{}",
-          );
-          entregues[id] = true;
-          localStorage.setItem("entregues", JSON.stringify(entregues));
-
-          // Atualiza o alert local
-          const alert = this.alerts.find((a) => a.id === id);
-          if (alert) {
-            alert.entregue = true;
-          }
-
-          // Também atualiza no localStorage dos alerts
-          const todosAlerts = JSON.parse(
-            localStorage.getItem("alerts") || "[]",
-          );
-          const alertIndex = todosAlerts.findIndex((a) => a.id === id);
-          if (alertIndex !== -1) {
-            todosAlerts[alertIndex].entregue = true;
-            localStorage.setItem("alerts", JSON.stringify(todosAlerts));
-          }
-
-          window.$modal.abrir({
-            titulo: "Sucesso",
-            mensagem: "Prova confirmada com sucesso!",
-            tipo: "alerta",
-          });
-        },
-      });
-    },
-  },
-};
+  name: 'ProvasView'
+}
 </script>
 
 <style scoped>
 .provas-container {
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
 }
@@ -189,21 +52,77 @@ export default {
   width: 100%;
 }
 
-.alerts-section h3 {
-  font-size: 20px;
-  margin-bottom: 20px;
+.provas-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.card-desenvolvimento {
+  background: white;
+  border-radius: 16px;
+  padding: 48px;
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.tema-escuro .card-desenvolvimento {
+  background: #2a2a2a;
+  border-color: #404040;
+}
+
+.card-icon {
+  margin-bottom: 24px;
+  color: #00488b;
+}
+
+.tema-escuro .card-icon {
+  color: #0066cc;
+}
+
+.card-desenvolvimento h3 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 16px;
   color: inherit;
 }
 
-.sem-alerts {
-  text-align: center;
-  padding: 40px;
-  color: #888;
-  background: #f5f5f5;
-  border-radius: 12px;
+.card-desenvolvimento p {
+  font-size: 16px;
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 8px;
 }
 
-.tema-escuro .sem-alerts {
-  background: #2a2a2a;
+.tema-escuro .card-desenvolvimento p {
+  color: #aaa;
+}
+
+.card-desenvolvimento .info-text {
+  font-size: 14px;
+  color: #888;
+  margin-top: 16px;
+}
+
+.tema-escuro .card-desenvolvimento .info-text {
+  color: #888;
+}
+
+@media (max-width: 768px) {
+  .card-desenvolvimento {
+    padding: 32px 24px;
+  }
+  
+  .card-desenvolvimento h3 {
+    font-size: 20px;
+  }
+  
+  .card-desenvolvimento p {
+    font-size: 14px;
+  }
 }
 </style>

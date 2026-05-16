@@ -1,9 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginTelaPrincipal from '@/views/LoginTelaPrincipal.vue'
 import TelaPrincipal from '@/components/TelaPrincipal.vue'
+import AvisosView from '@/views/AvisosView.vue'
 import ProvasView from '@/views/ProvasView.vue'
 import QuestoesView from '@/views/QuestoesView.vue'
-import AvisosView from '@/views/AvisosView.vue'
 import GestaoUsuarios from '@/views/GestaoUsuarios.vue'
 import ConfiGuracoes from '@/views/ConfiGuracoes.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -20,21 +20,21 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       {
+        path: 'avisos',
+        name: 'AvisosView',
+        component: AvisosView
+      },
+      {
         path: 'provas',
         name: 'ProvasView',
         component: ProvasView
+        // REMOVIDO o meta requiresProfessor para permitir acesso de ambos
       },
       {
         path: 'questoes',
         name: 'QuestoesView',
         component: QuestoesView,
         meta: { requiresProfessor: true }
-      },
-      {
-        path: 'avisos',
-        name: 'AvisosView',
-        component: AvisosView,
-        meta: { requiresProcesso: true }
       },
       {
         path: 'usuarios',
@@ -49,7 +49,7 @@ const routes = [
       },
       {
         path: '',
-        redirect: '/provas'
+        redirect: '/avisos'
       }
     ]
   }
@@ -69,9 +69,9 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !usuarioLogado) {
     next('/')
   } else if (to.meta.requiresProfessor && !authStore.isProfessor) {
-    next('/provas')
+    next('/avisos')
   } else if (to.meta.requiresProcesso && !authStore.isProcessoPedagogico) {
-    next('/provas')
+    next('/avisos')
   } else {
     next()
   }
