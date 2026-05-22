@@ -25,8 +25,11 @@ class Disciplina_dao:
         return resultado
     
 
-    def atualizar(self, obj_disciplina: Disciplina, filtro=None) -> bool:
+    def atualizar(self, obj_disciplina: Disciplina) -> bool:
         print("✅ disciplina_dao.atualizar()")
+
+        codigo_disciplina = obj_disciplina.codigo_disciplina
+        filtro = {"codigo_disciplina":codigo_disciplina}
         doc = {
             "$set": self.set_doc(obj_disciplina)
         }

@@ -1,5 +1,6 @@
 from flask import request,jsonify
 from api.services.disciplina_service import Disciplina_service
+from api.utils.resposta_json import Resposta_json
 
 class Disciplina_controle:
     def __init__(self, disciplina_service:Disciplina_service):
@@ -11,12 +12,11 @@ class Disciplina_controle:
 
         json_disciplina = request.json.get("disciplina")
         cadastro = self.__disciplina_service.criar(json_disciplina)
-        return jsonify({"sucesso":True,
-                        "mensagem":"Cadastro realizado com sucesso",
-                        "data":{
-                            "disciplina":self.formatar_disciplina(json_disciplina)
-                            }
-                        }),201
+        return Resposta_json.sucesso(
+            mensagem = "Cadastro realizado com sucesso",
+            data = {"disciplina":self._formatar_disciplina(json_disciplina)},
+            codigo = 201
+        )
     
     def ler(self):
         print("🔵 disciplina_controle.ler()")
@@ -29,81 +29,59 @@ class Disciplina_controle:
         campos_permitidos = {"codigo_disciplina","nome_disciplina",
                             "registro","nome","turma","alunos"}
         
-        filtro = {}
+        filtro, erro = self._formatar_pesquisa(
+            tipos = tipos,
+            campos_permitidos = campos_permitidos,
+            args = request.args.items()
+        )
 
-        for key, value in request.args.items():
-            if key not in campos_permitidos or not value:
-                continue
-
-            conversor = tipos.get(key, str)
-
-            try:
-                filtro[key] = conversor(value)
-            except ValueError:
-                return jsonify({
-                    "sucesso": False,
-                    "erro": {"mensagem": f"{key} inválido: {value}"}
-                }), 400
+        if erro:
+            return Resposta_json.erro(mensagem = erro, codigo = 400)
         
         consulta = self.__disciplina_service.consulta(filtro)
 
-        return jsonify({
-            "sucesso":True,
-            "mensagem":"Executado com sucesso",
-            "data":{"disciplinas":consulta}
-        }), 200
+        return Resposta_json.sucesso(
+            mensagem = "Executado com sucesso",
+            data = {"disciplinas":consulta},
+            codigo = 200
+        )
     
-    def alterar(self):
+    def alterar(self,codigo_disciplina):
         print("🔵 disciplina_controle.alterar()")
 
-        campos_permitidos = {"codigo_disciplina"}
-
-        filtro = {}
-
-        for key, value in request.args.items():
-            if key not in campos_permitidos or not value:
-                return jsonify({
-                "sucesso": False,
-                "erro": {"mensagem": "Dado para filtragem inválido"}
-            }), 404
-
-            filtro = {"codigo_disciplina":value}
-        
         json_disciplina = request.json.get("disciplina")
-        sucesso = self.__disciplina_service.atualizar(json_disciplina, filtro)
+        sucesso = self.__disciplina_service.atualizar(json_disciplina, codigo_disciplina)
 
         if sucesso:
-            return jsonify({
-                "sucesso": True,
-                "mensagem": "Atualizado com sucesso",
-                "data": {
-                    "disciplina":self.formatar_disciplina(json_disciplina)
-                }
-            }), 200
+            return Resposta_json.sucesso(
+                mensagem = "Atualizado com sucesso",
+                data = {"disciplina":self._formatar_disciplina(json_disciplina)},
+                codigo = 200
+            )
         else:
-            return jsonify({
-                "sucesso": False,
-                "erro": {"mensagem": f"Não foi atualizar a disciplina com o código {json_disciplina.get("codigo_disciplina")}"}
-            }), 404
+            return Resposta_json.erro(
+                mensagem = "Disciplina não encontrada",
+                detalhes = f"Não foi possível atualizar a disciplina com o código {codigo_disciplina}",
+                codigo = 404
+            )
         
     def deletar(self, codigo_disciplina):
         print("🔵 disciplina_controle.deletar()")
         excluiu = self.__disciplina_service.excluir(codigo_disciplina)
         if excluiu:
-            return jsonify({
-                "sucesso": True,
-                "mensagem": "Excluído com sucesso"
-            }), 204
+            return Resposta_json.sucesso(
+                mensagem = "Excluído com sucesso",
+                codigo = 204
+            )
         else:
-            return jsonify({
-                "sucesso": False,
-                "erro": {"mensagem": f"Não existe disciplina com o código {codigo_disciplina}"}
-            }), 404
+            return Resposta_json.erro(
+                mensagem = "Disciplina não encontrada",
+                detalhes = f"Não existe disciplina com o código {codigo_disciplina}",
+                codigo = 404
+            )
     
 
-    #TÁ DANDO ERRADO AINDA, FALTA ARRUMAR
-
-    def formatar_disciplina(self,disciplina):
+    def _formatar_disciplina(self,disciplina):
         professor = disciplina.get("professor")
         
         formatado = {
@@ -118,5 +96,21 @@ class Disciplina_controle:
         }
         
         return formatado
+    
+    def _formatar_pesquisa(self,tipos,campos_permitidos,args):
+        filtro = {}
+
+        for key, value in args:
+            if key not in campos_permitidos or not value:
+                continue
+
+            conversor = tipos.get(key,str)
+
+            try:
+                filtro[key] = conversor(value)
+            except ValueError:
+                return None, f"{key} inválido: {value}"
+            
+        return filtro, None
 
 

@@ -31,12 +31,12 @@ class Aluno_dao:
     
     def atualizar(self, obj_aluno: Aluno, filtro=None) -> bool:
         print("✅ aluno_dao.atualizar()")
+
+        filtro = {"matricula_aluno":obj_aluno.matricula_aluno}
         doc = {
             "$set": self.set_doc(obj_aluno)
         }
-
         resultado = self.__colecao.update_one(filtro,doc)
-
         return resultado.matched_count > 0
     
     def excluir(self, matricula_aluno) -> bool:
@@ -53,9 +53,9 @@ class Aluno_dao:
         resultado = self.__colecao.update_one(filtro, doc)
 
         if resultado.matched_count == 0:
-            return False  # não encontrou
+            return False
 
-        return resultado.modified_count > 0  # alterou ou não
+        return resultado.modified_count > 0
     
     def campo_existe(self,campo,valor):
         print("✅ aluno_dao.campo_existe()")
@@ -67,7 +67,6 @@ class Aluno_dao:
 
     def set_doc(self, obj_aluno):
         return {
-            "matricula_aluno": obj_aluno.matricula_aluno,
             "nome_aluno": obj_aluno.nome_aluno,
             "turma": obj_aluno.turma,
             "serie": obj_aluno.serie,
@@ -75,6 +74,4 @@ class Aluno_dao:
             "email_aluno": obj_aluno.email_aluno,
             "ativo":obj_aluno.ativo
         }
-
-        
 

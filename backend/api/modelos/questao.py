@@ -1,4 +1,4 @@
-from usuario import Usuario
+from api.modelos.usuario import Usuario
 
 class Questao:
     def __init__(self):
@@ -14,6 +14,7 @@ class Questao:
         self.__enunciado = None   #gerado automaticamente no programa
         self.__alternativas = None
         self.__alternativa_correta = None 
+        self.__numero_linhas = None
 
     @property
     def id_hash(self):
@@ -236,3 +237,21 @@ class Questao:
             raise ValueError("Alternativa correta deve estar na lista de alternativas")
         
         self.__alternativa_correta = value
+
+
+    @property
+    def numero_linhas(self):
+        return self.__numero_linhas
+    
+    @numero_linhas.setter
+    def numero_linhas(self,value):
+        if value is None:
+            raise ValueError("Número de linhas nulo")
+        
+        if not isinstance(value, int):
+            raise TypeError("Número de linhas deve ser inteiro")
+        
+        if value < 0:
+            raise ValueError("Número de linhas deve ser um número inteiro")
+        
+        self.__numero_linhas = value

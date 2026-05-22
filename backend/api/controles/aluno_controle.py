@@ -1,5 +1,7 @@
 from flask import request,jsonify
 from api.services.aluno_service import Aluno_service
+from api.utils.resposta_json import Resposta_json
+from api.utils.verificar_arquivo import Verificar_arquivo as Arquivo
 import pandas as pd
 
 class Aluno_controle:
@@ -12,37 +14,30 @@ class Aluno_controle:
 
         json_aluno = request.json.get("aluno")
         cadastro = self.__aluno_service.criar(json_aluno)
-        return jsonify({"successo":True,
-                        "mensagem":"Cadastro realizado com sucesso",
-                        "data":{
-                            "aluno":self._formatar_aluno(json_aluno)
-                            }
-                        }),201
+        return Resposta_json.sucesso(
+            mensagem = "Cadastro realizado com sucesso",
+            data = {"aluno":self._formatar_aluno(json_aluno)},
+            codigo = 201
+        )
     
     def importar(self):
         print("🔵 aluno_controle.importar()")
 
         arquivo = next(request.files.values(), None)
-        if not arquivo:
-            return jsonify({
-                "sucesso":False,
-                "erro":{"mensagem": "Arquivo não enviado"}
-            }),400
-        
-        if not arquivo.filename.endswith(".xlsx"):
-            return jsonify({
-                "sucesso":False,
-                "erro":{"mensagem": "Formato inváldo"}
-            }),400
+
+        erro = Arquivo.verificar_integridade(arquivo,".xlsx")
+
+        if erro:
+            return erro
         
         df = pd.read_excel(arquivo)
         resultado = self.__aluno_service.importar_excel(df)
 
-        return jsonify({
-            "sucesso":True,
-            "mensagem":"Executado com sucesso",
-            "data":{"alunos inseridos":resultado}
-        }),200
+        return Resposta_json.sucesso(
+            mensagem = "Executado com sucesso",
+            data = {"alunos inseridos": resultado},
+            codigo = 200
+        )
     
     
     def ler(self):
@@ -57,86 +52,74 @@ class Aluno_controle:
         campos_permitidos = {"matricula_aluno", "nome_aluno",
                             "turma" ,"serie","situacao","ativo"}
 
-        filtro = {}
+        filtro, erro = self._formatar_pesquisa(
+            tipos = tipos,
+            campos_permitidos = campos_permitidos,
+            args = request.args.items()
+        )
 
-        for key, value in request.args.items():
-            if key not in campos_permitidos or not value:
-                continue
-
-            conversor = tipos.get(key, str)
-
-            try:
-                filtro[key] = conversor(value)
-            except ValueError:
-                return jsonify({
-                    "sucesso": False,
-                    "erro": {"mensagem": f"{key} inválido: {value}"}
-                }), 400
-    
+        if erro:
+            return Resposta_json.erro(mensagem = erro, codigo = 400)
         
         consulta = self.__aluno_service.consulta(filtro)
         
-
-        return jsonify({
-            "sucesso":True,
-            "mensagem":"Executado com sucesso",
-            "data":{"alunos":consulta}
-        }),200
+        return Resposta_json.sucesso(
+            mensagem = "Executado com sucesso",
+            data = {"alunos":consulta},
+            codigo = 200
+        )
     
     
-    def alterar(self):
+    def alterar(self,matricula_aluno):
         print("🔵 aluno_controle.alterar()")
 
-        tipos = {"matricula_aluno": int}
-
-        campos_permitidos = {"matricula_aluno", "nome_aluno"}
-
-        filtro = {}
-
-        for key, value in request.args.items():
-            if key not in campos_permitidos or not value:
-                continue
-
-            conversor = tipos.get(key, str)
-
-            try:
-                filtro[key] = conversor(value)
-            except ValueError:
-                return jsonify({
-                    "successo": False,
-                    "erro": {"mensagem": f"{key} inválido: {value}"}
-                }), 400
-
         json_aluno = request.json.get("aluno") 
-        sucesso = self.__aluno_service.atualizar(json_aluno, filtro)
+        sucesso = self.__aluno_service.atualizar(json_aluno, matricula_aluno)
         
         if sucesso:
-            return jsonify({
-                "sucesso": True,
-                "mensagem": "Atualizado com sucesso",
-                "data": {
-                    "aluno":self._formatar_aluno(json_aluno)               
-                }
-            }), 200
+            return Resposta_json.sucesso(
+                mensagem = "Atualizado com sucesso",
+                data = {"aluno":self._formatar_aluno(json_aluno)},
+                codigo = 200
+            )
         else:
-            return jsonify({
-                "sucesso": False,
-                "erro": {"mensagem": f"Não foi possível atualizar o aluno com a matricula {json_aluno.get("matricula_aluno")}"},
-            }), 404
+            return Resposta_json.erro(
+                mensagem = "Aluno não encontrado",
+                detalhes = f"Não foi possível atualizar o aluno com a matrícula {json_aluno.get('matricula_aluno')}",
+                codigo = 404
+            )
     
     def deletar(self, matricula_aluno):
         print("🔵 aluno_controle.deletar()")
         excluiu = self.__aluno_service.excluir(matricula_aluno)
         if excluiu:
-            return jsonify({
-            "sucesso": True,
-            "mensagem": "Excluído com sucesso"
-        }), 204
+            return Resposta_json.sucesso(
+                mensagem = "Excluído com sucesso",
+                codigo = 204
+            )
         else:
-            return jsonify({
-                "sucesso": False,
-                "erro": {"mensagem": f"Não existe aluno com a matrícula {matricula_aluno}"}
-            }), 404
+            return Resposta_json.erro(
+                mensagem = "Aluno não encontrado",
+                detalhes = f"Não existe aluno com a matrícula {matricula_aluno}",
+                codigo = 404
+            )
+        
+        
+    def _formatar_pesquisa(self,tipos,campos_permitidos,args):
+        filtro = {}
+
+        for key, value in args:
+            if key not in campos_permitidos or not value:
+                continue
+
+            conversor = tipos.get(key,str)
+
+            try:
+                filtro[key] = conversor(value)
+            except ValueError:
+                return None, f"{key} inválido: {value}"
+            
+        return filtro, None
         
     def _formatar_aluno(self, aluno):
         return {

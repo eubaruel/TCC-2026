@@ -28,16 +28,17 @@ class Usuario_rotas:
         @self.__blueprint.route('/excel',methods=['POST'])
         #@self.jwt_middleware.validar_token
         def importar():
-            return self.__aluno_controle.importar()
+            return self.__usuario_controle.importar()
         
         @self.__blueprint.route('/',methods=['GET'])
         def ler():
             return self.__usuario_controle.ler()
         
-        @self.__blueprint.route('/',methods=['PUT'])
+        @self.__blueprint.route('/<int:registro>',methods=['PUT'])
         @self.__usuario_middleware.validar_body_alterar
-        def alterar():
-            return self.__usuario_controle.alterar()
+        @self.__usuario_middleware.validar_registro_param
+        def alterar(registro):
+            return self.__usuario_controle.alterar(registro)
         
         #@self.__blueprint.route('/senha',methods=['PUT'])
         #@self.__usuario_middleware.validar_body_alterar

@@ -1,24 +1,31 @@
 from api.modelos.aluno import Aluno
 from api.DAOs.aluno_dao import Aluno_dao
 
-from api.utils.resposta_erro import resposta_erro
+from api.utils.resposta_erro_http import resposta_erro_http
 import pandas as pd
 
 class Aluno_service:
     def __init__(self, aluno_dao_dependency: Aluno_dao):
         print("⬆️ aluno_service.__init__()")
         self.__aluno_dao = aluno_dao_dependency
-    
+
+    _campos_aluno = [
+        "nome_aluno",
+        "turma",
+        "serie",
+        "situacao",
+        "email_aluno"
+    ]    
     
     def criar(self, json_aluno: dict) -> bool:
         print("🟣 aluno_service.criar()")
 
         obj_aluno = Aluno()
-        self.setar_modelo_aluno(obj_aluno, json_aluno)
+        self._setar_modelo_aluno(obj_aluno, json_aluno)
 
         matricula_existe = self.__aluno_dao.campo_existe("matricula_aluno",obj_aluno.matricula_aluno)
         if matricula_existe:
-            raise resposta_erro(
+            raise resposta_erro_http(
                 400,
                 "Matrícula repetida",
                 {"mensagem":f"O aluno com a matrícula {obj_aluno.matricula_aluno} já está cadastrado"}
@@ -37,38 +44,20 @@ class Aluno_service:
                 print("❌ Linha com valor nulo:", linha)
                 continue
             try:
-                obj_aluno = Aluno()
+                doc = self._ler_linha(linha)
 
-                obj_aluno.matricula_aluno = int(linha["matrícula"])
-                obj_aluno.nome_aluno = linha["nome"]
-                obj_aluno.turma = linha["turma"]
-                obj_aluno.serie = int(linha["série"])
-                obj_aluno.situacao = linha["situação"]
-                obj_aluno.email_aluno = linha["email"]
-                obj_aluno.ativo = True
-
-                if self.__aluno_dao.campo_existe("matricula_aluno",obj_aluno.matricula_aluno):
+                if doc:
+                    docs.append(doc)
+                    inseridos += 1
+                else:
                     continue
-
-                doc = {
-                    "matricula_aluno": obj_aluno.matricula_aluno,
-                    "nome_aluno": obj_aluno.nome_aluno,
-                    "turma": obj_aluno.turma,
-                    "serie": obj_aluno.serie,
-                    "situacao": obj_aluno.situacao,
-                    "email_aluno":obj_aluno.email_aluno,
-                    "ativo":obj_aluno.ativo
-                }
-
-                docs.append(doc)
-                inseridos += 1
 
             except Exception as e:
                 print(f"Erro na linha: {linha} → {e}")
                 continue
 
-        print(docs)
-        self.__aluno_dao.importar_excel(docs)
+        if docs:
+            self.__aluno_dao.importar_excel(docs)
 
         return inseridos
     
@@ -78,12 +67,22 @@ class Aluno_service:
         return self.__aluno_dao.consulta(filtro)
     
     
-    def atualizar(self, json_aluno: dict, filtro) -> bool:
+    def atualizar(self, json_aluno: dict, matricula_aluno: int) -> bool:
         print("🟣 aluno_service.atualizar()")
 
         obj_aluno = Aluno()
-        self.setar_modelo_aluno(obj_aluno, json_aluno)
-        return self.__aluno_dao.atualizar(obj_aluno, filtro)
+        obj_aluno.matricula_aluno = matricula_aluno
+        self._setar_modelo_aluno(obj_aluno, json_aluno)
+
+        matricula_existe = self.__aluno_dao.campo_existe("matricula_aluno",obj_aluno.matricula_aluno)
+        if not matricula_existe:
+            raise resposta_erro_http(
+                400,
+                "Matrícula repetida",
+                {"mensagem":f"O aluno com a matrícula {obj_aluno.matricula_aluno} não está cadastrado"}
+            )
+        
+        return self.__aluno_dao.atualizar(obj_aluno)
     
     
     def excluir(self, matricula_aluno: int) -> bool:
@@ -93,15 +92,30 @@ class Aluno_service:
         return self.__aluno_dao.excluir(obj_aluno.matricula_aluno)
 
 
-    def setar_modelo_aluno(self, obj_aluno ,json_aluno):
-        obj_aluno.matricula_aluno = json_aluno.get("matricula_aluno")
-        obj_aluno.nome_aluno = json_aluno.get("nome_aluno")
-        obj_aluno.turma = json_aluno.get("turma")
-        obj_aluno.serie = json_aluno.get("serie")
-        obj_aluno.situacao = json_aluno.get("situacao")
-        obj_aluno.email_aluno = json_aluno.get("email_aluno")
+    def _setar_modelo_aluno(self, obj_aluno ,json_aluno):
+        for campo in self._campos_aluno:
+            setattr(obj_aluno, campo, json_aluno.get(campo))
         obj_aluno.ativo = True
 
+    def _ler_linha(self, linha):
+
+        obj_aluno = Aluno()
+
+        obj_aluno.matricula_aluno = int(linha["matrícula"])
+        obj_aluno.nome_aluno = linha["nome"]
+        obj_aluno.turma = linha["turma"]
+        obj_aluno.serie = int(linha["série"])
+        obj_aluno.situacao = linha["situação"]
+        obj_aluno.email_aluno = linha["email"]
+        obj_aluno.ativo = True
+
+        if self.__aluno_dao.campo_existe("matricula_aluno",obj_aluno.matricula_aluno):
+            return None
+
+        doc = self.__aluno_dao.set_doc(obj_aluno)
+        doc['matricula_aluno'] = obj_aluno.matricula_aluno
+
+        return doc
 
 
 

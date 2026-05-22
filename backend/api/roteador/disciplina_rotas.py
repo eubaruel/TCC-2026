@@ -26,10 +26,11 @@ class Disciplina_rotas:
         def ler():
             return self.__disciplina_controle.ler()
         
-        @self.__blueprint.route('/',methods=['PUT'])
-        @self.__disciplina_middleware.validar_body
-        def alterar():
-            return self.__disciplina_controle.alterar()
+        @self.__blueprint.route('/<string:codigo_disciplina>',methods=['PUT'])
+        @self.__disciplina_middleware.validar_codigo_param
+        @self.__disciplina_middleware.validar_body_alterar
+        def alterar(codigo_disciplina):
+            return self.__disciplina_controle.alterar(codigo_disciplina)
         
         @self.__blueprint.route('/<string:codigo_disciplina>',methods=['DELETE'])
         @self.__disciplina_middleware.validar_codigo_param

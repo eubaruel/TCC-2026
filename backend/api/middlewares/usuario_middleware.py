@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import request
-from api.utils.resposta_erro import resposta_erro
+from api.utils.resposta_erro_http import resposta_erro_http
 
 class Usuario_middleware:
     def validar_body(self,f):
@@ -10,7 +10,7 @@ class Usuario_middleware:
             body = request.get_json()
 
             if not body or 'usuario' not in body:
-                raise resposta_erro(400, "Erro na validação de dados", {"mensagem": "O campo 'usuario' é obrigatório!"})
+                raise resposta_erro_http(400, "Erro na validação de dados", {"mensagem": "O campo 'usuario' é obrigatório!"})
             
             usuario = body['usuario']
 
@@ -19,7 +19,7 @@ class Usuario_middleware:
             
             for campo in campos_obrigatorios:
                 if campo not in usuario:
-                    raise resposta_erro(400, "Erro na validação de dados", {"mensagem": f"O campo '{campo}' é obrigatório!"})
+                    raise resposta_erro_http(400, "Erro na validação de dados", {"mensagem": f"O campo '{campo}' é obrigatório!"})
                 
             return f(*args,**kwargs)
         return decorated_function
@@ -31,7 +31,7 @@ class Usuario_middleware:
             body = request.get_json()
 
             if not body or 'usuario' not in body:
-                raise resposta_erro(400, "Erro na validação de dados", {"mensagem": "O campo 'usuario' é obrigatório!"})
+                raise resposta_erro_http(400, "Erro na validação de dados", {"mensagem": "O campo 'usuario' é obrigatório!"})
             
             usuario = body['usuario']
 
@@ -40,7 +40,7 @@ class Usuario_middleware:
             
             for campo in campos_obrigatorios:
                 if campo not in usuario:
-                    raise resposta_erro(400, "Erro na validação de dados", {"mensagem": f"O campo '{campo}' é obrigatório!"})
+                    raise resposta_erro_http(400, "Erro na validação de dados", {"mensagem": f"O campo '{campo}' é obrigatório!"})
                 
             return f(*args,**kwargs)
         return decorated_function
@@ -52,7 +52,7 @@ class Usuario_middleware:
             body = request.get_json()
 
             if not body or 'usuario' not in body:
-                raise resposta_erro(400, "Erro na validação de dados", {"mensagem": "O campo 'usuario' é obrigatório!"})
+                raise resposta_erro_http(400, "Erro na validação de dados", {"mensagem": "O campo 'usuario' é obrigatório!"})
             
             usuario = body['usuario']
 
@@ -60,7 +60,7 @@ class Usuario_middleware:
 
             for campo in campos_obrigatorios:
                 if campo not in usuario:
-                    raise resposta_erro(400, "Erro na validação de dados", {"mensagem": f"O campo '{campo}' é obrigatório!"})
+                    raise resposta_erro_http(400, "Erro na validação de dados", {"mensagem": f"O campo '{campo}' é obrigatório!"})
                 
             return f(*args,**kwargs)
         return decorated_function
@@ -70,6 +70,6 @@ class Usuario_middleware:
         def decorated_function(*args,**kwargs):
             print("🔷 usuario_middleware.validar_registro_param()")
             if 'registro' not in kwargs:
-                raise resposta_erro(400, "Erro na validação de dados", {"mensagem": "O parâmetro 'registro' é obrigatório!"})
+                raise resposta_erro_http(400, "Erro na validação de dados", {"mensagem": "O parâmetro 'registro' é obrigatório!"})
             return f(*args,**kwargs)
         return decorated_function

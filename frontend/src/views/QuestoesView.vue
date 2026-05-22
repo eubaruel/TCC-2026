@@ -68,7 +68,7 @@
               </ul>
             </div>
             <div v-else class="linhas-resposta">
-              <p><strong>Linhas para resposta:</strong> {{ questao.linhasResposta }} linhas</p>
+              <p><strong>Linhas para resposta:</strong> {{ questao.linhasResposta_json }} linhas</p>
             </div>
             <div class="questao-footer">
               <button v-if="isProfessor" @click="usarQuestao(questao)" class="btn-usar">
@@ -155,10 +155,10 @@
           <!-- Campo para questão dissertativa -->
           <div v-if="novaQuestao.tipo === 'dissertativa'" class="dissertativa-fields">
             <div class="form-group">
-              <label>Quantidade de Linhas para Resposta *</label>
+              <label>Quantidade de Linhas para Resposta_json *</label>
               <input 
                 type="number" 
-                v-model.number="novaQuestao.linhasResposta" 
+                v-model.number="novaQuestao.linhasResposta_json" 
                 min="1" 
                 max="100"
                 step="1"
@@ -213,7 +213,7 @@
               </ul>
             </div>
             <div v-else class="linhas-resposta">
-              <p><strong>Linhas para resposta:</strong> {{ questaoItem.linhasResposta }} linhas</p>
+              <p><strong>Linhas para resposta:</strong> {{ questaoItem.linhasResposta_json }} linhas</p>
             </div>
             <div class="questao-actions">
               <button @click="editarQuestao(questaoItem)" class="btn-editar">Editar</button>
@@ -255,7 +255,7 @@ export default {
           { texto: '' },
           { texto: '' }
         ],
-        linhasResposta: 10,
+        linhasResposta_json: 10,
         dificuldade: 'Médio'
       }
     }
@@ -304,8 +304,8 @@ export default {
       return true
     },
     
-    validarLinhasResposta() {
-      const linhas = this.novaQuestao.linhasResposta
+    validarLinhasResposta_json() {
+      const linhas = this.novaQuestao.linhasResposta_json
       if (!Number.isInteger(linhas) || linhas < 1 || linhas > 100) {
         alert('A quantidade de linhas deve ser um número inteiro entre 1 e 100!')
         return false
@@ -338,7 +338,7 @@ export default {
       }
       
       if (this.novaQuestao.tipo === 'dissertativa') {
-        if (!this.validarLinhasResposta()) {
+        if (!this.validarLinhasResposta_json()) {
           return
         }
       }
@@ -357,8 +357,8 @@ export default {
         alternativas: this.novaQuestao.tipo === 'objetiva' 
           ? this.montarAlternativasCompletas()
           : [],
-        linhasResposta: this.novaQuestao.tipo === 'dissertativa' 
-          ? this.novaQuestao.linhasResposta 
+        linhasResposta_json: this.novaQuestao.tipo === 'dissertativa' 
+          ? this.novaQuestao.linhasResposta_json 
           : null
       }
       
@@ -386,7 +386,7 @@ export default {
           { texto: '' },
           { texto: '' }
         ],
-        linhasResposta: 10,
+        linhasResposta_json: 10,
         dificuldade: 'Médio'
       }
     },
