@@ -13,7 +13,7 @@
       <button
         @click="abaAtiva = 'professores'"
         class="tab-btn"
-        :class="{ ativo: abaAtiva === 'professores' }"
+        :class="{ ativo: abaAtiva === 'professores' }" 
       >
         Professores ({{ professores.length }})
       </button>
