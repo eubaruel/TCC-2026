@@ -1,5 +1,4 @@
-from flask import Blueprint, request
-from functools import wraps
+from flask import Blueprint
 
 from api.middlewares.disciplina_middleware import Disciplina_middleware
 from api.controles.disciplina_controle import Disciplina_controle

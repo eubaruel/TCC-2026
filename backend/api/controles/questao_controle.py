@@ -24,7 +24,7 @@ class Questao_controle:
 
         tipos = {"registro":int}
         
-        campos_permitidos = ["id","registro","nome",
+        campos_permitidos = ["id","nome",
                             "assunto","disciplina","tipo_questao",
                             "dificuldade","autor","enunciado"]
 

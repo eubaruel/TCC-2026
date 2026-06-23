@@ -9,7 +9,7 @@ class Questao_service:
         print("⬆️ questao_service.__init__()")
         self.__questao_dao = questao_dao_dependency
 
-    _campos_questao = [
+    _CAMPOS_QUESTAO = [
         "assunto",
         "disciplina",
         "tipo_questao",
@@ -31,30 +31,41 @@ class Questao_service:
             )
         return self.__questao_dao.criar(obj_questao)
     
-
     
     def consulta(self, filtro) -> list[dict]:
         print("🟣 questao_service.consulta()")
         return self.__questao_dao.consulta(filtro)
     
     
-    def atualizar(self, json_questao: dict, _id: str) -> bool:
+    def atualizar(self, json_questao: dict, id_hash: str) -> bool:
         print("🟣 questao_service.atualizar()")
 
         obj_questao = Questao()
         self._setar_modelo_questao(obj_questao, json_questao)
-        obj_questao.id_hash = _id
-        return self.__questao_dao.atualizar(obj_questao)
+        obj_questao.id_hash = id_hash
+
+        sucesso = self.__questao_dao.atualizar(obj_questao)
+
+        if not sucesso:
+            raise resposta_erro_http(
+                400,
+                "Questão não existe",
+                {
+                    "mensagem": "A questão com Id fornecido não existe no banco de dados"
+                }
+            )
+
+        return True
 
     
-    def excluir(self, _id: str) -> bool:
+    def excluir(self, id_hash: str) -> bool:
         print("🟣 questao_service.excluir()")
         obj_questao = Questao()
-        obj_questao.id_hash = _id
+        obj_questao.id_hash = id_hash
         return self.__questao_dao.excluir(obj_questao.id_hash)
     
     def _setar_modelo_questao(self,obj_questao,json_questao):
-        for campo in self._campos_questao:
+        for campo in self._CAMPOS_QUESTAO:
             setattr(obj_questao, campo, json_questao.get(campo))
         
         dados_professor = json_questao.get("professor")

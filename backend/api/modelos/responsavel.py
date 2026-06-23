@@ -1,5 +1,5 @@
 import re
-from aluno import Aluno
+from api.modelos.aluno import Aluno
 
 class Responsavel:
     def __init__(self):

@@ -35,6 +35,12 @@ from api.services.questao_service import Questao_service
 from api.DAOs.questao_dao import Questao_dao
 from api.roteador.questao_rotas import Questao_rotas
 
+from api.middlewares.prova_middleware import Prova_middleware
+from api.controles.prova_controle import Prova_controle
+from api.services.prova_service import Prova_service
+from api.DAOs.prova_dao import Prova_dao
+from api.roteador.prova_rotas import Prova_rotas
+
 import traceback
 
 class Servidor:
@@ -77,6 +83,11 @@ class Servidor:
         self.__questao_service = None
         self.__questao_controle = None
 
+        self.__prova_middleware = Prova_middleware()
+        self.__prova_dao = None
+        self.__prova_service = None
+        self.__prova_controle = None
+
         self.__conexao_db = None
 
     def init(self):
@@ -102,6 +113,8 @@ class Servidor:
         self.__setup_disciplina()
 
         self.__setup_questao()
+
+        self.__setup_prova()
 
 
     def __setup_aluno(self):
@@ -183,7 +196,23 @@ class Servidor:
 
         self.__app.register_blueprint(questao_roteador.criar_rotas(), url_prefix="/api/v1/questoes")
         print("⬆️  Rotas registradas")
-        
+
+
+    def __setup_prova(self):
+        """Configura o módulo Prova (DAO, Service, Controle, Rotas)"""
+        print("⬆️  Setup prova")
+
+        self.__prova_dao = Prova_dao(self.__conexao_db)
+        self.__prova_service = Prova_service(self.__prova_dao)
+        self.__prova_controle = Prova_controle(self.__prova_service)
+
+        prova_roteador = Prova_rotas(
+            self.__prova_middleware,
+            self.__prova_controle
+        )
+
+        self.__app.register_blueprint(prova_roteador.criar_rotas(), url_prefix="/api/v1/provas")
+        print("⬆️  Rotas registradas")
 
     def __error_middleware(self):
         """Middleware global de tratamento de erros"""

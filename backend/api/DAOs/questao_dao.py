@@ -50,14 +50,18 @@ class Questao_dao:
         print("✅ questao_dao.atualizar()")
 
         _id = obj_questao.id_hash
+
         try:
-            filtro = {"_id":ObjectId(_id)}
+            filtro = {"_id": ObjectId(_id)}
         except:
             return False
+
         doc = {
             "$set": self.set_doc(obj_questao)
         }
-        resultado = self.__colecao.update_one(filtro,doc)
+
+        resultado = self.__colecao.update_one(filtro, doc)
+
         return resultado.matched_count > 0
     
     

@@ -9,7 +9,7 @@ class Usuario_service:
         print("⬆️ usuario_service.__init__()")
         self.__usuario_dao = usuario_dao_dependency
 
-    _campos_usuario = [
+    _CAMPOS_USUARIO = [
         "nome",
         "email",
         "role"
@@ -84,7 +84,7 @@ class Usuario_service:
         print("🟣 usuario_service.criar()")
 
         obj_usuario = Usuario()
-        self.setar_modelo_usuario(obj_usuario, json_usuario)
+        self._setar_modelo_usuario(obj_usuario, json_usuario)
         obj_usuario.registro = json_usuario.get("registro")
         obj_usuario.senha = json_usuario.get("senha")
         obj_usuario.gerar_hash_senha()
@@ -108,7 +108,7 @@ class Usuario_service:
         print("🟣 usuario_service.atualizar()")
 
         obj_usuario = Usuario()
-        self.setar_modelo_usuario(obj_usuario, json_usuario)
+        self._setar_modelo_usuario(obj_usuario, json_usuario)
         obj_usuario.registro = registro
 
         registro_existe = self.__usuario_dao.campo_existe("registro",obj_usuario.registro)
@@ -128,8 +128,8 @@ class Usuario_service:
         return self.__usuario_dao.excluir(obj_usuario.registro)
 
     
-    def setar_modelo_usuario(self, obj_usuario, json_usuario):
-        for campo in self._campos_usuario:
+    def _setar_modelo_usuario(self, obj_usuario, json_usuario):
+        for campo in self._CAMPOS_USUARIO:
             setattr(obj_usuario, campo, json_usuario.get(campo))
         obj_usuario.ativo = True
 

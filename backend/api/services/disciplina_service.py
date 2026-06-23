@@ -10,12 +10,12 @@ class Disciplina_service:
         print("⬆️ disciplina_service.__init__()")
         self.__disciplina_dao = disciplina_dao_dependency
 
-    _campos_disciplina = ["nome_disciplina",
+    _CAMPOS_DISCIPLINA = ["nome_disciplina",
                         "turma",
                         "alunos",
                         ]
     
-    _campos_professor = ["nome","registro"]
+    _CAMPOS_PROFESSOR = ["nome","registro"]
 
     
     def criar(self, json_disciplina: dict) -> bool:
@@ -57,13 +57,12 @@ class Disciplina_service:
     
         
     def setar_modelo_disciplina(self, obj_disciplina, json_disciplina):
-        for campo in self._campos_disciplina:
+        for campo in self._CAMPOS_DISCIPLINA:
             setattr(obj_disciplina, campo, json_disciplina.get(campo))
-        obj_disciplina.codigo_disciplina = json_disciplina.get("codigo_disciplina")
 
         dados_professor = json_disciplina.get("professor")
-        professsor = Usuario()
-        for campo in self._campos_professor:
-            setattr(professsor,campo,dados_professor.get(campo))
+        professor = Usuario()
+        for campo in self._CAMPOS_PROFESSOR:
+            setattr(professor,campo,dados_professor.get(campo))
 
-        obj_disciplina.professor = professsor
+        obj_disciplina.professor = professor

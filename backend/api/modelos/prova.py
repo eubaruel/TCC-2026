@@ -1,18 +1,18 @@
-from usuario import Usuario
-from disciplina import Disciplina
+from api.modelos.usuario import Usuario
+from api.modelos.disciplina import Disciplina
 
 class Prova:
     def __init__(self):
         self.__id_hash = None   
-        self.__id_turma = None   #id das turmas as quais farão essa prova
+        self.__id_turma = None     #id das turmas as quais farão essa prova
         self.__disciplina = None   #id da disciplina da prova
-        self.__professor = None   #id do professor autor da prova
-        self.__status = None   #se a prova foi corrigida ou não
-        self.__tipo = None   #se é objetiva ou dissertativa
-        self.__ano = None   #para qual ano essa prova foi feita 
+        self.__professor = None    #objeto professor autor da prova
+        self.__status = None       #se a prova foi corrigida ou não
+        self.__tipo = None         #se é objetiva ou dissertativa
+        self.__serie = None        #para qual série essa prova foi feita 
         self.__bimestre = None    
         self.__data_de_aplicacao = None 
-        self.__id_questao = None   #id das questões que contém a determinada prova
+        self.__questoes = None  
     
     @property
     def id_hash(self):
@@ -107,18 +107,18 @@ class Prova:
 
 
     @property
-    def ano(self):
-        return self.__ano
+    def serie(self):
+        return self.__serie
 
-    @ano.setter
-    def ano(self, value):
+    @serie.setter
+    def serie(self, value):
         if value is None:
-            raise ValueError("Ano nulo")
+            raise ValueError("Série nula")
         if not isinstance(value, int):
-            raise TypeError("Ano deve ser int")
+            raise TypeError("Série deve ser int")
         if value <= 0:
-            raise ValueError("Ano deve ser maior que zero")
-        self.__ano = value
+            raise ValueError("Série deve ser maior que zero")
+        self.__serie = value
 
 
     @property
@@ -150,20 +150,20 @@ class Prova:
 
 
     @property
-    def id_questao(self):
-        return self.__id_questao
+    def questoes(self):
+        return self.__questoes
 
-    @id_questao.setter
-    def id_questao(self, value):
+    @questoes.setter
+    def questoes(self, value):
         if value is None:
-            raise ValueError("Id da questão nulo")
+            raise ValueError("Questões nulas")
         if not isinstance(value, list):
             raise TypeError("Id questão deve ser lista")
         if len(value) < 5:
             raise ValueError("Número de questões insuficientes")
         for questao in value:
-            if not isinstance(questao, int):
-                raise TypeError("Cada id deve ser int")
-        self.__id_questao = value
+            if not isinstance(questao, str):
+                raise TypeError("As questões devem ser strings")
+        self.__questoes = value
 
 

@@ -9,7 +9,7 @@ class Aluno_service:
         print("⬆️ aluno_service.__init__()")
         self.__aluno_dao = aluno_dao_dependency
 
-    _campos_aluno = [
+    _CAMPOS_ALUNO = [
         "nome_aluno",
         "turma",
         "serie",
@@ -93,7 +93,7 @@ class Aluno_service:
 
 
     def _setar_modelo_aluno(self, obj_aluno ,json_aluno):
-        for campo in self._campos_aluno:
+        for campo in self._CAMPOS_ALUNO:
             setattr(obj_aluno, campo, json_aluno.get(campo))
         obj_aluno.ativo = True
 
