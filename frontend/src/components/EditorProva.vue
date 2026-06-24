@@ -38,7 +38,6 @@ export default {
     this.inicializarEditor();
     this.carregarConteudo();
 
-    // Auto-salvar a cada 30 segundos
     this.autoSaveInterval = setInterval(() => {
       this.salvarAutomaticamente();
     }, 30000);
@@ -65,11 +64,10 @@ export default {
               [{ script: "sub" }, { script: "super" }],
               [{ indent: "-1" }, { indent: "+1" }],
               [{ align: [] }],
-              ["link", "image", "video"], // <-- IMAGEM JÁ ESTÁ AQUI
+              ["link", "image", "video"],
               ["clean"],
             ],
             handlers: {
-              // Manipulador personalizado para imagens
               image: this.imageHandler,
             },
           },
@@ -83,7 +81,6 @@ export default {
       });
     },
 
-    // Manipulador para upload de imagens
     imageHandler() {
       const input = document.createElement("input");
       input.setAttribute("type", "file");
@@ -92,15 +89,26 @@ export default {
 
       input.onchange = () => {
         const file = input.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            // Usa um try-catch para capturar qualquer erro
             const range = this.quill.getSelection();
-            const url = e.target.result;
-            this.quill.insertEmbed(range.index, "image", url);
-          };
-          reader.readAsDataURL(file);
-        }
+            const position = range ? range.index : this.quill.getLength();
+            this.quill.insertEmbed(position, "image", e.target.result);
+          } catch (error) {
+            // Se der erro, insere no final
+            try {
+              const position = this.quill.getLength();
+              this.quill.insertEmbed(position, "image", e.target.result);
+            } catch (err) {
+              console.error("Erro ao inserir imagem:", err);
+            }
+          }
+        };
+        reader.readAsDataURL(file);
       };
     },
 
