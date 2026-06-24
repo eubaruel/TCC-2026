@@ -30,16 +30,6 @@
             ></textarea>
           </div>
 
-          <div class="form-group">
-            <label>Para qual turma? (opcional)</label>
-            <select v-model="novoAviso.turma">
-              <option value="">Todas as turmas</option>
-              <option v-for="turma in turmas" :key="turma" :value="turma">
-                {{ turma }}
-              </option>
-            </select>
-          </div>
-
           <button type="submit" class="btn-criar">Publicar Aviso</button>
         </form>
       </div>
@@ -55,9 +45,6 @@
             <div class="aviso-header">
               <h4>{{ aviso.titulo }}</h4>
               <span class="aviso-data">{{ aviso.dataCriacao }}</span>
-              <span v-if="aviso.turma" class="aviso-turma"
-                >🎯 {{ aviso.turma }}</span
-              >
             </div>
             <p class="aviso-mensagem">{{ aviso.mensagem }}</p>
 
@@ -102,9 +89,6 @@
             <div class="aviso-header">
               <h4>{{ aviso.titulo }}</h4>
               <span class="aviso-data">{{ aviso.dataCriacao }}</span>
-              <span v-if="aviso.turma" class="aviso-turma"
-                >🎯 {{ aviso.turma }}</span
-              >
             </div>
             <p class="aviso-mensagem">{{ aviso.mensagem }}</p>
 
@@ -136,11 +120,9 @@ export default {
   data() {
     return {
       avisos: [],
-      turmas: [],
       novoAviso: {
         titulo: "",
         mensagem: "",
-        turma: "",
       },
     };
   },
@@ -154,67 +136,8 @@ export default {
   },
   mounted() {
     this.carregarAvisos();
-    this.gerarTurmas();
   },
   methods: {
-    gerarTurmas() {
-      const turmasLista = [];
-      const primeiroAno = [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F",
-        "G",
-        "H",
-        "I",
-        "J",
-        "K",
-        "L",
-        "M",
-        "N",
-      ];
-      for (const letra of primeiroAno) {
-        turmasLista.push(`1° Ano ${letra}`);
-      }
-      const segundoAno = [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F",
-        "G",
-        "H",
-        "I",
-        "J",
-        "K",
-        "L",
-      ];
-      for (const letra of segundoAno) {
-        turmasLista.push(`2° Ano ${letra}`);
-      }
-      const terceiroAno = [
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F",
-        "G",
-        "H",
-        "I",
-        "J",
-        "K",
-        "L",
-      ];
-      for (const letra of terceiroAno) {
-        turmasLista.push(`3° Ano ${letra}`);
-      }
-      this.turmas = turmasLista;
-    },
-
     carregarAvisos() {
       const salvos = localStorage.getItem("avisos");
       if (salvos) {
@@ -239,7 +162,6 @@ export default {
         id: Date.now(),
         titulo: this.novoAviso.titulo,
         mensagem: this.novoAviso.mensagem,
-        turma: this.novoAviso.turma || null,
         dataCriacao: new Date().toLocaleDateString("pt-BR"),
         lido: false,
         lidoPor: [],
@@ -285,7 +207,6 @@ export default {
       this.novoAviso = {
         titulo: "",
         mensagem: "",
-        turma: "",
       };
     },
 
@@ -370,8 +291,7 @@ export default {
 }
 
 .form-group input,
-.form-group textarea,
-.form-group select {
+.form-group textarea {
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -440,14 +360,6 @@ export default {
 .aviso-data {
   font-size: 12px;
   color: #888;
-}
-
-.aviso-turma {
-  font-size: 12px;
-  background: #e9ecef;
-  padding: 2px 8px;
-  border-radius: 12px;
-  color: #495057;
 }
 
 .aviso-mensagem {
