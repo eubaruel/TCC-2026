@@ -1,20 +1,74 @@
 {
-    "prova":{
-        "id_hash":"",
-        "id_turma":["<id_turma1>","<id_turma2>","etc..."],
-        "disciplina":{
-            "codigo_disciplina":"",
-            "nome_disciplina":""
+    "prova": {
+        "id_turma": ["Turma 2026 A"],
+        "disciplina": {
+            "codigo_disciplina": "MAT",
+            "nome_disciplina": "Matemática"
         },
-        "professor":{
-            "registro_professor":0,
-            "nome_professor":""
+        "professor": {
+            "nome": "Carlos Silva"
         },
-        "status":"APENAS 'Corrigida' OU 'Não corrigida'",
-        "tipo":"APENAS 'Objetiva' ou 'Dissertativa'",
-        "ano":0,
-        "bimestre":"APENAS '1° bimestre' ou '2° bimestre' ou '3° bimestre' ou '4° bimestre'",
-        "data_de_aplicacao":"<USAR CALENDARIO>",
-        "questoes":["questao1","questao2","questao3","etc"]
+        "status": "Não Corrigida",
+        "tipo": "Objetiva",
+        "serie": 3,
+        "bimestre": "1° bimestre",
+        "data_de_aplicacao": "2026-08-20",
+        "questoes": [
+            {
+                "professor": {"nome": "Carlos Silva"},
+                "assunto": "Aritmética",
+                "disciplina": ["MAT", "Matemática"],
+                "tipo_questao": "Objetiva",
+                "dificuldade": "Fácil",
+                "autor": "Carlos Silva",
+                "enunciado": "Quanto vale 2 + 2?",
+                "alternativas": ["1", "2", "3", "4", "5"],
+                "alternativa_correta": "4"
+            },
+            {
+                "professor": {"nome": "Carlos Silva"},
+                "assunto": "Aritmética",
+                "disciplina": ["MAT", "Matemática"],
+                "tipo_questao": "Objetiva",
+                "dificuldade": "Fácil",
+                "autor": "Carlos Silva",
+                "enunciado": "Quanto vale 10 - 3?",
+                "alternativas": ["5", "6", "7", "8", "9"],
+                "alternativa_correta": "7"
+            },
+            {
+                "professor": {"nome": "Carlos Silva"},
+                "assunto": "Aritmética",
+                "disciplina": ["MAT", "Matemática"],
+                "tipo_questao": "Objetiva",
+                "dificuldade": "Fácil",
+                "autor": "Carlos Silva",
+                "enunciado": "Quanto vale 3 × 3?",
+                "alternativas": ["6", "7", "8", "9", "10"],
+                "alternativa_correta": "9"
+            },
+            {
+                "professor": {"nome": "Carlos Silva"},
+                "assunto": "Aritmética",
+                "disciplina": ["MAT", "Matemática"],
+                "tipo_questao": "Objetiva",
+                "dificuldade": "Fácil",
+                "autor": "Carlos Silva",
+                "enunciado": "Quanto vale 20 ÷ 4?",
+                "alternativas": ["3", "4", "5", "6", "7"],
+                "alternativa_correta": "5"
+            },
+            {
+                "professor": {"nome": "Carlos Silva"},
+                "assunto": "Aritmética",
+                "disciplina": ["MAT", "Matemática"],
+                "tipo_questao": "Objetiva",
+                "dificuldade": "Médio",
+                "autor": "Carlos Silva",
+                "enunciado": "Qual é o dobro de 12?",
+                "alternativas": ["20", "22", "24", "26", "28"],
+                "alternativa_correta": "24"
+            }
+        ]
     }
 }

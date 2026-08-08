@@ -2,6 +2,7 @@ from flask import request,jsonify
 from api.services.usuario_service import Usuario_service
 from api.utils.resposta_json import Resposta_json
 from api.utils.verificar_arquivo import Verificar_arquivo as Arquivo
+from api.utils.conversores import Conversores
 import pandas as pd
 
 class Usuario_controle:
@@ -55,7 +56,7 @@ class Usuario_controle:
         
         tipos = {
             "registro":int,
-            "ativo":bool
+            "ativo":Conversores.booleano
         }
 
         campos_permitidos = {"registro","nome","email",
@@ -91,7 +92,7 @@ class Usuario_controle:
         if sucesso:
             return Resposta_json.sucesso(
                 mensagem = "Atualizado com sucesso",
-                data = {"usuario":self._formatar_usuario(json_usuario)},
+                data = {"usuario":self._formatar_usuario(json_usuario, registro)},
                 codigo = 200
             )
         else:
@@ -101,19 +102,14 @@ class Usuario_controle:
                 codigo = 404
             )
 
-        
-    #def alterarSenha(self):
-        #print("🔵 usuario_controle.alterarSenha()") 
 
-        #USUÁRIO DEVE MANDAR SENHA ATUAL E SENHA NOVA
-        
     def deletar(self, registro):
         print("🔵 usuario_controle.deletar()")
         excluiu = self.__usuario_service.excluir(registro)
         if excluiu:
             return Resposta_json.sucesso(
                 mensagem = "Excluído com sucesso",
-                codigo = 204
+                codigo = 200
             )
         else:
             return Resposta_json.erro(
@@ -127,8 +123,11 @@ class Usuario_controle:
         filtro = {}
 
         for key, value in args:
-            if key not in campos_permitidos or not value:
+            if not value:
                 continue
+
+            if key not in campos_permitidos:
+                return None, f"Parâmetro não permitido: {key}"
 
             conversor = tipos.get(key,str)
 
@@ -141,9 +140,9 @@ class Usuario_controle:
     
 
 
-    def _formatar_usuario(self,usuario):
+    def _formatar_usuario(self, usuario, registro=None):
         return{
-            "registro":usuario.get("registro"),
+            "registro":registro if registro is not None else usuario.get("registro"),
             "nome":usuario.get("nome"),
             "email":usuario.get("email"),
             "role":usuario.get("role"),

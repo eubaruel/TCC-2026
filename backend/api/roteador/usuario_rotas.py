@@ -40,11 +40,6 @@ class Usuario_rotas:
         def alterar(registro):
             return self.__usuario_controle.alterar(registro)
         
-        #@self.__blueprint.route('/senha',methods=['PUT'])
-        #@self.__usuario_middleware.validar_body_alterar
-        #def alterar():
-            #return self.__usuario_controle.alterarSenha()
-        
         @self.__blueprint.route('/<int:registro>',methods=['DELETE'])
         @self.__usuario_middleware.validar_registro_param
         def deletar(registro):

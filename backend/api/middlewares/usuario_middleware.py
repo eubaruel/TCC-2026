@@ -15,7 +15,7 @@ class Usuario_middleware:
             usuario = body['usuario']
 
             campos_obrigatorios = ["registro","nome","email",
-                                "senha","role","ativo"]
+                                "senha","role"]
             
             for campo in campos_obrigatorios:
                 if campo not in usuario:
@@ -35,7 +35,7 @@ class Usuario_middleware:
             
             usuario = body['usuario']
 
-            campos_obrigatorios = ["registro","nome","email",
+            campos_obrigatorios = ["nome","email",
                                 "role","ativo"]
             
             for campo in campos_obrigatorios:

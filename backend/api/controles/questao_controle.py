@@ -41,7 +41,7 @@ class Questao_controle:
 
         return Resposta_json.sucesso(
             mensagem = "Executado com sucesso",
-            data = {"questao":consulta},
+            data = {"questoes":consulta},
             codigo = 200
         )
     
@@ -85,14 +85,19 @@ class Questao_controle:
         filtro = {}
 
         for key, value in args:
-            if key not in campos_permitidos or not value:
+            if not value:
                 continue
+
+            if key not in campos_permitidos:
+                return None, f"Parâmetro não permitido: {key}"
 
             conversor = tipos.get(key,str)
 
             try:
                 if key == "id":
                     filtro["_id"] = value
+                elif key == "nome":
+                    filtro["professor.nome"] = conversor(value)
                 else:
                     filtro[key] = conversor(value)
             except ValueError:

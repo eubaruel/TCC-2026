@@ -1,19 +1,15 @@
 {
     "questao":{
-        "id_hash":"",
-        "id_questao":"",
         "professor":{
-            "registro_professor":0,
-            "nome_professor":""
+            "nome":"Carlos Silva"
         },
-        "assunto":"",
-        "disciplina":["<disciplina1>","<disciplina2>"],
-        "palavras_chave":["<palavras_chave1>","<palavras_chave2>"],
-        "tipo_questao":"APENAS 'Objetiva' ou 'Dissertativa'",
-        "dificuldade":"APENAS 'Fácil' ou 'Médio' ou 'Difícil'",
-        "autor":"",
-        "enunciado":"",
-        "alternativas":["SE FOR DISSERTATIVA MANTER VAZIO"],
-        "alternativa_correta":""
+        "assunto":"Álgebra",
+        "disciplina":["mat","matemática"],
+        "tipo_questao":"Objetiva",
+        "dificuldade":"Médio",
+        "autor":"Carlos Silva",
+        "enunciado":"Quanto vale 2 + 2?",
+        "alternativas":["1","2","3","4","5"],
+        "alternativa_correta":"4"
     }
 }

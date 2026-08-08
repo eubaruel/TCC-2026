@@ -108,14 +108,14 @@ class Usuario_service:
         print("🟣 usuario_service.atualizar()")
 
         obj_usuario = Usuario()
-        self._setar_modelo_usuario(obj_usuario, json_usuario)
+        self._setar_modelo_usuario(obj_usuario, json_usuario, incluir_ativo=True)
         obj_usuario.registro = registro
 
         registro_existe = self.__usuario_dao.campo_existe("registro",obj_usuario.registro)
         if not registro_existe:
             raise resposta_erro_http(
                 400,
-                "Registro repetido",
+                "Usuário não encontrado",
                 {"mensagem":f"O usuário com o registro {obj_usuario.registro} não está cadastrado"}
             )
         return self.__usuario_dao.atualizar(obj_usuario)
@@ -128,10 +128,10 @@ class Usuario_service:
         return self.__usuario_dao.excluir(obj_usuario.registro)
 
     
-    def _setar_modelo_usuario(self, obj_usuario, json_usuario):
+    def _setar_modelo_usuario(self, obj_usuario, json_usuario, incluir_ativo=False):
         for campo in self._CAMPOS_USUARIO:
             setattr(obj_usuario, campo, json_usuario.get(campo))
-        obj_usuario.ativo = True
+        obj_usuario.ativo = json_usuario.get("ativo") if incluir_ativo else True
 
 
     def _ler_linha(self, linha):

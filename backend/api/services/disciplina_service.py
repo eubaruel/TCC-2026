@@ -37,7 +37,12 @@ class Disciplina_service:
     
     def consulta(self, filtro) -> list[dict]:
         print("🟣 disciplina_service.consulta()")
-        return self.__disciplina_dao.consulta(filtro)
+        disciplinas = self.__disciplina_dao.consulta(filtro)
+        for disciplina in disciplinas:
+            alunos = disciplina.pop("alunos", [])
+            disciplina.pop("ativo", None)
+            disciplina["quantidade_alunos"] = len(alunos)
+        return disciplinas
     
 
     def atualizar(self, json_disciplina: dict, codigo_disciplina: str) -> bool:
@@ -49,7 +54,7 @@ class Disciplina_service:
         return self.__disciplina_dao.atualizar(obj_disciplina)
     
 
-    def excluir(self, codigo_disciplina: int) -> bool:
+    def excluir(self, codigo_disciplina: str) -> bool:
         print("🟣 disciplina_service.excluir()")
         obj_disciplina = Disciplina()
         obj_disciplina.codigo_disciplina = codigo_disciplina

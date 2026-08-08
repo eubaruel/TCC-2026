@@ -15,7 +15,7 @@ class Aluno_middleware:
             aluno = body['aluno']
 
             campos_obrigatorios = ["matricula_aluno","nome_aluno","turma",
-                                    "serie","situacao","email_aluno","ativo"]
+                                    "serie","situacao","email_aluno"]
             
             for campo in campos_obrigatorios:
                 if campo not in aluno:

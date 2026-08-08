@@ -46,7 +46,7 @@ class Prova_controle:
 
         return Resposta_json.sucesso(
             mensagem = "Executado com sucesso",
-            data = {"prova":consulta},
+            data = {"provas":consulta},
             codigo = 200
         )
     
@@ -89,8 +89,11 @@ class Prova_controle:
         filtro = {}
 
         for key, value in args:
-            if key not in campos_permitidos or not value:
+            if not value:
                 continue
+
+            if key not in campos_permitidos:
+                return None, f"Parâmetro não permitido: {key}"
 
             conversor = tipos.get(key,str)
 

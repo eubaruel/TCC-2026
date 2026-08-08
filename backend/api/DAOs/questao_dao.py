@@ -17,6 +17,7 @@ class Questao_dao:
     def criar(self, obj_questao: Questao) -> str:
         print("✅ questao_dao.criar()")
         doc = self.set_doc(obj_questao)
+        doc["ativo"] = True
         resultado = self.__colecao.insert_one(doc)
         if not resultado.inserted_id:
             raise Exception("Falha ao cadastrar questão")
@@ -27,6 +28,7 @@ class Questao_dao:
         print("✅ questao_dao.consulta()")
 
         filtro = (filtro or {}).copy()
+        filtro.setdefault("ativo", {"$ne": False})
         if "_id" in filtro:
             try:
                 filtro["_id"] = ObjectId(filtro["_id"])
@@ -40,7 +42,10 @@ class Questao_dao:
                 "$options": "i"
             }
 
-        resultado = list(self.__colecao.find(filtro))
+        resultado = list(self.__colecao.find(
+            filtro,
+            {"ativo": 0}
+        ))
         for doc in resultado:
             doc["_id"] = str(doc["_id"])
         return resultado
@@ -52,7 +57,7 @@ class Questao_dao:
         _id = obj_questao.id_hash
 
         try:
-            filtro = {"_id": ObjectId(_id)}
+            filtro = {"_id": ObjectId(_id), "ativo": {"$ne": False}}
         except:
             return False
 
@@ -72,12 +77,12 @@ class Questao_dao:
             object_id = ObjectId(_id)
         except:
             return False
-        resultado = self.__colecao.delete_one({
-            "_id": object_id
-        })
-        return resultado.deleted_count > 0
-    
-    
+        resultado = self.__colecao.update_one(
+            {"_id": object_id, "ativo": {"$ne": False}},
+            {"$set": {"ativo": False}}
+        )
+        return resultado.modified_count > 0
+
     def campo_existe(self,campo,valor):
         print("✅ questao_dao.campo_existe()")
         filtro = {

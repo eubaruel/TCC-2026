@@ -9,6 +9,7 @@ class Disciplina_dao:
     def criar(self, obj_disciplina: Disciplina) -> bool:
         print("✅ disciplina_dao.criar()")
         doc = self.set_doc(obj_disciplina)
+        doc["ativo"] = True
 
         resultado = self.__colecao.insert_one(doc)
 
@@ -20,7 +21,8 @@ class Disciplina_dao:
 
     def consulta(self, filtro=None):
         print("✅ disciplina_dao.consulta()")
-        filtro = filtro or {}
+        filtro = (filtro or {}).copy()
+        filtro.setdefault("ativo", {"$ne": False})
         resultado = list(self.__colecao.find(filtro, {"_id": 0}))
         return resultado
     
@@ -29,7 +31,7 @@ class Disciplina_dao:
         print("✅ disciplina_dao.atualizar()")
 
         codigo_disciplina = obj_disciplina.codigo_disciplina
-        filtro = {"codigo_disciplina":codigo_disciplina}
+        filtro = {"codigo_disciplina":codigo_disciplina, "ativo": {"$ne": False}}
         doc = {
             "$set": self.set_doc(obj_disciplina)
         }
@@ -44,9 +46,12 @@ class Disciplina_dao:
 
         filtro = {"codigo_disciplina": codigo_disciplina}
 
-        resultado = self.__colecao.delete_one(filtro)
+        resultado = self.__colecao.update_one(
+            {**filtro, "ativo": {"$ne": False}},
+            {"$set": {"ativo": False}}
+        )
 
-        return resultado.deleted_count > 0
+        return resultado.modified_count > 0
     
     def campo_existe(self, campo, valor):
         print("✅ disciplina_dao.campo_existe()")

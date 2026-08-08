@@ -12,7 +12,7 @@ class Prova:
         self.__serie = None        #para qual série essa prova foi feita 
         self.__bimestre = None    
         self.__data_de_aplicacao = None 
-        self.__questoes = None  
+        self.__questoes = None
     
     @property
     def id_hash(self):
@@ -43,8 +43,11 @@ class Prova:
                 raise ValueError("Turma deve ter ao menos 10 caracteres")
         
         elif isinstance(value,list):
+            for turma in value:
+                if not isinstance(turma, str):
+                    raise TypeError("Cada turma deve ser uma string")
             value = [turma.strip() for turma in value]
-            for i,turma in enumerate(value):
+            for turma in value:
                 if len(turma) < 10:
                     raise ValueError("Turma deve ter ao menos 10 caracteres")
         else:
@@ -158,12 +161,10 @@ class Prova:
         if value is None:
             raise ValueError("Questões nulas")
         if not isinstance(value, list):
-            raise TypeError("Id questão deve ser lista")
-        if len(value) < 5:
-            raise ValueError("Número de questões insuficientes")
+            raise TypeError("Questões devem ser uma lista")
         for questao in value:
-            if not isinstance(questao, str):
-                raise TypeError("As questões devem ser strings")
+            if not isinstance(questao, dict):
+                raise TypeError("Cada questão da prova deve ser um objeto completo")
         self.__questoes = value
 
 

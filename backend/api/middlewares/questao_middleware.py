@@ -21,18 +21,38 @@ class Questao_middleware:
                 if campo not in questao:
                     raise resposta_erro_http(400, "Erro na validação de dados", {"mensagem":f"O campo '{campo}' é obrigatório!"})
                 
-            tem_alternativas = (
-                "alternativas" in questao and
-                "alternativa_correta" in questao
-            )
+            tipo = str(questao.get("tipo_questao", "")).strip().title()
 
-            tem_numero_linhas = "numero_linhas" in questao
-
-            if not (tem_alternativas or tem_numero_linhas):
+            if tipo == "Objetiva" and not (
+                "alternativas" in questao and "alternativa_correta" in questao
+            ):
                 raise resposta_erro_http(
                     400,
                     "Erro na validação de dados",
-                    {"mensagem": "É necessário ter alternativas ou número de linhas"}
+                    {"mensagem": "Questão objetiva exige alternativas e alternativa correta"}
+                )
+
+            if tipo == "Objetiva" and "numero_linhas" in questao:
+                raise resposta_erro_http(
+                    400,
+                    "Erro na validação de dados",
+                    {"mensagem": "Questão objetiva não deve possuir número de linhas"}
+                )
+
+            if tipo == "Dissertativa" and "numero_linhas" not in questao:
+                raise resposta_erro_http(
+                    400,
+                    "Erro na validação de dados",
+                    {"mensagem": "Questão dissertativa exige número de linhas"}
+                )
+
+            if tipo == "Dissertativa" and (
+                "alternativas" in questao or "alternativa_correta" in questao
+            ):
+                raise resposta_erro_http(
+                    400,
+                    "Erro na validação de dados",
+                    {"mensagem": "Questão dissertativa não deve possuir alternativas"}
                 )
                                 
             professor = questao["professor"]

@@ -2,6 +2,7 @@ from flask import request,jsonify
 from api.services.aluno_service import Aluno_service
 from api.utils.resposta_json import Resposta_json
 from api.utils.verificar_arquivo import Verificar_arquivo as Arquivo
+from api.utils.conversores import Conversores
 import pandas as pd
 
 class Aluno_controle:
@@ -14,6 +15,7 @@ class Aluno_controle:
 
         json_aluno = request.json.get("aluno")
         cadastro = self.__aluno_service.criar(json_aluno)
+        json_aluno["ativo"] = True
         return Resposta_json.sucesso(
             mensagem = "Cadastro realizado com sucesso",
             data = {"aluno":self._formatar_aluno(json_aluno)},
@@ -35,7 +37,7 @@ class Aluno_controle:
 
         return Resposta_json.sucesso(
             mensagem = "Executado com sucesso",
-            data = {"alunos inseridos": resultado},
+            data = {"importacao": resultado},
             codigo = 200
         )
     
@@ -46,7 +48,7 @@ class Aluno_controle:
         tipos = {
             "matricula_aluno": int,
             "serie":int,
-            "ativo":bool
+            "ativo":Conversores.booleano
         }
 
         campos_permitidos = {"matricula_aluno", "nome_aluno",
@@ -95,7 +97,7 @@ class Aluno_controle:
         if excluiu:
             return Resposta_json.sucesso(
                 mensagem = "Excluído com sucesso",
-                codigo = 204
+                codigo = 200
             )
         else:
             return Resposta_json.erro(
@@ -109,8 +111,11 @@ class Aluno_controle:
         filtro = {}
 
         for key, value in args:
-            if key not in campos_permitidos or not value:
+            if not value:
                 continue
+
+            if key not in campos_permitidos:
+                return None, f"Parâmetro não permitido: {key}"
 
             conversor = tipos.get(key,str)
 

@@ -9,6 +9,7 @@ class Responsavel:
         self.__email_responsavel = None
         self.__aluno = None
         self.__telefone_responsavel = None
+        self.__ativo = None
 
     @property
     def id_hash(self):
@@ -66,7 +67,7 @@ class Responsavel:
             if len(value) not in range(5,151):
                 raise ValueError("Email deve conter de 5 a 150 caracteres")
             
-            padrao = "^[a-zA-Z0-9][a-zA-Z0-9._%+-]{0,63}@[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+            padrao = r"^[a-zA-Z0-9][a-zA-Z0-9._%+-]{0,63}@[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
             if not re.match(padrao,value):
                 raise ValueError("Email inválido")

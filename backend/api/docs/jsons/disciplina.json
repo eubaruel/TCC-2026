@@ -1,12 +1,12 @@
 {
     "disciplina":{
-        "codigo_disciplina":"",
-        "nome_disciplina":"",
+        "codigo_disciplina":"MAT",
+        "nome_disciplina":"Matemática",
         "professor":{
-            "registro":0,
-            "nome":""
+            "registro":101,
+            "nome":"Carlos Silva"
         },
-        "turma":"",
-        "alunos":[0,2,3,"etc..."]
+        "turma":"Turma 2026 A",
+        "alunos":[50280715,50280716,50280717]
     }
 }

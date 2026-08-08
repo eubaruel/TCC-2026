@@ -1,4 +1,5 @@
 from api.modelos.aluno import Aluno
+from pymongo import UpdateOne
 
 class Aluno_dao:
     def __init__(self, banco_de_dados_dependency):
@@ -18,15 +19,27 @@ class Aluno_dao:
         
         return True
     
-    def importar_excel(self, docs: list) -> bool:
+    def importar_excel(self, docs: list) -> dict:
         print("✅ aluno_dao.importar_excel()")
-        self.__colecao.delete_many({})
-        self.__colecao.insert_many(docs)
+        operacoes = [
+            UpdateOne(
+                {"matricula_aluno": doc["matricula_aluno"]},
+                {"$set": doc},
+                upsert=True
+            )
+            for doc in docs
+        ]
+        resultado = self.__colecao.bulk_write(operacoes, ordered=False)
+        return {
+            "processados": len(docs),
+            "criados": resultado.upserted_count,
+            "atualizados": resultado.modified_count
+        }
     
     def consulta(self, filtro=None):
         print("✅ aluno_dao.consulta()")
         filtro = filtro or {}
-        resultado = list(self.__colecao.find(filtro, {"_id": 0}))
+        resultado = list(self.__colecao.find(filtro, {"_id": 0, "email_aluno": 0}))
         return resultado
     
     def atualizar(self, obj_aluno: Aluno, filtro=None) -> bool:
@@ -67,6 +80,7 @@ class Aluno_dao:
 
     def set_doc(self, obj_aluno):
         return {
+            "matricula_aluno": obj_aluno.matricula_aluno,
             "nome_aluno": obj_aluno.nome_aluno,
             "turma": obj_aluno.turma,
             "serie": obj_aluno.serie,

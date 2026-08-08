@@ -21,6 +21,7 @@ class Aluno_service:
         print("🟣 aluno_service.criar()")
 
         obj_aluno = Aluno()
+        obj_aluno.matricula_aluno = json_aluno.get("matricula_aluno")
         self._setar_modelo_aluno(obj_aluno, json_aluno)
 
         matricula_existe = self.__aluno_dao.campo_existe("matricula_aluno",obj_aluno.matricula_aluno)
@@ -32,34 +33,55 @@ class Aluno_service:
             )
         return self.__aluno_dao.criar(obj_aluno)
     
-    def importar_excel(self, df) ->int:
+    def importar_excel(self, df) -> dict:
         print("🟣 aluno_service.importar_excel()")
 
-        docs = []
-        
-        inseridos = 0
+        colunas_obrigatorias = {
+            "matrícula", "nome", "turma", "série", "situação", "email"
+        }
+        colunas_faltantes = colunas_obrigatorias - set(df.columns)
+        if colunas_faltantes:
+            raise resposta_erro_http(
+                400,
+                "Planilha inválida",
+                {"mensagem": f"Colunas ausentes: {', '.join(sorted(colunas_faltantes))}"}
+            )
 
-        for _, linha in df.iterrows():
+        docs = []
+        erros = []
+        matriculas_lidas = set()
+
+        for indice, linha in df.iterrows():
             if linha.isnull().any():
-                print("❌ Linha com valor nulo:", linha)
+                erros.append(f"Linha {indice + 2}: contém valor nulo")
                 continue
             try:
                 doc = self._ler_linha(linha)
-
-                if doc:
-                    docs.append(doc)
-                    inseridos += 1
-                else:
+                matricula = doc["matricula_aluno"]
+                if matricula in matriculas_lidas:
+                    erros.append(f"Linha {indice + 2}: matrícula {matricula} repetida na planilha")
                     continue
+                matriculas_lidas.add(matricula)
+                docs.append(doc)
 
             except Exception as e:
-                print(f"Erro na linha: {linha} → {e}")
-                continue
+                erros.append(f"Linha {indice + 2}: {e}")
 
-        if docs:
-            self.__aluno_dao.importar_excel(docs)
+        if erros:
+            raise resposta_erro_http(
+                400,
+                "Planilha contém dados inválidos",
+                {"erros": erros[:50], "total_erros": len(erros)}
+            )
 
-        return inseridos
+        if not docs:
+            raise resposta_erro_http(
+                400,
+                "Planilha vazia",
+                {"mensagem": "Nenhum aluno válido foi encontrado"}
+            )
+
+        return self.__aluno_dao.importar_excel(docs)
     
     
     def consulta(self, filtro) -> list[dict]:
@@ -72,13 +94,13 @@ class Aluno_service:
 
         obj_aluno = Aluno()
         obj_aluno.matricula_aluno = matricula_aluno
-        self._setar_modelo_aluno(obj_aluno, json_aluno)
+        self._setar_modelo_aluno(obj_aluno, json_aluno, incluir_ativo=True)
 
         matricula_existe = self.__aluno_dao.campo_existe("matricula_aluno",obj_aluno.matricula_aluno)
         if not matricula_existe:
             raise resposta_erro_http(
                 400,
-                "Matrícula repetida",
+                "Aluno não encontrado",
                 {"mensagem":f"O aluno com a matrícula {obj_aluno.matricula_aluno} não está cadastrado"}
             )
         
@@ -92,10 +114,10 @@ class Aluno_service:
         return self.__aluno_dao.excluir(obj_aluno.matricula_aluno)
 
 
-    def _setar_modelo_aluno(self, obj_aluno ,json_aluno):
+    def _setar_modelo_aluno(self, obj_aluno, json_aluno, incluir_ativo=False):
         for campo in self._CAMPOS_ALUNO:
             setattr(obj_aluno, campo, json_aluno.get(campo))
-        obj_aluno.ativo = True
+        obj_aluno.ativo = json_aluno.get("ativo") if incluir_ativo else True
 
     def _ler_linha(self, linha):
 
@@ -109,11 +131,7 @@ class Aluno_service:
         obj_aluno.email_aluno = linha["email"]
         obj_aluno.ativo = True
 
-        if self.__aluno_dao.campo_existe("matricula_aluno",obj_aluno.matricula_aluno):
-            return None
-
         doc = self.__aluno_dao.set_doc(obj_aluno)
-        doc['matricula_aluno'] = obj_aluno.matricula_aluno
 
         return doc
 

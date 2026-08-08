@@ -71,7 +71,7 @@ class Disciplina_controle:
         if excluiu:
             return Resposta_json.sucesso(
                 mensagem = "Excluído com sucesso",
-                codigo = 204
+                codigo = 200
             )
         else:
             return Resposta_json.erro(
@@ -101,13 +101,21 @@ class Disciplina_controle:
         filtro = {}
 
         for key, value in args:
-            if key not in campos_permitidos or not value:
+            if not value:
                 continue
+
+            if key not in campos_permitidos:
+                return None, f"Parâmetro não permitido: {key}"
 
             conversor = tipos.get(key,str)
 
             try:
-                filtro[key] = conversor(value)
+                if key == "registro":
+                    filtro["professor.registro"] = conversor(value)
+                elif key == "nome":
+                    filtro["professor.nome"] = conversor(value)
+                else:
+                    filtro[key] = conversor(value)
             except ValueError:
                 return None, f"{key} inválido: {value}"
             

@@ -1,10 +1,9 @@
 {
     "usuario":{
-        "registro":0,
-        "nome":"",
-        "email":"",
-        "senha":"",
-        "role":"",
-        "ativo":true
+        "registro":101,
+        "nome":"Carlos Silva",
+        "email":"carlos@example.com",
+        "senha":"Senha@123",
+        "role":"Professor"
     }
 }

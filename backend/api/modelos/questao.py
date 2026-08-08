@@ -94,11 +94,13 @@ class Questao:
         if not isinstance(value, list):
             raise TypeError("Diciplina(as) devem ser uma lista")
 
-        value = [d.strip().lower() for d in value]
-
         for disciplina in value:
             if not isinstance(disciplina, str):
                 raise TypeError("Cada disciplina deve ser uma string")
+
+        value = [d.strip().lower() for d in value]
+
+        for disciplina in value:
 
             if len(disciplina) < 2:
                 raise ValueError("Disciplina muito curta")
@@ -251,7 +253,7 @@ class Questao:
         if not isinstance(value, int):
             raise TypeError("Número de linhas deve ser inteiro")
         
-        if value < 0:
-            raise ValueError("Número de linhas deve ser um número inteiro")
+        if value <= 0:
+            raise ValueError("Número de linhas deve ser maior que zero")
         
         self.__numero_linhas = value

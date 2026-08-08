@@ -2,6 +2,7 @@ class resposta_erro_http(Exception):
     def __init__(self, httpCode: int, mensagem: str, erro: any = None):
 
         super().__init__(mensagem)
+        self.mensagem = mensagem
         self.__httpCode = httpCode
         self.__erro = erro
 
@@ -14,4 +15,4 @@ class resposta_erro_http(Exception):
         return self.__erro
 
     def __str__(self) -> str:
-        return f"[{self.__httpCode}] {self.args[0]} | Detalhes: {self.__erro}" 
+        return f"[{self.__httpCode}] {self.args[0]} | Detalhes: {self.__erro}"

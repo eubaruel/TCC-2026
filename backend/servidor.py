@@ -220,42 +220,38 @@ class Servidor:
         def handle_error(error):
 
             # 🔹 404 - Rota ou arquivo não encontrado
-            if isinstance(error, NotFound):
-                return error, 404
+            if isinstance(error, HTTPException):
+                return jsonify({
+                    "sucesso": False,
+                    "mensagem": error.description,
+                    "erro": {"codigo": error.code}
+                }), error.code
 
             # 🔹 Captura ErrorResponse customizado
             if isinstance(error, resposta_erro_http):
                 print("🟡 Server.error_middleware()")
-                # Extrai stack trace como string
-                stack_str = ''.join(traceback.format_exception(type(error), error, error.__traceback__))
-
                 resposta = {
-                    "success": False,
-                    "error": {
-                        "message": str(error),
-                        "code": getattr(error, "code", None),
-                        "details": getattr(error, "erro", None)
-                    },
-                    "data": {
-                        "message": "Erro tratado pela aplicação",
-                        "stack": stack_str
-                    }
+                    "sucesso": False,
+                    "mensagem": error.mensagem,
+                    "erro": error.erro
                 }
                 return jsonify(resposta), error.httpCode
+
+            if isinstance(error, (ValueError, TypeError)):
+                return jsonify({
+                    "sucesso": False,
+                    "mensagem": "Dados inválidos",
+                    "erro": {"detalhes": str(error)}
+                }), 400
 
             # 🔹 Outros erros internos (não tratados)
             stack_str = ''.join(traceback.format_exception(type(error), error, error.__traceback__))
             print("🟡 Server.error_middleware()")
+            print(stack_str)
             resposta = {
-                "success": False,
-                "error": {
-                    "message": str(error),
-                    "code": getattr(error, "code", None)
-                },
-                "data": {
-                    "message": "Ocorreu um erro interno no servidor",
-                    "stack": stack_str
-                }
+                "sucesso": False,
+                "mensagem": "Ocorreu um erro interno no servidor",
+                "erro": {"codigo": "INTERNAL_ERROR"}
             }
 
             return jsonify(resposta), 500

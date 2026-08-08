@@ -1,11 +1,10 @@
 {
     "aluno":{
-        "matricula_aluno":0,
-        "nome_aluno":"",
-        "turma":"",
-        "serie":0,
-        "situacao":"",
-        "email_aluno":"",
-        "ativo":true
+        "matricula_aluno":50280715,
+        "nome_aluno":"Zé da Silva",
+        "turma":"Turma 2026 A",
+        "serie":3,
+        "situacao":"Pre-Mat",
+        "email_aluno":"ze@example.com"
     }
 }

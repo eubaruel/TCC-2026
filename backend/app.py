@@ -30,4 +30,5 @@ def main():
     except Exception as error:
         print("❌ Erro ao iniciar o servidor:", error)
 
-main()
+if __name__ == "__main__":
+    main()

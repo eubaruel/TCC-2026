@@ -33,6 +33,7 @@ class Banco_de_dados:
         try: 
             if Banco_de_dados.__client:
                 Banco_de_dados.__client.close()
+                Banco_de_dados.__client = None
         except Exception:
             print("Banco de dados não conectado")
 
