@@ -152,10 +152,37 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
         self.questao_client = criar_app(Questao_rotas(Questao_middleware(), controle).criar_rotas(), "/api/v1/questoes").test_client()
 
     def test_listagem_de_questoes_retorna_gabarito(self):
-        self.assertEqual(self.questao_client.post("/api/v1/questoes/", json=payload_questao(1)).status_code, 201)
+        resposta_criacao = self.questao_client.post(
+            "/api/v1/questoes/",
+            json=payload_questao(1)
+        )
+        self.assertEqual(resposta_criacao.status_code, 201)
+
+        questao_criada = resposta_criacao.get_json()["data"]["questao"]
+        ids = [alternativa["id"] for alternativa in questao_criada["alternativas"]]
+        self.assertEqual(len(ids), 5)
+        self.assertEqual(len(set(ids)), 5)
+        self.assertEqual(
+            [alternativa["texto"] for alternativa in questao_criada["alternativas"]],
+            ["A", "B", "C", "D", "E"]
+        )
+        self.assertEqual(
+            questao_criada["alternativa_correta"],
+            questao_criada["alternativas"][0]["id"]
+        )
+
         questao = self.questao_client.get("/api/v1/questoes/").get_json()["data"]["questoes"][0]
         self.assertIn("alternativas", questao)
-        self.assertEqual(questao["alternativa_correta"], "A")
+        self.assertIn(
+            questao["alternativa_correta"],
+            [alternativa["id"] for alternativa in questao["alternativas"]]
+        )
+
+    def test_rejeita_texto_correto_ausente_das_alternativas(self):
+        payload = payload_questao(20)
+        payload["questao"]["alternativa_correta"] = "Alternativa inexistente"
+        resposta = self.questao_client.post("/api/v1/questoes/", json=payload)
+        self.assertEqual(resposta.status_code, 400)
 
     def test_middleware_rejeita_campos_do_tipo_errado(self):
         payload = payload_questao(2)
@@ -164,32 +191,31 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
         payload["questao"]["numero_linhas"] = 5
         self.assertEqual(self.questao_client.post("/api/v1/questoes/", json=payload).status_code, 400)
 
-    def test_prova_armazena_questoes_completas_sem_ids(self):
+    def test_prova_armazena_somente_ids_das_questoes(self):
         for numero in range(1, 6):
             self.questao_client.post("/api/v1/questoes/", json=payload_questao(numero))
 
         questoes = self.questao_client.get("/api/v1/questoes/").get_json()["data"]["questoes"]
+        ids_questoes = [questao["_id"] for questao in questoes]
         prova_dao = FakeProvaDao()
-        service = Prova_service(prova_dao)
+        service = Prova_service(prova_dao, self.questao_dao)
         controle = Prova_controle(service)
         client = criar_app(Prova_rotas(Prova_middleware(), controle).criar_rotas(), "/api/v1/provas").test_client()
-        payload = {"prova": {"id_turma": "Turma 2026 A", "professor": {"nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "status": "Não Corrigida", "tipo": "Objetiva", "serie": 3, "bimestre": "1° bimestre", "data_de_aplicacao": "2026-08-20", "questoes": questoes}}
+        payload = {"prova": {"id_turma": "Turma 2026 A", "professor": {"nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "status": "Não Corrigida", "tipo": "Objetiva", "serie": 3, "bimestre": "1° bimestre", "data_de_aplicacao": "2026-08-20", "questoes": ids_questoes}}
         criacao = client.post("/api/v1/provas/", json=payload)
         self.assertEqual(criacao.status_code, 201)
         persistida = next(iter(prova_dao.documentos.values()))
         self.assertEqual(len(persistida["questoes"]), 5)
-        self.assertEqual(persistida["questoes"][0]["alternativa_correta"], "A")
-        self.assertNotIn("_id", persistida["questoes"][0])
-        self.assertIn("enunciado", persistida["questoes"][0])
+        self.assertEqual(persistida["questoes"], ids_questoes)
+        self.assertTrue(all(isinstance(id_questao, str) for id_questao in persistida["questoes"]))
 
         retornada = client.get("/api/v1/provas/").get_json()["data"]["provas"][0]
-        self.assertEqual(retornada["questoes"][0]["alternativa_correta"], "A")
-        self.assertNotIn("_id", retornada["questoes"][0])
+        self.assertEqual(retornada["questoes"], ids_questoes)
 
-        payload["prova"]["questoes"] = [questoes[0]] * 5
+        payload["prova"]["questoes"] = [ids_questoes[0]] * 5
         self.assertEqual(client.post("/api/v1/provas/", json=payload).status_code, 400)
 
-        payload["prova"]["questoes"] = ["id-invalido"] * 5
+        payload["prova"]["questoes"] = ids_questoes[:4] + ["000000000000000000000099"]
         self.assertEqual(client.post("/api/v1/provas/", json=payload).status_code, 400)
 
 

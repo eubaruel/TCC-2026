@@ -11,11 +11,11 @@ class Questao_controle:
         print("🔵 questao_controle.cadastrar()")
 
         json_questao = request.json.get("questao")
-        id_hash = self.__questao_service.criar(json_questao)
+        questao_criada = self.__questao_service.criar(json_questao)
 
         return Resposta_json.sucesso(
             mensagem = "Cadastro realizado com sucesso",
-            data = {"questao":self._formatar_questao(json_questao, id_hash)},
+            data = {"questao": questao_criada},
             codigo = 201
         )
     
@@ -49,12 +49,12 @@ class Questao_controle:
         print("🔵 questao_controle.alterar()")
 
         json_questao = request.json.get("questao")
-        sucesso = self.__questao_service.atualizar(json_questao, _id)
+        questao_atualizada = self.__questao_service.atualizar(json_questao, _id)
 
-        if sucesso:
+        if questao_atualizada:
             return Resposta_json.sucesso(
                 mensagem = "Atualizado com sucesso",
-                data = {"questao":self._formatar_questao(json_questao, _id)},
+                data = {"questao": questao_atualizada},
                 codigo = 200
             )
         else:
@@ -104,28 +104,3 @@ class Questao_controle:
                 return None, f"{key} inválido: {value}"
             
         return filtro, None
-            
-
-    def _formatar_questao(self,questao, id_hash):
-        professor = questao.get("professor")
-
-        formatado = {
-            "_id":id_hash,
-            "professor":{
-                "nome":professor.get("nome")
-            },
-            "assunto":questao.get("assunto"),
-            "disciplina":questao.get("disciplina"),
-            "tipo_questao":questao.get("tipo_questao"),
-            "dificuldade":questao.get("dificuldade"),
-            "autor":questao.get("autor", questao.get("professor")), 
-            "enunciado":questao.get("enunciado")
-        }
-
-        if formatado["tipo_questao"] == "Objetiva":
-            formatado["alternativas"] = questao.get("alternativas")
-            formatado["alternativa_correta"] = questao.get("alternativa_correta")
-        else:
-            formatado["numero_linhas"] = questao.get("numero_linhas")
-
-        return formatado

@@ -49,6 +49,29 @@ class Questao_dao:
         for doc in resultado:
             doc["_id"] = str(doc["_id"])
         return resultado
+
+    def buscar_por_ids(self, ids_questoes) -> list:
+        ids_validos = []
+        for id_questao in ids_questoes:
+            try:
+                ids_validos.append(ObjectId(id_questao))
+            except:
+                continue
+
+        if not ids_validos:
+            return []
+
+        resultado = list(self.__colecao.find(
+            {
+                "_id": {"$in": ids_validos},
+                "ativo": {"$ne": False}
+            },
+            {"ativo": 0}
+        ))
+        for doc in resultado:
+            doc["_id"] = str(doc["_id"])
+
+        return resultado
     
     
     def atualizar(self, obj_questao: Questao) -> bool:
@@ -110,7 +133,10 @@ class Questao_dao:
         }
 
         if doc["tipo_questao"] == "Objetiva":
-            doc["alternativas"] = obj_questao.alternativas
+            doc["alternativas"] = [
+                {"id": alternativa.id, "texto": alternativa.texto}
+                for alternativa in obj_questao.alternativas
+            ]
             doc["alternativa_correta"] = obj_questao.alternativa_correta
         else:
             doc["numero_linhas"] = obj_questao.numero_linhas

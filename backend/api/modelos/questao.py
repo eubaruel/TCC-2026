@@ -1,4 +1,5 @@
 from api.modelos.usuario import Usuario
+from api.modelos.alternativa import Alternativa
 
 class Questao:
     def __init__(self):
@@ -12,8 +13,8 @@ class Questao:
         self.__dificuldade = None 
         self.__autor = None   #Ex: Professor, Universidades, etc.
         self.__enunciado = None   #gerado automaticamente no programa
-        self.__alternativas = None
-        self.__alternativa_correta = None 
+        self.__alternativas = None  # Lista de objetos Alternativa
+        self.__alternativa_correta = None  # Id da alternativa correta
         self.__numero_linhas = None
 
     @property
@@ -146,7 +147,7 @@ class Questao:
         
         value = value.strip().title()
 
-        if value not in ["Fácil","Médio","Difícil"]:
+        if value not in ["Muito Fácil","Fácil","Médio","Difícil", "Muito Difícil"]:
             raise ValueError ("Dificuldade inválida")
         
         self.__dificuldade = value
@@ -205,12 +206,10 @@ class Questao:
             
             if not isinstance(value, list):
                 raise TypeError("Alternativas deve ser list")
-            
+
             for alternativa in value:
-                if not isinstance(alternativa, str):
-                    raise TypeError("Alternativas devem ser strings")
-            
-            value = [alternativa.strip() for alternativa in value]
+                if not isinstance(alternativa, Alternativa):
+                    raise TypeError("Cada alternativa deve ser uma instância de Alternativa")
 
             if len(value) < 5:
                 raise ValueError("Deve ter pelo menos 5 alternativas")
@@ -235,8 +234,12 @@ class Questao:
         if self.alternativas is None:
             raise ValueError("Alternativas devem ser definidas antes da correta")
 
-        if value not in self.alternativas:
-            raise ValueError("Alternativa correta deve estar na lista de alternativas")
+        ids_alternativas = {
+            alternativa.id
+            for alternativa in self.alternativas
+        }
+        if value not in ids_alternativas:
+            raise ValueError("Alternativa correta deve ser o id de uma alternativa da questão")
         
         self.__alternativa_correta = value
 

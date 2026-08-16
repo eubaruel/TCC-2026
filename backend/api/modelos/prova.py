@@ -162,9 +162,11 @@ class Prova:
             raise ValueError("Questões nulas")
         if not isinstance(value, list):
             raise TypeError("Questões devem ser uma lista")
-        for questao in value:
-            if not isinstance(questao, dict):
-                raise TypeError("Cada questão da prova deve ser um objeto completo")
+        if len(value) < 5:
+            raise ValueError("A prova deve possuir ao menos cinco questões")
+        for id_questao in value:
+            if not isinstance(id_questao, str):
+                raise TypeError("Cada questão da prova deve ser representada por um id")
         self.__questoes = value
 
 

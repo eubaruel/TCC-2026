@@ -185,6 +185,14 @@ class FakeQuestaoDao:
             resultado.append(seguro)
         return resultado
 
+    def buscar_por_ids(self, ids_questoes):
+        return [
+            deepcopy(self.documentos[id_questao])
+            for id_questao in ids_questoes
+            if id_questao in self.documentos
+            and self.documentos[id_questao].get("ativo") is not False
+        ]
+
     def atualizar(self, questao):
         if questao.id_hash not in self.documentos:
             return False
@@ -213,7 +221,10 @@ class FakeQuestaoDao:
             "ativo": True,
         }
         if questao.tipo_questao == "Objetiva":
-            doc["alternativas"] = list(questao.alternativas)
+            doc["alternativas"] = [
+                {"id": alternativa.id, "texto": alternativa.texto}
+                for alternativa in questao.alternativas
+            ]
             doc["alternativa_correta"] = questao.alternativa_correta
         else:
             doc["numero_linhas"] = questao.numero_linhas

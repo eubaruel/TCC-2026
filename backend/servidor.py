@@ -203,7 +203,10 @@ class Servidor:
         print("⬆️  Setup prova")
 
         self.__prova_dao = Prova_dao(self.__conexao_db)
-        self.__prova_service = Prova_service(self.__prova_dao)
+        self.__prova_service = Prova_service(
+            self.__prova_dao,
+            self.__questao_dao
+        )
         self.__prova_controle = Prova_controle(self.__prova_service)
 
         prova_roteador = Prova_rotas(

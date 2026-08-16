@@ -67,12 +67,32 @@ class DaoTest(unittest.TestCase):
         self.assertNotIn("alternativa_correta", colecao.projecao)
         self.assertEqual(colecao.projecao["ativo"], 0)
 
-    def test_prova_consulta_inclui_questoes_completas(self):
-        colecao = ColecaoFake([{"_id": ObjectId(), "questoes": [{"alternativa_correta": "A"}]}])
+    def test_prova_consulta_mantem_vetor_de_ids(self):
+        colecao = ColecaoFake([{
+            "_id": ObjectId(),
+            "questoes": ["64b000000000000000000001"]
+        }])
         dao = Prova_dao(BancoFake("provas", colecao))
-        dao.consulta({})
-        self.assertNotIn("questoes.alternativa_correta", colecao.projecao)
+        resultado = dao.consulta({})
+        self.assertEqual(
+            resultado[0]["questoes"],
+            ["64b000000000000000000001"]
+        )
         self.assertEqual(colecao.projecao["ativo"], 0)
+
+    def test_questao_dao_busca_ids_ativos_em_lote(self):
+        id_questao = ObjectId()
+        colecao = ColecaoFake([{
+            "_id": id_questao,
+            "tipo_questao": "Objetiva"
+        }])
+        dao = Questao_dao(BancoFake("questoes", colecao))
+
+        resultado = dao.buscar_por_ids([str(id_questao)])
+
+        self.assertEqual(resultado[0]["_id"], str(id_questao))
+        self.assertEqual(colecao.filtro["_id"], {"$in": [id_questao]})
+        self.assertEqual(colecao.filtro["ativo"], {"$ne": False})
 
     def test_exclusoes_de_questao_disciplina_e_prova_sao_logicas(self):
         id_valido = str(ObjectId())
