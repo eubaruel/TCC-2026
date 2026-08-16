@@ -49,7 +49,7 @@
               <span class="tipo-questao" :class="questao.tipo">
                 {{ questao.tipo === 'objetiva' ? 'Objetiva' : 'Dissertativa' }}
               </span>
-              <span class="dificuldade" :class="questao.dificuldade">
+              <span class="dificuldade" :class="getDificuldadeClass(questao.dificuldade)">
                 {{ questao.dificuldade }}
               </span>
             </div>
@@ -59,13 +59,14 @@
             </div>
             <p class="questao-texto">{{ questao.texto }}</p>
             <div v-if="questao.tipo === 'objetiva'" class="alternativas">
-              <p><strong>Alternativas:</strong></p>
+              <p><strong>Texto das Alternativas:</strong></p>
               <ul>
                 <li v-for="alt in questao.alternativas" :key="alt.letra" 
-                    :class="{ correta: alt.letra === 'A' }">
+                    :class="{ correta: alt.letra === questao.alternativaCorreta }">
                   {{ alt.letra }}) {{ alt.texto }}
                 </li>
               </ul>
+              <p class="correta-destaque">✅ Alternativa correta: {{ questao.alternativaCorreta }}</p>
             </div>
             <div v-else class="linhas-resposta">
               <p><strong>Linhas para resposta:</strong> {{ questao.linhasResposta_json }} linhas</p>
@@ -87,12 +88,17 @@
         <form @submit.prevent="salvarQuestao" class="form-questao">
           <div class="form-group">
             <label>Disciplina *</label>
-            <input type="text" v-model="novaQuestao.disciplina" required />
+            <select v-model="novaQuestao.disciplina" required>
+              <option value="">Selecione a disciplina</option>
+              <option v-for="disc in disciplinas" :key="disc" :value="disc">
+                {{ disc }}
+              </option>
+            </select>
           </div>
           
           <div class="form-group">
             <label>Assunto *</label>
-            <input type="text" v-model="novaQuestao.assunto" required />
+            <input type="text" v-model="novaQuestao.assunto" required placeholder="Ex: Equações do 2º grau" />
           </div>
           
           <div class="form-group">
@@ -124,31 +130,34 @@
           
           <div class="form-group">
             <label>Enunciado da Questão *</label>
-            <textarea v-model="novaQuestao.texto" rows="5" required></textarea>
+            <textarea v-model="novaQuestao.texto" rows="5" required placeholder="Digite o enunciado da questão..."></textarea>
           </div>
           
           <!-- Campo para questão objetiva -->
           <div v-if="novaQuestao.tipo === 'objetiva'" class="objetiva-fields">
             <div class="form-group">
-              <label>Alternativa Correta *</label>
-              <input 
-                type="text" 
-                v-model="novaQuestao.alternativaCorreta" 
-                placeholder="Digite o texto da alternativa correta"
-                required
-              />
-            </div>
-            
-            <div class="form-group">
-              <label>Alternativas</label>
-              <div v-for="(alt, idx) in novaQuestao.alternativasDistratores" :key="idx" class="alternativa-item">
+              <label>Texto das Alternativas</label>
+              <div v-for="(alt, idx) in novaQuestao.alternativas" :key="idx" class="alternativa-item">
+                <span class="letra-alt">{{ alt.letra }})</span>
                 <input 
                   type="text" 
                   v-model="alt.texto" 
-                  :placeholder="`Digite o texto da alternativa ${idx + 1}`" 
+                  :placeholder="`Texto da alternativa ${alt.letra}`" 
                   required
                 />
               </div>
+            </div>
+
+            <div class="form-group">
+              <label>Alternativa Correta *</label>
+              <select v-model="novaQuestao.alternativaCorreta" required class="select-correta">
+                <option value="A">Alternativa A</option>
+                <option value="B">Alternativa B</option>
+                <option value="C">Alternativa C</option>
+                <option value="D">Alternativa D</option>
+                <option value="E">Alternativa E</option>
+              </select>
+              <small class="helper-text">Selecione qual alternativa é a correta</small>
             </div>
           </div>
           
@@ -160,21 +169,23 @@
                 type="number" 
                 v-model.number="novaQuestao.linhasResposta_json" 
                 min="1" 
-                max="100"
+                max="10"
                 step="1"
                 required
                 class="input-linhas"
               />
-              <small class="helper-text">Digite um número inteiro entre 1 e 100 linhas</small>
+              <small class="helper-text">Digite um número inteiro entre 1 e 10 linhas</small>
             </div>
           </div>
           
           <div class="form-group">
             <label>Dificuldade *</label>
             <select v-model="novaQuestao.dificuldade">
+              <option value="Muito Fácil">Muito Fácil</option>
               <option value="Fácil">Fácil</option>
               <option value="Médio">Médio</option>
               <option value="Difícil">Difícil</option>
+              <option value="Muito Difícil">Muito Difícil</option>
             </select>
           </div>
           
@@ -194,7 +205,7 @@
               <span class="tipo-questao" :class="questaoItem.tipo">
                 {{ questaoItem.tipo === 'objetiva' ? 'Objetiva' : 'Dissertativa' }}
               </span>
-              <span class="dificuldade" :class="questaoItem.dificuldade">
+              <span class="dificuldade" :class="getDificuldadeClass(questaoItem.dificuldade)">
                 {{ questaoItem.dificuldade }}
               </span>
             </div>
@@ -204,13 +215,14 @@
             </div>
             <p class="questao-texto">{{ questaoItem.texto }}</p>
             <div v-if="questaoItem.tipo === 'objetiva'" class="alternativas">
-              <p><strong>Alternativas:</strong></p>
+              <p><strong>Texto das Alternativas:</strong></p>
               <ul>
                 <li v-for="alt in questaoItem.alternativas" :key="alt.letra" 
-                    :class="{ correta: alt.letra === 'A' }">
+                    :class="{ correta: alt.letra === questaoItem.alternativaCorreta }">
                   {{ alt.letra }}) {{ alt.texto }}
                 </li>
               </ul>
+              <p class="correta-destaque">✅ Alternativa correta: {{ questaoItem.alternativaCorreta }}</p>
             </div>
             <div v-else class="linhas-resposta">
               <p><strong>Linhas para resposta:</strong> {{ questaoItem.linhasResposta_json }} linhas</p>
@@ -242,18 +254,39 @@ export default {
       buscou: false,
       resultados: [],
       minhasQuestoes: [],
+      disciplinas: [
+        'Matemática FGB',
+        'Matemática AP',
+        'Português',
+        'Literatura',
+        'Inglês',
+        'Projeto de Vida',
+        'Eletiva',
+        'Física FGB',
+        'Física AP',
+        'Química FGB',
+        'Química AP',
+        'Biologia FGB',
+        'Biologia AP',
+        'História',
+        'Geografia',
+        'Filosofia/Sociologia',
+        'Arte',
+        'Educação Física',
+        'Redação'
+      ],
       novaQuestao: {
         disciplina: '',
         assunto: '',
         autor: '',
         tipo: 'objetiva',
         texto: '',
-        alternativaCorreta: '',
-        alternativasDistratores: [
-          { texto: '' },
-          { texto: '' },
-          { texto: '' },
-          { texto: '' }
+        alternativas: [
+          { letra: 'A', texto: '' },
+          { letra: 'B', texto: '' },
+          { letra: 'C', texto: '' },
+          { letra: 'D', texto: '' },
+          { letra: 'E', texto: '' }
         ],
         linhasResposta_json: 10,
         dificuldade: 'Médio'
@@ -269,6 +302,17 @@ export default {
     this.carregarMinhasQuestoes()
   },
   methods: {
+    getDificuldadeClass(dificuldade) {
+      const mapa = {
+        'Muito Fácil': 'muito-facil',
+        'Fácil': 'facil',
+        'Médio': 'medio',
+        'Difícil': 'dificil',
+        'Muito Difícil': 'muito-dificil'
+      }
+      return mapa[dificuldade] || 'medio'
+    },
+    
     carregarMinhasQuestoes() {
       const salvas = localStorage.getItem('questoes')
       if (salvas) {
@@ -291,14 +335,14 @@ export default {
     },
     
     validarAlternativasObjetiva() {
-      if (!this.novaQuestao.alternativaCorreta.trim()) {
-        alert('Preencha a alternativa correta!')
-        return false
-      }
-      
-      const alternativasVazias = this.novaQuestao.alternativasDistratores.filter(a => !a.texto.trim())
+      const alternativasVazias = this.novaQuestao.alternativas.filter(a => !a.texto.trim())
       if (alternativasVazias.length > 0) {
-        alert('Preencha todas as alternativas!')
+        const letrasFaltando = alternativasVazias.map(a => a.letra).join(', ')
+        window.$modal.abrir({
+          titulo: "Atenção",
+          mensagem: `Preencha todas as alternativas! Faltam: ${letrasFaltando}`,
+          tipo: "alerta"
+        });
         return false
       }
       return true
@@ -313,21 +357,13 @@ export default {
       return true
     },
     
-    montarAlternativasCompletas() {
-      // Monta o array completo de alternativas com A como correta
-      const alternativas = [
-        { letra: 'A', texto: this.novaQuestao.alternativaCorreta },
-        { letra: 'B', texto: this.novaQuestao.alternativasDistratores[0].texto },
-        { letra: 'C', texto: this.novaQuestao.alternativasDistratores[1].texto },
-        { letra: 'D', texto: this.novaQuestao.alternativasDistratores[2].texto },
-        { letra: 'E', texto: this.novaQuestao.alternativasDistratores[3].texto }
-      ]
-      return alternativas
-    },
-    
     salvarQuestao() {
       if (!this.novaQuestao.disciplina || !this.novaQuestao.assunto || !this.novaQuestao.texto) {
-        alert('Preencha todos os campos obrigatórios!')
+        window.$modal.abrir({
+          titulo: "Atenção",
+          mensagem: "Preencha todos os campos obrigatórios!",
+          tipo: "alerta"
+        });
         return
       }
       
@@ -355,7 +391,7 @@ export default {
         autorNome: this.authStore.user?.nome,
         dataCriacao: new Date().toLocaleDateString('pt-BR'),
         alternativas: this.novaQuestao.tipo === 'objetiva' 
-          ? this.montarAlternativasCompletas()
+          ? this.novaQuestao.alternativas
           : [],
         linhasResposta_json: this.novaQuestao.tipo === 'dissertativa' 
           ? this.novaQuestao.linhasResposta_json 
@@ -366,7 +402,12 @@ export default {
       todas.push(nova)
       localStorage.setItem('questoes', JSON.stringify(todas))
       
-      alert('Questão salva com sucesso!')
+      window.$modal.abrir({
+        titulo: "Sucesso",
+        mensagem: "Questão salva com sucesso!",
+        tipo: "alerta"
+      });
+      
       this.carregarMinhasQuestoes()
       this.resetarFormulario()
       this.abaAtiva = 'minhas'
@@ -379,12 +420,12 @@ export default {
         autor: '',
         tipo: 'objetiva',
         texto: '',
-        alternativaCorreta: '',
-        alternativasDistratores: [
-          { texto: '' },
-          { texto: '' },
-          { texto: '' },
-          { texto: '' }
+        alternativas: [
+          { letra: 'A', texto: '' },
+          { letra: 'B', texto: '' },
+          { letra: 'C', texto: '' },
+          { letra: 'D', texto: '' },
+          { letra: 'E', texto: '' }
         ],
         linhasResposta_json: 10,
         dificuldade: 'Médio'
@@ -392,21 +433,38 @@ export default {
     },
     
     editarQuestao(questaoItem) {
-      alert(`Editar questão: ${questaoItem.texto.substring(0, 50)}...`)
+      window.$modal.abrir({
+        titulo: "Editar Questão",
+        mensagem: `Editar questão: ${questaoItem.texto.substring(0, 50)}...`,
+        tipo: "alerta"
+      });
     },
     
     excluirQuestao(id) {
-      if (confirm('Tem certeza que deseja excluir esta questão?')) {
-        const todas = JSON.parse(localStorage.getItem('questoes') || '[]')
-        const filtradas = todas.filter(q => q.id !== id)
-        localStorage.setItem('questoes', JSON.stringify(filtradas))
-        this.carregarMinhasQuestoes()
-        alert('Questão excluída com sucesso!')
-      }
+      window.$modal.abrir({
+        titulo: "Confirmar Exclusão",
+        mensagem: "Tem certeza que deseja excluir esta questão?",
+        tipo: "confirmacao",
+        onConfirm: () => {
+          const todas = JSON.parse(localStorage.getItem('questoes') || '[]')
+          const filtradas = todas.filter(q => q.id !== id)
+          localStorage.setItem('questoes', JSON.stringify(filtradas))
+          this.carregarMinhasQuestoes()
+          window.$modal.abrir({
+            titulo: "Sucesso",
+            mensagem: "Questão excluída com sucesso!",
+            tipo: "alerta"
+          });
+        }
+      });
     },
     
     usarQuestao(questaoItem) {
-      alert(`Questão "${questaoItem.texto.substring(0, 50)}..." adicionada à prova!`)
+      window.$modal.abrir({
+        titulo: "Adicionar à Prova",
+        mensagem: `Questão "${questaoItem.texto.substring(0, 50)}..." adicionada à prova!`,
+        tipo: "alerta"
+      });
     }
   }
 }
@@ -563,25 +621,36 @@ export default {
   color: #6c757d;
 }
 
+/* Estilos de dificuldade */
 .dificuldade {
   padding: 4px 12px;
   border-radius: 20px;
   font-size: 12px;
 }
 
-.dificuldade.Fácil {
+.dificuldade.muito-facil {
   background: #28a74520;
   color: #28a745;
 }
 
-.dificuldade.Médio {
+.dificuldade.facil {
+  background: #28a74520;
+  color: #28a745;
+}
+
+.dificuldade.medio {
   background: #ffc10720;
   color: #ffc107;
 }
 
-.dificuldade.Difícil {
+.dificuldade.dificil {
   background: #dc354520;
   color: #dc3545;
+}
+
+.dificuldade.muito-dificil {
+  background: #8b000020;
+  color: #8b0000;
 }
 
 .questao-texto {
@@ -601,6 +670,13 @@ export default {
 }
 
 .alternativas li.correta {
+  color: #28a745;
+  font-weight: 500;
+}
+
+.correta-destaque {
+  margin-top: 10px;
+  font-size: 13px;
   color: #28a745;
   font-weight: 500;
 }
@@ -669,7 +745,9 @@ export default {
   font-weight: 500;
 }
 
-.form-group input, .form-group textarea, .form-group select {
+.form-group input, 
+.form-group textarea, 
+.form-group select {
   width: 100%;
   padding: 12px;
   border: 1px solid #ddd;
@@ -677,14 +755,21 @@ export default {
   font-size: 14px;
 }
 
-.input-linhas {
-  width: 200px;
+.form-group select {
+  cursor: pointer;
+  background-color: white;
+}
+
+.tema-escuro .form-group select {
+  background-color: #1a1a1a;
+  border-color: #404040;
+  color: #e5e5e5;
 }
 
 .helper-text {
   display: block;
   margin-top: 5px;
-  font-size: 12px;
+  font-size: 11px;
   color: #888;
 }
 
@@ -706,15 +791,29 @@ export default {
 }
 
 .alternativa-item {
+  display: flex;
+  gap: 12px;
   margin-bottom: 12px;
+  align-items: center;
+}
+
+.letra-alt {
+  width: 35px;
+  font-weight: 600;
+  color: #666;
 }
 
 .alternativa-item input[type="text"] {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 14px;
+  flex: 1;
+}
+
+.select-correta {
+  width: 200px;
+  cursor: pointer;
+}
+
+.input-linhas {
+  width: 200px;
 }
 
 .btn-salvar-questao {
@@ -727,6 +826,10 @@ export default {
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
+}
+
+.btn-salvar-questao:hover {
+  background: #218838;
 }
 
 .sem-resultados, .sem-questoes {
@@ -751,6 +854,16 @@ export default {
     gap: 10px;
   }
   
+  .alternativa-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .letra-alt {
+    width: auto;
+  }
+  
+  .select-correta, 
   .input-linhas {
     width: 100%;
   }

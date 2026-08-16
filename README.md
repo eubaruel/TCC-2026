@@ -92,3 +92,47 @@ Colégio Técnico UNIVAP Unidade Centro
 
 **Ano:**  
 2026  
+
+
+---
+
+**Jsons Questão**
+
+		"questao": [
+			{
+				"_id": "6a0d94f7a30c197b44675521",
+				"assunto": "Guerra Dos Vários Anos",
+				"autor": "ENEM",
+				"dificuldade": "Médio",
+				"disciplina": [
+					"História"
+				],
+				"enunciado": "Acerta essa e as outras questões pra você tirar um 10 bem chave e legal",
+				"numero_linhas": 5,
+				"professor": {
+					"nome": "Ricardão Dos Santos"
+				},
+				"tipo_questao": "Dissertativa"
+			},
+			{
+				"_id": "6a0d97fea30c197b44675522",
+				"alternativa_correta": "certa",
+				"alternativas": [
+					"errada1",
+					"errada2",
+					"errada3",
+					"errada4",
+					"certa"
+				],
+				"assunto": "Guerra Dos Vários Anos",
+				"autor": "ENEM",
+				"dificuldade": "Médio",
+				"disciplina": [
+					"História"
+				],
+				"enunciado": "Acerta essa e as outras questões pra você tirar um 10 bem chave e legal e foda",
+				"professor": {
+					"nome": "Ricardão Dos Santos"
+				},
+				"tipo_questao": "Objetiva"
+			}

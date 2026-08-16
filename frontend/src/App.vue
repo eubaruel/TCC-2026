@@ -1,11 +1,20 @@
 <template>
   <router-view />
+  <ModalGlobal ref="$modal" />
 </template>
 
 <script>
+import ModalGlobal from '@/components/ModalGlobal.vue'
+
 export default {
   name: 'App',
+  components: {
+    ModalGlobal
+  },
   mounted() {
+    // Disponibiliza o modal globalmente
+    window.$modal = this.$refs.$modal
+    
     this.aplicarTemaSalvo()
     this.verificarRotaLogin()
     
@@ -52,5 +61,5 @@ export default {
 </script>
 
 <style>
-/* Estilos adicionais específicos do App se necessário */
+/* Estilos adicionais */
 </style>
