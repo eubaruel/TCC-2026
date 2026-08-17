@@ -7,197 +7,98 @@
         <button @click="fechar" class="btn-fechar">✕ Fechar</button>
       </div>
     </div>
-    <div ref="editor" class="quill-editor"></div>
+    <form class="quill-editor" @submit.prevent="salvar">
+      <table>
+        <tbody>
+          <tr><td><label for="turma">Turma</label></td><td><input id="turma" v-model.trim="form.id_turma" required minlength="10" placeholder="Turma 2026 A" /></td></tr>
+          <tr><td><label for="disciplina">Disciplina</label></td><td><select id="disciplina" v-model="form.codigo_disciplina" required><option value="">Selecione</option><option v-for="disciplina in disciplinas" :key="disciplina.codigo_disciplina" :value="disciplina.codigo_disciplina">{{ disciplina.nome_disciplina }}</option></select></td></tr>
+          <tr><td><label for="tipo">Tipo</label></td><td><select id="tipo" v-model="form.tipo"><option>Objetiva</option><option>Dissertativa</option></select></td></tr>
+          <tr><td><label for="serie">Série</label></td><td><input id="serie" v-model.number="form.serie" type="number" min="1" required /></td></tr>
+          <tr><td><label for="bimestre">Bimestre</label></td><td><input id="bimestre" v-model.trim="form.bimestre" required placeholder="1° bimestre" /></td></tr>
+          <tr><td><label for="dataAplicacao">Data de aplicação</label></td><td><input id="dataAplicacao" v-model="form.data_de_aplicacao" type="date" required /></td></tr>
+          <tr><td><label for="status">Status</label></td><td><select id="status" v-model="form.status"><option>Não Corrigida</option><option>Corrigida</option></select></td></tr>
+        </tbody>
+      </table>
+      <label for="questoes">Questões (selecione pelo menos cinco)</label>
+      <select id="questoes" v-model="form.questoes" multiple size="8" required>
+        <option v-for="questao in questoesDisponiveis" :key="questao._id" :value="questao._id">{{ questao.enunciado }}</option>
+      </select>
+      <p v-if="erro">{{ erro }}</p>
+    </form>
   </div>
 </template>
 
 <script>
-import Quill from "quill";
-import "quill/dist/quill.snow.css";
+import { useAuthStore } from "@/stores/auth";
+import { useProvaDraftStore } from "@/stores/provaDraft";
+import { listarDisciplinas } from "@/services/disciplinas";
+import { listarQuestoes } from "@/services/questoes";
+import { atualizarProva, criarProva, listarProvas } from "@/services/provas";
+
+const novoFormulario = () => ({ id_turma: "", codigo_disciplina: "", tipo: "Objetiva", serie: 3, bimestre: "", data_de_aplicacao: "", status: "Não Corrigida", questoes: [] });
 
 export default {
   name: "EditorProva",
   props: {
-    provaId: {
-      type: Number,
-      default: null,
+    provaId: { type: [String, Number], default: null },
+    titulo: { type: String, default: "Nova Prova" },
+  },
+  emits: ["fechar", "salvo"],
+  setup() {
+    return { authStore: useAuthStore(), draftStore: useProvaDraftStore() };
+  },
+  data: () => ({ form: novoFormulario(), disciplinas: [], questoes: [], erro: "" }),
+  computed: {
+    questoesDisponiveis() {
+      const disciplina = this.disciplinas.find((item) => item.codigo_disciplina === this.form.codigo_disciplina);
+      if (!disciplina) return [];
+      const referencias = [disciplina.codigo_disciplina.toLowerCase(), disciplina.nome_disciplina.toLowerCase()];
+      return this.questoes.filter((questao) => questao.tipo_questao === this.form.tipo && questao.disciplina.some((item) => referencias.includes(item.toLowerCase())));
     },
-    titulo: {
-      type: String,
-      default: "Nova Prova",
-    },
   },
-  data() {
-    return {
-      quill: null,
-      conteudo: "",
-      autoSaveInterval: null,
-    };
-  },
-  mounted() {
-    this.inicializarEditor();
-    this.carregarConteudo();
-
-    this.autoSaveInterval = setInterval(() => {
-      this.salvarAutomaticamente();
-    }, 30000);
-  },
-  beforeUnmount() {
-    if (this.autoSaveInterval) {
-      clearInterval(this.autoSaveInterval);
-    }
-    if (this.quill) {
-      this.quill = null;
+  async mounted() {
+    try {
+      const [disciplinas, questoes] = await Promise.all([listarDisciplinas(), listarQuestoes()]);
+      this.disciplinas = disciplinas.disciplinas;
+      this.questoes = questoes.questoes;
+      if (this.provaId) {
+        const provas = (await listarProvas({ id: this.provaId })).provas;
+        const prova = provas[0];
+        if (prova) this.form = { id_turma: Array.isArray(prova.id_turma) ? prova.id_turma.join(", ") : prova.id_turma, codigo_disciplina: prova.disciplina.codigo_disciplina, tipo: prova.tipo, serie: prova.serie, bimestre: prova.bimestre, data_de_aplicacao: prova.data_de_aplicacao, status: prova.status, questoes: [...prova.questoes] };
+      } else {
+        this.form.questoes = this.draftStore.questoes.map((questao) => questao._id);
+      }
+    } catch (error) {
+      this.erro = error.details || error.message;
     }
   },
   methods: {
-    inicializarEditor() {
-      const opcoes = {
-        theme: "snow",
-        modules: {
-          toolbar: {
-            container: [
-              [{ header: [1, 2, 3, 4, 5, 6, false] }],
-              ["bold", "italic", "underline", "strike"],
-              ["blockquote", "code-block"],
-              [{ list: "ordered" }, { list: "bullet" }],
-              [{ script: "sub" }, { script: "super" }],
-              [{ indent: "-1" }, { indent: "+1" }],
-              [{ align: [] }],
-              ["link", "image", "video"],
-              ["clean"],
-            ],
-            handlers: {
-              image: this.imageHandler,
-            },
-          },
-        },
-      };
-
-      this.quill = new Quill(this.$refs.editor, opcoes);
-
-      this.quill.on("text-change", () => {
-        this.conteudo = this.quill.root.innerHTML;
-      });
+    disciplinaSelecionada() {
+      return this.disciplinas.find((disciplina) => disciplina.codigo_disciplina === this.form.codigo_disciplina);
     },
-
-    imageHandler() {
-      const input = document.createElement("input");
-      input.setAttribute("type", "file");
-      input.setAttribute("accept", "image/*");
-      input.click();
-
-      input.onchange = () => {
-        const file = input.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          try {
-            // Usa um try-catch para capturar qualquer erro
-            const range = this.quill.getSelection();
-            const position = range ? range.index : this.quill.getLength();
-            this.quill.insertEmbed(position, "image", e.target.result);
-          } catch (error) {
-            // Se der erro, insere no final
-            try {
-              const position = this.quill.getLength();
-              this.quill.insertEmbed(position, "image", e.target.result);
-            } catch (err) {
-              console.error("Erro ao inserir imagem:", err);
-            }
-          }
-        };
-        reader.readAsDataURL(file);
-      };
+    payload() {
+      const disciplina = this.disciplinaSelecionada();
+      return { id_turma: this.form.id_turma, professor: { nome: this.authStore.user.nome }, disciplina: { codigo_disciplina: disciplina.codigo_disciplina, nome_disciplina: disciplina.nome_disciplina }, status: this.form.status, tipo: this.form.tipo, serie: Number(this.form.serie), bimestre: this.form.bimestre, data_de_aplicacao: this.form.data_de_aplicacao, questoes: this.form.questoes };
     },
-
-    carregarConteudo() {
-      if (this.provaId) {
-        const provas = JSON.parse(localStorage.getItem("provas") || "[]");
-        const prova = provas.find((p) => p.id === this.provaId);
-        if (prova && prova.conteudo) {
-          this.quill.root.innerHTML = prova.conteudo;
-          this.conteudo = prova.conteudo;
-        }
+    async salvar() {
+      this.erro = "";
+      if (!this.disciplinaSelecionada()) { this.erro = "Selecione uma disciplina."; return; }
+      if (this.form.questoes.length < 5) { this.erro = "Selecione ao menos cinco questões."; return; }
+      try {
+        if (this.provaId) await atualizarProva(this.provaId, this.payload());
+        else await criarProva(this.payload());
+        this.draftStore.limpar();
+        this.$emit("salvo");
+      } catch (error) {
+        this.erro = error.details || error.message;
       }
     },
-
-    salvar() {
-      const conteudoAtual = this.quill.root.innerHTML;
-      const provas = JSON.parse(localStorage.getItem("provas") || "[]");
-
-      if (this.provaId) {
-        const index = provas.findIndex((p) => p.id === this.provaId);
-        if (index !== -1) {
-          provas[index].conteudo = conteudoAtual;
-          provas[index].atualizadoEm = new Date().toISOString();
-        }
-      } else {
-        const novaProva = {
-          id: Date.now(),
-          titulo:
-            this.titulo || `Prova ${new Date().toLocaleDateString("pt-BR")}`,
-          conteudo: conteudoAtual,
-          status: "rascunho",
-          criadaEm: new Date().toISOString(),
-          atualizadoEm: new Date().toISOString(),
-        };
-        provas.push(novaProva);
-      }
-
-      localStorage.setItem("provas", JSON.stringify(provas));
-
-      window.$modal.abrir({
-        titulo: "Sucesso",
-        mensagem: "Prova salva com sucesso!",
-        tipo: "pequeno",
-      });
-
-      setTimeout(() => {
-        const modal = document.querySelector(".modal-overlay");
-        if (modal) modal.click();
-      }, 1500);
-    },
-
-    salvarAutomaticamente() {
-      if (this.quill) {
-        const conteudoAtual = this.quill.root.innerHTML;
-        if (conteudoAtual !== this.conteudo) {
-          this.salvar();
-          console.log("Auto-salvamento realizado");
-        }
-      }
-    },
-
     fechar() {
-      if (this.quill) {
-        const conteudoAtual = this.quill.root.innerHTML;
-        if (conteudoAtual !== this.conteudo) {
-          window.$modal.abrir({
-            titulo: "Alterações não salvas",
-            mensagem:
-              "Você tem alterações não salvas. Deseja salvar antes de sair?",
-            tipo: "confirmacao",
-            onConfirm: () => {
-              this.salvar();
-              this.$emit("fechar");
-            },
-            onCancel: () => {
-              this.$emit("fechar");
-            },
-          });
-        } else {
-          this.$emit("fechar");
-        }
-      } else {
-        this.$emit("fechar");
-      }
+      this.$emit("fechar");
     },
   },
 };
 </script>
-
 <style scoped>
 .editor-container {
   background: white;

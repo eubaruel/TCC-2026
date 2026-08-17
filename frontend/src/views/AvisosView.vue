@@ -113,19 +113,8 @@ import { useAuthStore } from "@/stores/auth";
 
 export default {
   name: "AvisosView",
-  setup() {
-    const authStore = useAuthStore();
-    return { authStore };
-  },
-  data() {
-    return {
-      avisos: [],
-      novoAviso: {
-        titulo: "",
-        mensagem: "",
-      },
-    };
-  },
+  setup() { return { authStore: useAuthStore() }; },
+  data: () => ({ avisos: [], novoAviso: { titulo: "", mensagem: "" } }),
   computed: {
     isProfessor() {
       return this.authStore.isProfessor;
@@ -134,97 +123,18 @@ export default {
       return this.authStore.isProcessoPedagogico;
     },
   },
-  mounted() {
-    this.carregarAvisos();
-  },
   methods: {
-    carregarAvisos() {
-      const salvos = localStorage.getItem("avisos");
-      if (salvos) {
-        this.avisos = JSON.parse(salvos);
-      } else {
-        this.avisos = [];
-        localStorage.setItem("avisos", JSON.stringify(this.avisos));
-      }
-    },
-
     criarAviso() {
-      if (!this.novoAviso.titulo || !this.novoAviso.mensagem) {
-        window.$modal.abrir({
-          titulo: "Atenção",
-          mensagem: "Preencha título e mensagem!",
-          tipo: "alerta",
-        });
-        return;
-      }
-
-      const novo = {
-        id: Date.now(),
-        titulo: this.novoAviso.titulo,
-        mensagem: this.novoAviso.mensagem,
-        dataCriacao: new Date().toLocaleDateString("pt-BR"),
-        lido: false,
-        lidoPor: [],
-      };
-
-      this.avisos.unshift(novo);
-      localStorage.setItem("avisos", JSON.stringify(this.avisos));
-
-      this.resetarFormulario();
-
-      window.$modal.abrir({
-        titulo: "Sucesso",
-        mensagem: "Aviso publicado com sucesso!",
-        tipo: "alerta",
-      });
+      // A API não disponibiliza endpoints para avisos.
     },
-
-    marcarComoLido(id) {
-      const index = this.avisos.findIndex((a) => a.id === id);
-      if (index !== -1) {
-        const professorNome = this.authStore.user?.nome || "Professor";
-
-        if (!this.avisos[index].lidoPor) {
-          this.avisos[index].lidoPor = [];
-        }
-
-        if (!this.avisos[index].lidoPor.includes(professorNome)) {
-          this.avisos[index].lidoPor.push(professorNome);
-        }
-
-        this.avisos[index].lido = true;
-        localStorage.setItem("avisos", JSON.stringify(this.avisos));
-
-        window.$modal.abrir({
-          titulo: "Sucesso",
-          mensagem: "Aviso marcado como lido!",
-          tipo: "alerta",
-        });
-      }
-    },
-
     resetarFormulario() {
-      this.novoAviso = {
-        titulo: "",
-        mensagem: "",
-      };
+      this.novoAviso = { titulo: "", mensagem: "" };
     },
-
-    excluirAviso(id) {
-      window.$modal.abrir({
-        titulo: "Confirmar Exclusão",
-        mensagem: "Tem certeza que deseja excluir este aviso?",
-        tipo: "confirmacao",
-        onConfirm: () => {
-          this.avisos = this.avisos.filter((a) => a.id !== id);
-          localStorage.setItem("avisos", JSON.stringify(this.avisos));
-          window.$modal.abrir({
-            titulo: "Sucesso",
-            mensagem: "Aviso excluído com sucesso!",
-            tipo: "alerta",
-          });
-        },
-      });
+    marcarComoLido() {
+      // A API não disponibiliza endpoints para avisos.
+    },
+    excluirAviso() {
+      // A API não disponibiliza endpoints para avisos.
     },
   },
 };

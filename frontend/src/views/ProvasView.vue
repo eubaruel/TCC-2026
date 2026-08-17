@@ -211,6 +211,7 @@
       <EditorProva
         :provaId="provaEmEdicao?.id || null"
         :titulo="provaEmEdicao?.titulo || 'Nova Prova'"
+        @salvo="provaSalva"
         @fechar="fecharEditor"
       />
     </div>
@@ -219,141 +220,82 @@
 
 <script>
 import EditorProva from "@/components/EditorProva.vue";
+import { useAuthStore } from "@/stores/auth";
+import { listarQuestoes } from "@/services/questoes";
+import { excluirProva as excluirProvaApi, listarProvas } from "@/services/provas";
 
 export default {
   name: "ProvasView",
-  components: {
-    EditorProva,
+  components: { EditorProva },
+  setup() {
+    return { authStore: useAuthStore() };
   },
-  data() {
-    return {
-      abaAtiva: "minhas",
-      minhasProvas: [],
-      mostrarEditor: false,
-      provaEmEdicao: null,
-    };
-  },
-  mounted() {
-    this.carregarProvas();
+  data: () => ({
+    abaAtiva: "minhas",
+    minhasProvas: [],
+    todasQuestoes: [],
+    mostrarEditor: false,
+    provaEmEdicao: null,
+    erro: "",
+  }),
+  async mounted() {
+    await Promise.all([this.carregarQuestoes(), this.carregarProvas()]);
   },
   methods: {
-    carregarProvas() {
-      const provas = JSON.parse(localStorage.getItem("provas") || "[]");
-      this.minhasProvas = provas;
+    async carregarQuestoes() {
+      try {
+        this.todasQuestoes = (await listarQuestoes()).questoes;
+      } catch (error) {
+        this.erro = error.details || error.message;
+      }
     },
-
-    formatarData(dataISO) {
-      if (!dataISO) return "Data desconhecida";
-      const data = new Date(dataISO);
-      return data.toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+    async carregarProvas() {
+      try {
+        const provas = (await listarProvas({ nome: this.authStore.user?.nome })).provas;
+        this.minhasProvas = provas.map((prova) => ({
+          ...prova,
+          id: prova._id,
+          titulo: `${prova.disciplina.nome_disciplina} - ${Array.isArray(prova.id_turma) ? prova.id_turma.join(", ") : prova.id_turma}`,
+          criadaEm: prova.data_de_aplicacao,
+        }));
+      } catch (error) {
+        this.erro = error.details || error.message;
+      }
     },
-
     abrirEditor(prova = null) {
-      this.provaEmEdicao = prova;
+      this.provaEmEdicao = prova?.id ? prova : null;
       this.mostrarEditor = true;
     },
-
     editarProva(prova) {
       this.abrirEditor(prova);
     },
-
     fecharEditor() {
       this.mostrarEditor = false;
       this.provaEmEdicao = null;
-      this.carregarProvas();
     },
-
-    baixarProva(prova) {
-      if (!prova.conteudo) {
-        window.$modal.abrir({
-          titulo: "Atenção",
-          mensagem: "Esta prova não possui conteúdo para baixar.",
-          tipo: "alerta",
-        });
-        return;
-      }
-
-      const blob = new Blob(
-        [
-          `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>${prova.titulo || "Prova"}</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
-            h1 { text-align: center; margin-bottom: 30px; }
-            img { max-width: 100%; }
-          </style>
-        </head>
-        <body>
-          <h1>${prova.titulo || "Prova"}</h1>
-          ${prova.conteudo}
-          <p style="margin-top: 40px; font-size: 12px; color: #888;">
-            Gerado em ${new Date().toLocaleString("pt-BR")}
-          </p>
-        </body>
-        </html>
-      `,
-        ],
-        { type: "text/html" },
-      );
-
+    async provaSalva() {
+      this.fecharEditor();
+      await Promise.all([this.carregarQuestoes(), this.carregarProvas()]);
+    },
+    formatarData(data) {
+      return data ? new Date(`${data}T00:00:00`).toLocaleDateString("pt-BR") : "Data desconhecida";
+    },
+    async baixarProva(prova) {
+      const questoes = this.todasQuestoes.filter((questao) => prova.questoes.includes(questao._id));
+      const corpo = questoes.map((questao, index) => `<section><p><strong>${index + 1}.</strong> ${questao.enunciado}</p>${questao.alternativas ? `<ol>${questao.alternativas.map((alternativa) => `<li>${alternativa.texto}</li>`).join("")}</ol>` : `<p>Linhas para resposta: ${questao.numero_linhas}</p>`}</section>`).join("");
+      const blob = new Blob([`<html><meta charset="UTF-8"><body><h1>${prova.titulo}</h1>${corpo}</body></html>`], { type: "text/html" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${prova.titulo || "prova"}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${prova.titulo}.html`;
+      link.click();
       URL.revokeObjectURL(url);
-
-      window.$modal.abrir({
-        titulo: "Sucesso",
-        mensagem: "Prova baixada com sucesso!",
-        tipo: "pequeno",
-      });
-      setTimeout(() => {
-        const modal = document.querySelector(".modal-overlay");
-        if (modal) modal.click();
-      }, 1500);
     },
-
-    enviarDrive(prova) {
-      window.$modal.abrir({
-        titulo: "Enviar para Drive",
-        mensagem: `A prova "${
-          prova.titulo || "sem título"
-        }" será enviada para o Google Drive. Funcionalidade em desenvolvimento.`,
-        tipo: "alerta",
-      });
+    enviarDrive() {
+      // A API não disponibiliza endpoint para envio ao Google Drive.
     },
-
     excluirProva(id) {
-      window.$modal.abrir({
-        titulo: "Confirmar Exclusão",
-        mensagem:
-          "Tem certeza que deseja excluir esta prova? Esta ação não pode ser desfeita.",
-        tipo: "confirmacao",
-        onConfirm: () => {
-          const provas = JSON.parse(localStorage.getItem("provas") || "[]");
-          const filtradas = provas.filter((p) => p.id !== id);
-          localStorage.setItem("provas", JSON.stringify(filtradas));
-          this.carregarProvas();
-          window.$modal.abrir({
-            titulo: "Sucesso",
-            mensagem: "Prova excluída com sucesso!",
-            tipo: "alerta",
-          });
-        },
-      });
+      window.$modal.abrir({ titulo: "Excluir prova", mensagem: "Deseja excluir esta prova?", tipo: "confirmacao", onConfirm: async () => { try { await excluirProvaApi(id); await this.carregarProvas(); } catch (error) { this.erro = error.details || error.message; } } });
     },
   },
 };

@@ -50,137 +50,45 @@
 </template>
 
 <script>
-import BarraLateral from '@/components/BarraLateral.vue'
-import { useAuthStore } from '@/stores/auth'
-import { useRouter } from 'vue-router'
+import BarraLateral from "@/components/BarraLateral.vue";
+import { useAuthStore } from "@/stores/auth";
 
 export default {
-  name: 'TelaPrincipal',
-  components: {
-    BarraLateral
-  },
+  name: "TelaPrincipal",
+  components: { BarraLateral },
   setup() {
-    const authStore = useAuthStore()
-    const router = useRouter()
-    return { authStore, router }
+    return { authStore: useAuthStore() };
   },
-  data() {
-    return {
-      temaAtual: 'tema-claro',
-      mostrarHeader: true,
-      mostrarModalTrocarSenha: false,
-      novaSenha: '',
-      confirmarSenha: '',
-      erroSenha: ''
-    }
-  },
+  data: () => ({
+    temaAtual: "tema-claro",
+    mostrarHeader: true,
+    mostrarModalTrocarSenha: false,
+    novaSenha: "",
+    confirmarSenha: "",
+    erroSenha: "",
+  }),
   computed: {
     nomeUsuario() {
-      return this.authStore.user?.nome || 'Usuário'
-    }
-  },
-  mounted() {
-    this.carregarTema()
-    this.verificarRota()
-    this.verificarPrimeiroAcesso()
-    
-    window.addEventListener('tema-mudou', this.atualizarTema)
-  },
-  beforeUnmount() {
-    window.removeEventListener('tema-mudou', this.atualizarTema)
+      return this.authStore.user?.nome || "Usuário";
+    },
   },
   watch: {
-    '$route.path'() {
-      this.verificarRota()
-    }
+    "$route.path"() {
+      this.mostrarHeader = this.$route.path !== "/configuracoes";
+    },
+  },
+  mounted() {
+    this.mostrarHeader = this.$route.path !== "/configuracoes";
   },
   methods: {
-    carregarTema() {
-      const temaSalvo = localStorage.getItem('tema')
-      if (temaSalvo) {
-        this.temaAtual = temaSalvo
-      } else {
-        this.temaAtual = 'tema-claro'
-      }
+    confirmarTrocaSenha() {
+      // A API não disponibiliza endpoint para alteração de senha.
     },
-    
-    atualizarTema(event) {
-      this.temaAtual = event.detail.tema
-    },
-    
-    verificarRota() {
-      if (this.$route.path === '/configuracoes') {
-        this.mostrarHeader = false
-      } else {
-        this.mostrarHeader = true
-      }
-    },
-    
-    verificarPrimeiroAcesso() {
-      const precisaTrocar = localStorage.getItem('precisaTrocarSenha') === 'true'
-      if (precisaTrocar) {
-        this.mostrarModalTrocarSenha = true
-      }
-    },
-    
-    async confirmarTrocaSenha() {
-      this.erroSenha = ''
-      
-      if (this.novaSenha !== this.confirmarSenha) {
-        this.erroSenha = 'As senhas não coincidem'
-        return
-      }
-      
-      if (this.novaSenha.length < 6) {
-        this.erroSenha = 'A senha deve ter pelo menos 6 caracteres'
-        return
-      }
-      
-      if (!/[A-Z]/.test(this.novaSenha)) {
-        this.erroSenha = 'A senha deve conter pelo menos uma letra maiúscula'
-        return
-      }
-      
-      if (!/\d/.test(this.novaSenha)) {
-        this.erroSenha = 'A senha deve conter pelo menos um número'
-        return
-      }
-      
-      if (!/[!@#$%^&*(),.?":{}|<>]/.test(this.novaSenha)) {
-        this.erroSenha = 'A senha deve conter pelo menos um caractere especial'
-        return
-      }
-      
-      const sucesso = await this.authStore.trocarSenha(this.novaSenha)
-      
-      if (sucesso) {
-        window.$modal.abrir({
-          titulo: "Sucesso",
-          mensagem: "Senha alterada com sucesso!",
-          tipo: "alerta"
-        });
-        this.mostrarModalTrocarSenha = false
-        this.novaSenha = ''
-        this.confirmarSenha = ''
-      } else {
-        this.erroSenha = 'Erro ao alterar senha'
-      }
-    },
-    
     fecharModalTrocarSenha() {
-      window.$modal.abrir({
-        titulo: "Cancelar",
-        mensagem: "Você será desconectado. Tem certeza?",
-        tipo: "confirmacao",
-        onConfirm: () => {
-          this.mostrarModalTrocarSenha = false
-          this.authStore.logout()
-          this.router.push('/')
-        }
-      });
-    }
-  }
-}
+      this.mostrarModalTrocarSenha = false;
+    },
+  },
+};
 </script>
 
 <style scoped>

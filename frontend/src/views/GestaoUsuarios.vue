@@ -407,374 +407,122 @@
 
 <script>
 import { useUsersStore } from "@/stores/users";
+import { listarDisciplinas } from "@/services/disciplinas";
 
 export default {
   name: "GestaoUsuarios",
   setup() {
-    const usersStore = useUsersStore();
-    return { usersStore };
+    return { usersStore: useUsersStore() };
   },
-  data() {
-    return {
-      abaAtiva: "professores",
-
-      filtrosProfessores: {
-        registro: "",
-        nome: "",
-        email: "",
-        disciplina: "",
-      },
-      sugestoesRegistroProfessor: [],
-      sugestoesNomeProfessor: [],
-
-      filtrosProcesso: {
-        registro: "",
-        nome: "",
-        email: "",
-      },
-      sugestoesRegistroProcesso: [],
-      sugestoesNomeProcesso: [],
-
-      modalUsuarioAberto: false,
-      modalExcluirAberto: false,
-      modoEdicao: false,
-      usuarioParaExcluir: null,
-      disciplinaSelecionada: "",
-      formUsuario: {
-        registro: null,
-        nome: "",
-        email: "",
-        role: "Professor",
-        disciplina: "",
-        dataNascimento: "",
-        senha: "",
-      },
-
-      disciplinas: [
-        "Matemática FGB",
-        "Matemática AP",
-        "Português",
-        "Literatura",
-        "Inglês",
-        "Projeto de Vida",
-        "Eletiva",
-        "Física FGB",
-        "Física AP",
-        "Química FGB",
-        "Química AP",
-        "Biologia FGB",
-        "Biologia AP",
-        "História",
-        "Geografia",
-        "Filosofia/Sociologia",
-        "Arte",
-        "Educação Física",
-        "Redação",
-      ],
-    };
-  },
+  data: () => ({
+    abaAtiva: "professores",
+    filtrosProfessores: { registro: "", nome: "", email: "", disciplina: "" },
+    filtrosProcesso: { registro: "", nome: "", email: "" },
+    sugestoesRegistroProfessor: [],
+    sugestoesNomeProfessor: [],
+    sugestoesRegistroProcesso: [],
+    sugestoesNomeProcesso: [],
+    modalUsuarioAberto: false,
+    modalExcluirAberto: false,
+    modoEdicao: false,
+    usuarioParaExcluir: null,
+    disciplinaSelecionada: "",
+    formUsuario: { registro: null, nome: "", email: "", role: "Professor", disciplina: "", dataNascimento: "", senha: "", ativo: true },
+    disciplinas: [],
+    erro: "",
+  }),
   computed: {
     professores() {
-      return this.usersStore.professores || [];
+      return this.usersStore.professores.map((user) => ({ ...user, id: user.registro }));
     },
     processo() {
-      return this.usersStore.processoPedagogico || [];
+      return this.usersStore.processoPedagogico.map((user) => ({ ...user, id: user.registro }));
     },
     professoresFiltrados() {
-      let resultado = this.professores ? [...this.professores] : [];
-
-      if (this.filtrosProfessores.registro) {
-        resultado = resultado.filter(
-          (u) =>
-            u.registro &&
-            u.registro.toString().includes(this.filtrosProfessores.registro),
-        );
-      }
-
-      if (this.filtrosProfessores.nome) {
-        const termo = this.filtrosProfessores.nome.toLowerCase();
-        resultado = resultado.filter(
-          (u) => u.nome && u.nome.toLowerCase().includes(termo),
-        );
-      }
-
-      if (this.filtrosProfessores.email) {
-        const termo = this.filtrosProfessores.email.toLowerCase();
-        resultado = resultado.filter(
-          (u) => u.email && u.email.toLowerCase().includes(termo),
-        );
-      }
-
-      if (this.filtrosProfessores.disciplina) {
-        resultado = resultado.filter(
-          (u) => u.disciplina === this.filtrosProfessores.disciplina,
-        );
-      }
-
-      return resultado;
+      return this.professores.filter((user) => {
+        const registro = String(user.registro).includes(this.filtrosProfessores.registro);
+        const nome = user.nome.toLowerCase().includes(this.filtrosProfessores.nome.toLowerCase());
+        const email = user.email.toLowerCase().includes(this.filtrosProfessores.email.toLowerCase());
+        const disciplina = !this.filtrosProfessores.disciplina || user.disciplina === this.filtrosProfessores.disciplina;
+        return registro && nome && email && disciplina;
+      });
     },
     processoFiltrados() {
-      let resultado = this.processo ? [...this.processo] : [];
-
-      if (this.filtrosProcesso.registro) {
-        resultado = resultado.filter(
-          (u) =>
-            u.registro &&
-            u.registro.toString().includes(this.filtrosProcesso.registro),
-        );
-      }
-
-      if (this.filtrosProcesso.nome) {
-        const termo = this.filtrosProcesso.nome.toLowerCase();
-        resultado = resultado.filter(
-          (u) => u.nome && u.nome.toLowerCase().includes(termo),
-        );
-      }
-
-      if (this.filtrosProcesso.email) {
-        const termo = this.filtrosProcesso.email.toLowerCase();
-        resultado = resultado.filter(
-          (u) => u.email && u.email.toLowerCase().includes(termo),
-        );
-      }
-
-      return resultado;
+      return this.processo.filter((user) => String(user.registro).includes(this.filtrosProcesso.registro) && user.nome.toLowerCase().includes(this.filtrosProcesso.nome.toLowerCase()) && user.email.toLowerCase().includes(this.filtrosProcesso.email.toLowerCase()));
     },
   },
-  mounted() {
-    this.usersStore.fetchUsers();
+  async mounted() {
+    try {
+      const [, data] = await Promise.all([this.usersStore.fetchUsers(), listarDisciplinas()]);
+      this.disciplinas = data.disciplinas.map((disciplina) => disciplina.nome_disciplina);
+    } catch (error) {
+      this.erro = error.details || error.message;
+    }
   },
   methods: {
-    formatarDataParaSenha(dataNascimento) {
-      if (!dataNascimento) return null;
-      // Converte de AAAA-MM-DD para DDMMAAAA
-      const partes = dataNascimento.split("-");
-      if (partes.length === 3) {
-        // partes[0] = ano, partes[1] = mês, partes[2] = dia
-        return `${partes[2]}${partes[1]}${partes[0]}`;
-      }
-      return dataNascimento.replace(/\D/g, "");
-    },
-
     buscarPorRegistroProfessor() {
-      const termo = this.filtrosProfessores.registro;
-      if (termo && termo.length > 0) {
-        this.sugestoesRegistroProfessor = this.usersStore
-          .getByRegistro(parseInt(termo))
-          .filter((u) => u.role === "Professor")
-          .slice(0, 3);
-      } else {
-        this.sugestoesRegistroProfessor = [];
-      }
+      this.sugestoesRegistroProfessor = this.usersStore.getByRegistro(this.filtrosProfessores.registro).filter((user) => user.role === "Professor").slice(0, 3);
     },
-
     buscarPorNomeProfessor() {
-      const termo = this.filtrosProfessores.nome;
-      if (termo && termo.length > 0) {
-        this.sugestoesNomeProfessor = this.usersStore
-          .getByNome(termo)
-          .filter((u) => u.role === "Professor")
-          .slice(0, 3);
-      } else {
-        this.sugestoesNomeProfessor = [];
-      }
+      this.sugestoesNomeProfessor = this.usersStore.getByNome(this.filtrosProfessores.nome).filter((user) => user.role === "Professor").slice(0, 3);
     },
-
-    selecionarSugestaoRegistroProfessor(sugestao) {
-      this.filtrosProfessores.registro = sugestao.registro.toString();
-      this.sugestoesRegistroProfessor = [];
-    },
-
-    selecionarSugestaoNomeProfessor(sugestao) {
-      this.filtrosProfessores.nome = sugestao.nome;
-      this.sugestoesNomeProfessor = [];
-    },
-
-    filtrarProfessores() {},
-
-    limparFiltrosProfessores() {
-      this.filtrosProfessores = {
-        registro: "",
-        nome: "",
-        email: "",
-        disciplina: "",
-      };
-      this.sugestoesRegistroProfessor = [];
-      this.sugestoesNomeProfessor = [];
-    },
-
     buscarPorRegistroProcesso() {
-      const termo = this.filtrosProcesso.registro;
-      if (termo && termo.length > 0) {
-        this.sugestoesRegistroProcesso = this.usersStore
-          .getByRegistro(parseInt(termo))
-          .filter((u) => u.role === "Processo pedagógico")
-          .slice(0, 3);
-      } else {
-        this.sugestoesRegistroProcesso = [];
-      }
+      this.sugestoesRegistroProcesso = this.usersStore.getByRegistro(this.filtrosProcesso.registro).filter((user) => user.role === "Processo pedagógico").slice(0, 3);
     },
-
     buscarPorNomeProcesso() {
-      const termo = this.filtrosProcesso.nome;
-      if (termo && termo.length > 0) {
-        this.sugestoesNomeProcesso = this.usersStore
-          .getByNome(termo)
-          .filter((u) => u.role === "Processo pedagógico")
-          .slice(0, 3);
-      } else {
-        this.sugestoesNomeProcesso = [];
-      }
+      this.sugestoesNomeProcesso = this.usersStore.getByNome(this.filtrosProcesso.nome).filter((user) => user.role === "Processo pedagógico").slice(0, 3);
     },
-
-    selecionarSugestaoRegistroProcesso(sugestao) {
-      this.filtrosProcesso.registro = sugestao.registro.toString();
-      this.sugestoesRegistroProcesso = [];
-    },
-
-    selecionarSugestaoNomeProcesso(sugestao) {
-      this.filtrosProcesso.nome = sugestao.nome;
-      this.sugestoesNomeProcesso = [];
-    },
-
+    selecionarSugestaoRegistroProfessor(user) { this.filtrosProfessores.registro = String(user.registro); this.sugestoesRegistroProfessor = []; },
+    selecionarSugestaoNomeProfessor(user) { this.filtrosProfessores.nome = user.nome; this.sugestoesNomeProfessor = []; },
+    selecionarSugestaoRegistroProcesso(user) { this.filtrosProcesso.registro = String(user.registro); this.sugestoesRegistroProcesso = []; },
+    selecionarSugestaoNomeProcesso(user) { this.filtrosProcesso.nome = user.nome; this.sugestoesNomeProcesso = []; },
+    filtrarProfessores() {},
     filtrarProcesso() {},
-
-    limparFiltrosProcesso() {
-      this.filtrosProcesso = {
-        registro: "",
-        nome: "",
-        email: "",
-      };
-      this.sugestoesRegistroProcesso = [];
-      this.sugestoesNomeProcesso = [];
-    },
-
-    onRoleChange() {
-      if (this.formUsuario.role !== "Professor") {
-        this.disciplinaSelecionada = "";
-      }
-    },
-
+    limparFiltrosProfessores() { this.filtrosProfessores = { registro: "", nome: "", email: "", disciplina: "" }; },
+    limparFiltrosProcesso() { this.filtrosProcesso = { registro: "", nome: "", email: "" }; },
+    onRoleChange() { if (this.formUsuario.role !== "Professor") this.disciplinaSelecionada = ""; },
     abrirModalCriar() {
       this.modoEdicao = false;
-      this.formUsuario = {
-        registro: null,
-        nome: "",
-        email: "",
-        role: "Professor",
-        disciplina: "",
-        dataNascimento: "",
-        senha: "",
-      };
+      this.formUsuario = { registro: null, nome: "", email: "", role: "Professor", disciplina: "", dataNascimento: "", senha: "", ativo: true };
       this.disciplinaSelecionada = "";
       this.modalUsuarioAberto = true;
     },
-
     abrirModalEditar(user) {
       this.modoEdicao = true;
-      this.formUsuario = {
-        id: user.id,
-        registro: user.registro,
-        nome: user.nome,
-        email: user.email,
-        role: user.role,
-        disciplina: user.disciplina || "",
-        dataNascimento: user.dataNascimento || "",
-        senha: "",
-      };
+      this.formUsuario = { ...user, senha: "", dataNascimento: "", ativo: user.ativo };
       this.disciplinaSelecionada = user.disciplina || "";
       this.modalUsuarioAberto = true;
     },
-
-    salvarUsuario() {
+    async salvarUsuario() {
       try {
         if (this.modoEdicao) {
-          const updates = {
-            nome: this.formUsuario.nome,
-            email: this.formUsuario.email,
-            role: this.formUsuario.role,
-            disciplina:
-              this.formUsuario.role === "Professor"
-                ? this.disciplinaSelecionada
-                : null,
-          };
-          this.usersStore.updateUser(this.formUsuario.id, updates);
-          window.$modal.abrir({
-            titulo: "Sucesso",
-            mensagem: "Usuário atualizado com sucesso!",
-            tipo: "alerta",
-          });
+          await this.usersStore.updateUser(this.formUsuario.registro, { ...this.formUsuario, ativo: this.formUsuario.ativo !== false });
         } else {
-          let senhaTemporaria = this.formUsuario.senha || null;
-          if (!senhaTemporaria && this.formUsuario.dataNascimento) {
-            senhaTemporaria = this.formatarDataParaSenha(
-              this.formUsuario.dataNascimento,
-            );
-          }
-
-          const userData = {
-            registro: this.formUsuario.registro,
-            nome: this.formUsuario.nome,
-            email: this.formUsuario.email,
-            role: this.formUsuario.role,
-            disciplina:
-              this.formUsuario.role === "Professor"
-                ? this.disciplinaSelecionada
-                : null,
-            dataNascimento: this.formUsuario.dataNascimento,
-            senha: senhaTemporaria,
-          };
-          this.usersStore.createUser(userData);
-          window.$modal.abrir({
-            titulo: "Sucesso",
-            mensagem: "Usuário criado com sucesso!",
-            tipo: "alerta",
-          });
+          let senha = this.formUsuario.senha;
+          if (!senha && this.formUsuario.dataNascimento) senha = `Aa@${this.formUsuario.dataNascimento.replace(/\D/g, "")}`;
+          await this.usersStore.createUser({ ...this.formUsuario, senha });
         }
         this.fecharModalUsuario();
-        this.usersStore.fetchUsers();
+        window.$modal.abrir({ titulo: "Sucesso", mensagem: "Usuário salvo com sucesso.", tipo: "alerta" });
       } catch (error) {
-        window.$modal.abrir({
-          titulo: "Erro",
-          mensagem: error.message,
-          tipo: "alerta",
-        });
+        window.$modal.abrir({ titulo: "Erro", mensagem: error.details || error.message, tipo: "alerta" });
       }
     },
-
     confirmarExcluir(user) {
       this.usuarioParaExcluir = user;
-      window.$modal.abrir({
-        titulo: "Confirmar Exclusão",
-        mensagem: `Tem certeza que deseja excluir o usuário ${user.nome}? O usuário será desativado, mas seus dados permanecerão no sistema.`,
-        tipo: "confirmacao",
-        onConfirm: () => {
-          this.excluirUsuario();
-        },
-      });
+      window.$modal.abrir({ titulo: "Confirmar Exclusão", mensagem: `Tem certeza que deseja excluir o usuário ${user.nome}?`, tipo: "confirmacao", onConfirm: this.excluirUsuario });
     },
-
-    excluirUsuario() {
-      if (this.usuarioParaExcluir) {
-        this.usersStore.softDeleteUser(this.usuarioParaExcluir.id);
-        window.$modal.abrir({
-          titulo: "Sucesso",
-          mensagem: `Usuário ${this.usuarioParaExcluir.nome} foi desativado.`,
-          tipo: "alerta",
-        });
+    async excluirUsuario() {
+      if (!this.usuarioParaExcluir) return;
+      try {
+        await this.usersStore.softDeleteUser(this.usuarioParaExcluir.registro);
         this.fecharModalExcluir();
-        this.usersStore.fetchUsers();
+      } catch (error) {
+        window.$modal.abrir({ titulo: "Erro", mensagem: error.details || error.message, tipo: "alerta" });
       }
     },
-
-    fecharModalUsuario() {
-      this.modalUsuarioAberto = false;
-    },
-
-    fecharModalExcluir() {
-      this.modalExcluirAberto = false;
-      this.usuarioParaExcluir = null;
-    },
+    fecharModalUsuario() { this.modalUsuarioAberto = false; },
+    fecharModalExcluir() { this.modalExcluirAberto = false; this.usuarioParaExcluir = null; },
   },
 };
 </script>

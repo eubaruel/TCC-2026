@@ -239,235 +239,139 @@
 </template>
 
 <script>
-import { useAuthStore } from '@/stores/auth'
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+import { useProvaDraftStore } from "@/stores/provaDraft";
+import { listarDisciplinas } from "@/services/disciplinas";
+import { atualizarQuestao, criarQuestao, excluirQuestao, listarQuestoes } from "@/services/questoes";
+
+const letras = ["A", "B", "C", "D", "E"];
+const novaQuestao = () => ({
+  disciplina: "",
+  assunto: "",
+  autor: "",
+  tipo: "objetiva",
+  texto: "",
+  alternativas: letras.map((letra) => ({ letra, texto: "" })),
+  alternativaCorreta: "A",
+  linhasResposta_json: 10,
+  dificuldade: "Médio",
+});
 
 export default {
-  name: 'QuestoesView',
+  name: "QuestoesView",
   setup() {
-    const authStore = useAuthStore()
-    return { authStore }
+    return { authStore: useAuthStore(), draftStore: useProvaDraftStore(), router: useRouter() };
   },
-  data() {
-    return {
-      abaAtiva: 'buscar',
-      busca: '',
-      buscou: false,
-      resultados: [],
-      minhasQuestoes: [],
-      disciplinas: [
-        'Matemática FGB',
-        'Matemática AP',
-        'Português',
-        'Literatura',
-        'Inglês',
-        'Projeto de Vida',
-        'Eletiva',
-        'Física FGB',
-        'Física AP',
-        'Química FGB',
-        'Química AP',
-        'Biologia FGB',
-        'Biologia AP',
-        'História',
-        'Geografia',
-        'Filosofia/Sociologia',
-        'Arte',
-        'Educação Física',
-        'Redação'
-      ],
-      novaQuestao: {
-        disciplina: '',
-        assunto: '',
-        autor: '',
-        tipo: 'objetiva',
-        texto: '',
-        alternativas: [
-          { letra: 'A', texto: '' },
-          { letra: 'B', texto: '' },
-          { letra: 'C', texto: '' },
-          { letra: 'D', texto: '' },
-          { letra: 'E', texto: '' }
-        ],
-        linhasResposta_json: 10,
-        dificuldade: 'Médio'
-      }
-    }
-  },
+  data: () => ({
+    abaAtiva: "buscar",
+    busca: "",
+    buscou: false,
+    resultados: [],
+    minhasQuestoes: [],
+    todasQuestoes: [],
+    disciplinas: [],
+    novaQuestao: novaQuestao(),
+    editandoId: null,
+    erro: "",
+  }),
   computed: {
     isProfessor() {
-      return this.authStore.isProfessor
-    }
+      return this.authStore.isProfessor;
+    },
   },
-  mounted() {
-    this.carregarMinhasQuestoes()
+  async mounted() {
+    await Promise.all([this.carregarDisciplinas(), this.carregarQuestoes()]);
   },
   methods: {
     getDificuldadeClass(dificuldade) {
-      const mapa = {
-        'Muito Fácil': 'muito-facil',
-        'Fácil': 'facil',
-        'Médio': 'medio',
-        'Difícil': 'dificil',
-        'Muito Difícil': 'muito-dificil'
-      }
-      return mapa[dificuldade] || 'medio'
+      return { "Muito Fácil": "muito-facil", "Fácil": "facil", "Médio": "medio", "Difícil": "dificil", "Muito Difícil": "muito-dificil" }[dificuldade] || "medio";
     },
-    
-    carregarMinhasQuestoes() {
-      const salvas = localStorage.getItem('questoes')
-      if (salvas) {
-        const todas = JSON.parse(salvas)
-        const usuario = this.authStore.user
-        this.minhasQuestoes = todas.filter(q => q.autorId === usuario?.id)
+    adaptarQuestao(questao) {
+      const indiceCorreta = questao.alternativas?.findIndex((alternativa) => alternativa.id === questao.alternativa_correta) ?? -1;
+      return {
+        ...questao,
+        id: questao._id,
+        disciplina: questao.disciplina.join(", "),
+        tipo: questao.tipo_questao.toLowerCase(),
+        texto: questao.enunciado,
+        dataCriacao: "—",
+        alternativas: questao.alternativas?.map((alternativa, index) => ({ ...alternativa, letra: letras[index] })) || [],
+        alternativaCorreta: indiceCorreta >= 0 ? letras[indiceCorreta] : "",
+        linhasResposta_json: questao.numero_linhas,
+      };
+    },
+    async carregarDisciplinas() {
+      try {
+        this.disciplinas = (await listarDisciplinas()).disciplinas.map((disciplina) => disciplina.nome_disciplina);
+      } catch (error) {
+        this.erro = error.details || error.message;
       }
     },
-    
+    async carregarQuestoes() {
+      try {
+        const questoes = (await listarQuestoes()).questoes;
+        this.todasQuestoes = questoes.map(this.adaptarQuestao);
+        this.resultados = [...this.todasQuestoes];
+        this.minhasQuestoes = this.todasQuestoes.filter((questao) => questao.professor?.nome === this.authStore.user?.nome);
+      } catch (error) {
+        this.erro = error.details || error.message;
+      }
+    },
     buscarQuestoes() {
-      this.buscou = true
-      const todas = JSON.parse(localStorage.getItem('questoes') || '[]')
-      const termoBusca = this.busca.toLowerCase()
-      this.resultados = todas.filter(q => 
-        q.disciplina?.toLowerCase().includes(termoBusca) ||
-        q.assunto?.toLowerCase().includes(termoBusca) ||
-        q.autor?.toLowerCase().includes(termoBusca) ||
-        q.texto?.toLowerCase().includes(termoBusca)
-      )
+      this.buscou = true;
+      const termo = this.busca.toLowerCase();
+      this.resultados = this.todasQuestoes.filter((questao) => [questao.disciplina, questao.assunto, questao.autor, questao.texto].some((campo) => campo?.toLowerCase().includes(termo)));
     },
-    
-    validarAlternativasObjetiva() {
-      const alternativasVazias = this.novaQuestao.alternativas.filter(a => !a.texto.trim())
-      if (alternativasVazias.length > 0) {
-        const letrasFaltando = alternativasVazias.map(a => a.letra).join(', ')
-        window.$modal.abrir({
-          titulo: "Atenção",
-          mensagem: `Preencha todas as alternativas! Faltam: ${letrasFaltando}`,
-          tipo: "alerta"
-        });
-        return false
-      }
-      return true
-    },
-    
-    validarLinhasResposta_json() {
-      const linhas = this.novaQuestao.linhasResposta_json
-      if (!Number.isInteger(linhas) || linhas < 1 || linhas > 100) {
-        alert('A quantidade de linhas deve ser um número inteiro entre 1 e 100!')
-        return false
-      }
-      return true
-    },
-    
-    salvarQuestao() {
-      if (!this.novaQuestao.disciplina || !this.novaQuestao.assunto || !this.novaQuestao.texto) {
-        window.$modal.abrir({
-          titulo: "Atenção",
-          mensagem: "Preencha todos os campos obrigatórios!",
-          tipo: "alerta"
-        });
-        return
-      }
-      
-      if (this.novaQuestao.tipo === 'objetiva') {
-        if (!this.validarAlternativasObjetiva()) {
-          return
-        }
-      }
-      
-      if (this.novaQuestao.tipo === 'dissertativa') {
-        if (!this.validarLinhasResposta_json()) {
-          return
-        }
-      }
-      
-      const nova = {
-        id: Date.now(),
-        disciplina: this.novaQuestao.disciplina,
+    payloadQuestao() {
+      const payload = {
+        professor: { nome: this.authStore.user.nome },
         assunto: this.novaQuestao.assunto,
-        autor: this.novaQuestao.autor,
-        tipo: this.novaQuestao.tipo,
-        texto: this.novaQuestao.texto,
+        disciplina: [this.novaQuestao.disciplina],
+        tipo_questao: this.novaQuestao.tipo === "objetiva" ? "Objetiva" : "Dissertativa",
         dificuldade: this.novaQuestao.dificuldade,
-        autorId: this.authStore.user?.id,
-        autorNome: this.authStore.user?.nome,
-        dataCriacao: new Date().toLocaleDateString('pt-BR'),
-        alternativas: this.novaQuestao.tipo === 'objetiva' 
-          ? this.novaQuestao.alternativas
-          : [],
-        linhasResposta_json: this.novaQuestao.tipo === 'dissertativa' 
-          ? this.novaQuestao.linhasResposta_json 
-          : null
+        enunciado: this.novaQuestao.texto,
+      };
+      if (this.novaQuestao.autor) payload.autor = this.novaQuestao.autor;
+      if (this.novaQuestao.tipo === "objetiva") {
+        payload.alternativas = this.novaQuestao.alternativas.map((alternativa) => alternativa.texto);
+        payload.alternativa_correta = this.novaQuestao.alternativas.find((alternativa) => alternativa.letra === this.novaQuestao.alternativaCorreta)?.texto;
+      } else {
+        payload.numero_linhas = Number(this.novaQuestao.linhasResposta_json);
       }
-      
-      const todas = JSON.parse(localStorage.getItem('questoes') || '[]')
-      todas.push(nova)
-      localStorage.setItem('questoes', JSON.stringify(todas))
-      
-      window.$modal.abrir({
-        titulo: "Sucesso",
-        mensagem: "Questão salva com sucesso!",
-        tipo: "alerta"
-      });
-      
-      this.carregarMinhasQuestoes()
-      this.resetarFormulario()
-      this.abaAtiva = 'minhas'
+      return payload;
     },
-    
+    async salvarQuestao() {
+      try {
+        const payload = this.payloadQuestao();
+        if (this.editandoId) await atualizarQuestao(this.editandoId, payload);
+        else await criarQuestao(payload);
+        await this.carregarQuestoes();
+        this.resetarFormulario();
+        this.abaAtiva = "minhas";
+        window.$modal.abrir({ titulo: "Sucesso", mensagem: "Questão salva com sucesso.", tipo: "alerta" });
+      } catch (error) {
+        window.$modal.abrir({ titulo: "Erro", mensagem: error.details || error.message, tipo: "alerta" });
+      }
+    },
     resetarFormulario() {
-      this.novaQuestao = {
-        disciplina: '',
-        assunto: '',
-        autor: '',
-        tipo: 'objetiva',
-        texto: '',
-        alternativas: [
-          { letra: 'A', texto: '' },
-          { letra: 'B', texto: '' },
-          { letra: 'C', texto: '' },
-          { letra: 'D', texto: '' },
-          { letra: 'E', texto: '' }
-        ],
-        linhasResposta_json: 10,
-        dificuldade: 'Médio'
-      }
+      this.novaQuestao = novaQuestao();
+      this.editandoId = null;
     },
-    
-    editarQuestao(questaoItem) {
-      window.$modal.abrir({
-        titulo: "Editar Questão",
-        mensagem: `Editar questão: ${questaoItem.texto.substring(0, 50)}...`,
-        tipo: "alerta"
-      });
+    editarQuestao(questao) {
+      this.editandoId = questao._id;
+      this.novaQuestao = { disciplina: questao.disciplina.split(", ")[0], assunto: questao.assunto, autor: questao.autor, tipo: questao.tipo, texto: questao.texto, alternativas: questao.alternativas.map((alternativa) => ({ letra: alternativa.letra, texto: alternativa.texto })), alternativaCorreta: questao.alternativaCorreta, linhasResposta_json: questao.linhasResposta_json || 10, dificuldade: questao.dificuldade };
+      this.abaAtiva = "cadastrar";
     },
-    
     excluirQuestao(id) {
-      window.$modal.abrir({
-        titulo: "Confirmar Exclusão",
-        mensagem: "Tem certeza que deseja excluir esta questão?",
-        tipo: "confirmacao",
-        onConfirm: () => {
-          const todas = JSON.parse(localStorage.getItem('questoes') || '[]')
-          const filtradas = todas.filter(q => q.id !== id)
-          localStorage.setItem('questoes', JSON.stringify(filtradas))
-          this.carregarMinhasQuestoes()
-          window.$modal.abrir({
-            titulo: "Sucesso",
-            mensagem: "Questão excluída com sucesso!",
-            tipo: "alerta"
-          });
-        }
-      });
+      window.$modal.abrir({ titulo: "Excluir questão", mensagem: "Deseja excluir esta questão?", tipo: "confirmacao", onConfirm: async () => { try { await excluirQuestao(id); await this.carregarQuestoes(); } catch (error) { this.erro = error.details || error.message; } } });
     },
-    
-    usarQuestao(questaoItem) {
-      window.$modal.abrir({
-        titulo: "Adicionar à Prova",
-        mensagem: `Questão "${questaoItem.texto.substring(0, 50)}..." adicionada à prova!`,
-        tipo: "alerta"
-      });
-    }
-  }
-}
+    usarQuestao(questao) {
+      this.draftStore.adicionar(questao);
+      this.router.push("/provas");
+    },
+  },
+};
 </script>
 
 <style scoped>

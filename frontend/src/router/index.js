@@ -61,11 +61,8 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
-  authStore.loadUser();
 
-  const usuarioLogado = localStorage.getItem("usuarioLogado");
-
-  if (to.meta.requiresAuth && !usuarioLogado) {
+  if (to.meta.requiresAuth && !authStore.isLoggedIn) {
     next("/");
   } else if (to.meta.requiresProfessor && !authStore.isProfessor) {
     next("/avisos");
