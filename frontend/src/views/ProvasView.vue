@@ -15,18 +15,18 @@
         Minhas Provas ({{ minhasProvas.length }})
       </button>
       <button
-        @click="abaAtiva = 'enviadas'"
+        @click="abaAtiva = 'naoCorrigidas'"
         class="tab-btn"
-        :class="{ ativo: abaAtiva === 'enviadas' }"
+        :class="{ ativo: abaAtiva === 'naoCorrigidas' }"
       >
-        Provas Enviadas
+        Não Corrigidas ({{ provasNaoCorrigidas.length }})
       </button>
       <button
-        @click="abaAtiva = 'devolvidas'"
+        @click="abaAtiva = 'corrigidas'"
         class="tab-btn"
-        :class="{ ativo: abaAtiva === 'devolvidas' }"
+        :class="{ ativo: abaAtiva === 'corrigidas' }"
       >
-        Provas Devolvidas
+        Corrigidas ({{ provasCorrigidas.length }})
       </button>
     </div>
 
@@ -47,9 +47,20 @@
       </button>
     </div>
 
-    <!-- Lista de Provas - Minhas Provas -->
-    <div v-if="abaAtiva === 'minhas'" class="lista-provas">
-      <div v-if="minhasProvas.length === 0" class="sem-provas">
+    <div v-if="erro" class="sem-provas">
+      <div class="empty-state">
+        <p>{{ erro }}</p>
+        <button class="btn-criar-prova" @click="carregarTudo">Tentar novamente</button>
+      </div>
+    </div>
+
+    <div v-else-if="carregando" class="sem-provas">
+      <div class="empty-state"><p>Carregando provas...</p></div>
+    </div>
+
+    <!-- Lista de Provas -->
+    <div v-else class="lista-provas">
+      <div v-if="provasExibidas.length === 0" class="sem-provas">
         <div class="empty-state">
           <svg
             width="64"
@@ -66,12 +77,12 @@
             />
             <path d="M12 16H8M16 12H8" stroke="currentColor" stroke-width="2" />
           </svg>
-          <p>Você ainda não criou nenhuma prova.</p>
-          <p class="sub">Clique em "Criar Prova" para começar.</p>
+          <p>Nenhuma prova encontrada nesta categoria.</p>
+          <p v-if="abaAtiva === 'minhas'" class="sub">Clique em "Criar Prova" para começar.</p>
         </div>
       </div>
       <div v-else>
-        <div v-for="prova in minhasProvas" :key="prova.id" class="prova-card">
+        <div v-for="prova in provasExibidas" :key="prova.id" class="prova-card">
           <div class="prova-info">
             <div class="prova-icon">
               <svg
@@ -96,7 +107,7 @@
               <h4>{{ prova.titulo || "Prova sem título" }}</h4>
               <div class="prova-metadata">
                 <span>📅 {{ formatarData(prova.criadaEm) }}</span>
-                <span class="status" :class="prova.status || 'rascunho'">
+                <span class="status" :class="classeStatus(prova.status)">
                   {{
                     (prova.status || "rascunho").charAt(0).toUpperCase() +
                     (prova.status || "rascunho").slice(1)
@@ -121,87 +132,14 @@
               📥
             </button>
             <button
-              @click="enviarDrive(prova)"
-              class="btn-drive"
-              title="Enviar para Drive"
-            >
-              ☁️
-            </button>
-            <button
               @click="excluirProva(prova.id)"
               class="btn-excluir-prova"
               title="Excluir"
+              :disabled="excluindoId === prova.id"
             >
-              🗑️
+              {{ excluindoId === prova.id ? "…" : "🗑️" }}
             </button>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Provas Enviadas -->
-    <div v-if="abaAtiva === 'enviadas'" class="lista-provas">
-      <div class="sem-provas">
-        <div class="empty-state">
-          <svg
-            width="64"
-            height="64"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <path
-              d="M22 2L11 13M22 2L15 22L11 13M22 2L9 7M11 13L2 9"
-              stroke="currentColor"
-              stroke-width="2"
-            />
-          </svg>
-          <p>Nenhuma prova enviada</p>
-          <p class="sub">
-            As provas enviadas para o Processo Pedagógico aguardando análise
-            aparecerão aqui.
-          </p>
-          <p class="sub" style="margin-top: 8px; color: #17a2b8">
-            📤 Acompanhe o status das suas provas após o envio.
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Provas Devolvidas -->
-    <div v-if="abaAtiva === 'devolvidas'" class="lista-provas">
-      <div class="sem-provas">
-        <div class="empty-state">
-          <svg
-            width="64"
-            height="64"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <path
-              d="M12 2L15 8L22 9L17 14L18 21L12 17.5L6 21L7 14L2 9L9 8L12 2Z"
-              stroke="currentColor"
-              stroke-width="2"
-            />
-            <path
-              d="M12 8V12M12 16H12.01"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
-          </svg>
-          <p>Nenhuma prova devolvida</p>
-          <p class="sub">
-            As provas que forem devolvidas pelo Processo Pedagógico por estarem
-            fora do padrão exigido pela escola aparecerão aqui.
-          </p>
-          <p class="sub" style="margin-top: 8px; color: #dc3545">
-            📌 Verifique o motivo da devolução e faça os ajustes necessários
-            antes de reenviar.
-          </p>
         </div>
       </div>
     </div>
@@ -237,21 +175,48 @@ export default {
     mostrarEditor: false,
     provaEmEdicao: null,
     erro: "",
+    carregando: true,
+    excluindoId: null,
   }),
+  computed: {
+    provasNaoCorrigidas() {
+      return this.minhasProvas.filter((prova) => prova.status === "Não Corrigida");
+    },
+    provasCorrigidas() {
+      return this.minhasProvas.filter((prova) => prova.status === "Corrigida");
+    },
+    provasExibidas() {
+      if (this.abaAtiva === "naoCorrigidas") return this.provasNaoCorrigidas;
+      if (this.abaAtiva === "corrigidas") return this.provasCorrigidas;
+      return this.minhasProvas;
+    },
+  },
   async mounted() {
-    await Promise.all([this.carregarQuestoes(), this.carregarProvas()]);
+    await this.carregarTudo();
   },
   methods: {
+    mensagemErro(error) {
+      return error?.details || error?.message || "Não foi possível carregar os dados.";
+    },
+    async carregarTudo() {
+      this.carregando = true;
+      this.erro = "";
+      await Promise.all([this.carregarQuestoes(), this.carregarProvas()]);
+      this.carregando = false;
+    },
     async carregarQuestoes() {
       try {
-        this.todasQuestoes = (await listarQuestoes()).questoes;
+        const resposta = await listarQuestoes();
+        this.todasQuestoes = Array.isArray(resposta?.questoes) ? resposta.questoes : [];
       } catch (error) {
-        this.erro = error.details || error.message;
+        this.todasQuestoes = [];
+        this.erro = this.mensagemErro(error);
       }
     },
     async carregarProvas() {
       try {
         const provas = (await listarProvas({ nome: this.authStore.user?.nome })).provas;
+        if (!Array.isArray(provas)) throw new Error("O servidor retornou uma lista de provas inválida.");
         this.minhasProvas = provas.map((prova) => ({
           ...prova,
           id: prova._id,
@@ -259,7 +224,8 @@ export default {
           criadaEm: prova.data_de_aplicacao,
         }));
       } catch (error) {
-        this.erro = error.details || error.message;
+        this.minhasProvas = [];
+        this.erro = this.mensagemErro(error);
       }
     },
     abrirEditor(prova = null) {
@@ -275,10 +241,13 @@ export default {
     },
     async provaSalva() {
       this.fecharEditor();
-      await Promise.all([this.carregarQuestoes(), this.carregarProvas()]);
+      await this.carregarTudo();
     },
     formatarData(data) {
       return data ? new Date(`${data}T00:00:00`).toLocaleDateString("pt-BR") : "Data desconhecida";
+    },
+    classeStatus(status) {
+      return status === "Corrigida" ? "corrigido" : "rascunho";
     },
     async baixarProva(prova) {
       const questoes = this.todasQuestoes.filter((questao) => prova.questoes.includes(questao._id));
@@ -291,11 +260,8 @@ export default {
       link.click();
       URL.revokeObjectURL(url);
     },
-    enviarDrive() {
-      // A API não disponibiliza endpoint para envio ao Google Drive.
-    },
     excluirProva(id) {
-      window.$modal.abrir({ titulo: "Excluir prova", mensagem: "Deseja excluir esta prova?", tipo: "confirmacao", onConfirm: async () => { try { await excluirProvaApi(id); await this.carregarProvas(); } catch (error) { this.erro = error.details || error.message; } } });
+      window.$modal.abrir({ titulo: "Excluir prova", mensagem: "Deseja excluir esta prova?", tipo: "confirmacao", onConfirm: async () => { try { this.excluindoId = id; await excluirProvaApi(id); await this.carregarProvas(); } catch (error) { this.erro = this.mensagemErro(error); } finally { this.excluindoId = null; } } });
     },
   },
 };

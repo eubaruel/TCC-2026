@@ -88,12 +88,43 @@
         <form @submit.prevent="salvarQuestao" class="form-questao">
           <div class="form-group">
             <label>Disciplina *</label>
-            <select v-model="novaQuestao.disciplina" required>
+            <select
+              v-if="!carregandoDisciplinas && disciplinas.length"
+              v-model="novaQuestao.disciplina"
+              required
+            >
               <option value="">Selecione a disciplina</option>
-              <option v-for="disc in disciplinas" :key="disc" :value="disc">
-                {{ disc }}
+              <option
+                v-for="disc in disciplinas"
+                :key="disc.codigo_disciplina"
+                :value="disc.nome_disciplina"
+              >
+                {{ disc.nome_disciplina }} ({{ disc.codigo_disciplina }})
               </option>
             </select>
+            <input
+              v-else-if="!carregandoDisciplinas"
+              v-model="novaQuestao.disciplina"
+              type="text"
+              required
+              minlength="2"
+              placeholder="Digite o nome da disciplina"
+            />
+            <p v-else class="estado-disciplina">Carregando disciplinas...</p>
+            <small v-if="erroDisciplinas" class="mensagem-erro">
+              {{ erroDisciplinas }} Você ainda pode informar a disciplina manualmente.
+            </small>
+            <small v-else-if="!carregandoDisciplinas && !disciplinas.length" class="helper-text">
+              Nenhuma disciplina cadastrada foi encontrada. Informe a disciplina manualmente.
+            </small>
+            <button
+              v-if="erroDisciplinas"
+              type="button"
+              class="btn-recarregar"
+              @click="carregarDisciplinas"
+            >
+              Tentar carregar novamente
+            </button>
           </div>
           
           <div class="form-group">
@@ -189,7 +220,13 @@
             </select>
           </div>
           
-          <button type="submit" class="btn-salvar-questao">Salvar Questão</button>
+          <button
+            type="submit"
+            class="btn-salvar-questao"
+            :disabled="carregandoDisciplinas"
+          >
+            {{ carregandoDisciplinas ? "Carregando..." : "Salvar Questão" }}
+          </button>
         </form>
       </div>
       
@@ -271,6 +308,8 @@ export default {
     minhasQuestoes: [],
     todasQuestoes: [],
     disciplinas: [],
+    carregandoDisciplinas: true,
+    erroDisciplinas: "",
     novaQuestao: novaQuestao(),
     editandoId: null,
     erro: "",
@@ -289,10 +328,12 @@ export default {
     },
     adaptarQuestao(questao) {
       const indiceCorreta = questao.alternativas?.findIndex((alternativa) => alternativa.id === questao.alternativa_correta) ?? -1;
+      const disciplinasOriginais = Array.isArray(questao.disciplina) ? [...questao.disciplina] : [];
       return {
         ...questao,
         id: questao._id,
-        disciplina: questao.disciplina.join(", "),
+        disciplina: disciplinasOriginais.join(", "),
+        disciplinasOriginais,
         tipo: questao.tipo_questao.toLowerCase(),
         texto: questao.enunciado,
         dataCriacao: "—",
@@ -302,10 +343,20 @@ export default {
       };
     },
     async carregarDisciplinas() {
+      this.carregandoDisciplinas = true;
+      this.erroDisciplinas = "";
       try {
-        this.disciplinas = (await listarDisciplinas()).disciplinas.map((disciplina) => disciplina.nome_disciplina);
+        const resposta = await listarDisciplinas();
+        this.disciplinas = Array.isArray(resposta?.disciplinas)
+          ? resposta.disciplinas.filter(
+              (disciplina) => disciplina?.codigo_disciplina && disciplina?.nome_disciplina,
+            )
+          : [];
       } catch (error) {
-        this.erro = error.details || error.message;
+        this.disciplinas = [];
+        this.erroDisciplinas = error.details || error.message;
+      } finally {
+        this.carregandoDisciplinas = false;
       }
     },
     async carregarQuestoes() {
@@ -324,10 +375,17 @@ export default {
       this.resultados = this.todasQuestoes.filter((questao) => [questao.disciplina, questao.assunto, questao.autor, questao.texto].some((campo) => campo?.toLowerCase().includes(termo)));
     },
     payloadQuestao() {
+      const disciplinaInformada = this.novaQuestao.disciplina.trim();
+      const disciplinaCadastrada = this.disciplinas.find(
+        (disciplina) => disciplina.nome_disciplina === disciplinaInformada,
+      );
+      const referenciasDisciplina = disciplinaCadastrada
+        ? [disciplinaCadastrada.codigo_disciplina, disciplinaCadastrada.nome_disciplina]
+        : [disciplinaInformada];
       const payload = {
         professor: { nome: this.authStore.user.nome },
         assunto: this.novaQuestao.assunto,
-        disciplina: [this.novaQuestao.disciplina],
+        disciplina: [...new Set(referenciasDisciplina.filter(Boolean))],
         tipo_questao: this.novaQuestao.tipo === "objetiva" ? "Objetiva" : "Dissertativa",
         dificuldade: this.novaQuestao.dificuldade,
         enunciado: this.novaQuestao.texto,
@@ -343,6 +401,10 @@ export default {
     },
     async salvarQuestao() {
       try {
+        if (!this.novaQuestao.disciplina?.trim()) {
+          window.$modal.abrir({ titulo: "Atenção", mensagem: "Informe uma disciplina.", tipo: "alerta" });
+          return;
+        }
         const payload = this.payloadQuestao();
         if (this.editandoId) await atualizarQuestao(this.editandoId, payload);
         else await criarQuestao(payload);
@@ -360,7 +422,15 @@ export default {
     },
     editarQuestao(questao) {
       this.editandoId = questao._id;
-      this.novaQuestao = { disciplina: questao.disciplina.split(", ")[0], assunto: questao.assunto, autor: questao.autor, tipo: questao.tipo, texto: questao.texto, alternativas: questao.alternativas.map((alternativa) => ({ letra: alternativa.letra, texto: alternativa.texto })), alternativaCorreta: questao.alternativaCorreta, linhasResposta_json: questao.linhasResposta_json || 10, dificuldade: questao.dificuldade };
+      const referencias = (questao.disciplinasOriginais || []).map((item) => item.toLowerCase());
+      const disciplinaCadastrada = this.disciplinas.find((disciplina) =>
+        [disciplina.codigo_disciplina, disciplina.nome_disciplina]
+          .map((item) => item.toLowerCase())
+          .some((item) => referencias.includes(item)),
+      );
+      const disciplinaLegada = [...(questao.disciplinasOriginais || [])]
+        .sort((primeira, segunda) => segunda.length - primeira.length)[0] || "";
+      this.novaQuestao = { disciplina: disciplinaCadastrada?.nome_disciplina || disciplinaLegada, assunto: questao.assunto, autor: questao.autor, tipo: questao.tipo, texto: questao.texto, alternativas: questao.alternativas.map((alternativa) => ({ letra: alternativa.letra, texto: alternativa.texto })), alternativaCorreta: questao.alternativaCorreta, linhasResposta_json: questao.linhasResposta_json || 10, dificuldade: questao.dificuldade };
       this.abaAtiva = "cadastrar";
     },
     excluirQuestao(id) {
@@ -677,6 +747,31 @@ export default {
   color: #888;
 }
 
+.estado-disciplina,
+.mensagem-erro {
+  display: block;
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+
+.estado-disciplina {
+  color: #666;
+}
+
+.mensagem-erro {
+  color: #b42318;
+}
+
+.btn-recarregar {
+  margin-top: 8px;
+  padding: 7px 12px;
+  border: 1px solid #00488b;
+  border-radius: 6px;
+  background: transparent;
+  color: #00488b;
+  cursor: pointer;
+}
+
 .radio-group {
   display: flex;
   gap: 30px;
@@ -732,8 +827,14 @@ export default {
   cursor: pointer;
 }
 
-.btn-salvar-questao:hover {
+.btn-salvar-questao:hover:not(:disabled) {
   background: #218838;
+}
+
+.btn-salvar-questao:disabled {
+  background: #8a9a8e;
+  cursor: wait;
+  opacity: 0.75;
 }
 
 .sem-resultados, .sem-questoes {
