@@ -39,17 +39,12 @@ class Prova:
         
         if isinstance(value,str):
             value = value.strip()        
-            if len(value) < 10:
-                raise ValueError("Turma deve ter ao menos 10 caracteres")
         
         elif isinstance(value,list):
             for turma in value:
                 if not isinstance(turma, str):
                     raise TypeError("Cada turma deve ser uma string")
             value = [turma.strip() for turma in value]
-            for turma in value:
-                if len(turma) < 10:
-                    raise ValueError("Turma deve ter ao menos 10 caracteres")
         else:
             raise TypeError("Id da turma deve ser lista ou string")
         self.__id_turma = value
@@ -88,8 +83,6 @@ class Prova:
         if not isinstance(value, str):
             raise TypeError("Status deve ser string")
         value = value.strip()
-        if value not in ["Corrigida", "Não Corrigida"]:
-            raise ValueError("Status inválido")
         self.__status = value
 
 
@@ -162,8 +155,6 @@ class Prova:
             raise ValueError("Questões nulas")
         if not isinstance(value, list):
             raise TypeError("Questões devem ser uma lista")
-        if len(value) < 5:
-            raise ValueError("A prova deve possuir ao menos cinco questões")
         for id_questao in value:
             if not isinstance(id_questao, str):
                 raise TypeError("Cada questão da prova deve ser representada por um id")

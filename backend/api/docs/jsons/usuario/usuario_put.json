@@ -1,8 +1,0 @@
-{
-    "usuario":{
-        "nome":"Carlos Souza",
-        "email":"carlos.souza@example.com",
-        "role":"Professor",
-        "ativo":true
-    }
-}

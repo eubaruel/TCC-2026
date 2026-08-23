@@ -38,7 +38,9 @@ from api.roteador.questao_rotas import Questao_rotas
 from api.middlewares.prova_middleware import Prova_middleware
 from api.controles.prova_controle import Prova_controle
 from api.services.prova_service import Prova_service
+from api.services.prova_x_aluno_service import Prova_x_aluno_service
 from api.DAOs.prova_dao import Prova_dao
+from api.DAOs.prova_x_aluno_dao import Prova_x_aluno_dao
 from api.roteador.prova_rotas import Prova_rotas
 
 import traceback
@@ -85,6 +87,8 @@ class Servidor:
 
         self.__prova_middleware = Prova_middleware()
         self.__prova_dao = None
+        self.__prova_x_aluno_dao = None
+        self.__prova_x_aluno_service = None
         self.__prova_service = None
         self.__prova_controle = None
 
@@ -203,9 +207,16 @@ class Servidor:
         print("⬆️  Setup prova")
 
         self.__prova_dao = Prova_dao(self.__conexao_db)
+        self.__prova_x_aluno_dao = Prova_x_aluno_dao(self.__conexao_db)
+        self.__prova_x_aluno_service = Prova_x_aluno_service(
+            self.__aluno_dao,
+            self.__prova_x_aluno_dao,
+            self.__questao_dao
+        )
         self.__prova_service = Prova_service(
             self.__prova_dao,
-            self.__questao_dao
+            self.__questao_dao,
+            self.__prova_x_aluno_service
         )
         self.__prova_controle = Prova_controle(self.__prova_service)
 

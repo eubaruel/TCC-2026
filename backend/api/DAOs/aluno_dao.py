@@ -41,6 +41,25 @@ class Aluno_dao:
         filtro = filtro or {}
         resultado = list(self.__colecao.find(filtro, {"_id": 0, "email_aluno": 0}))
         return resultado
+
+    def buscar_matriculas_por_turmas(self, turmas: list[str]) -> list[int]:
+        print("✅ aluno_dao.buscar_matriculas_por_turmas()")
+
+        if not turmas:
+            return []
+
+        alunos = self.__colecao.find(
+            {
+                "turma": {"$in": turmas},
+                "ativo": {"$ne": False}
+            },
+            {"_id": 0, "matricula_aluno": 1}
+        )
+        return [
+            aluno["matricula_aluno"]
+            for aluno in alunos
+            if "matricula_aluno" in aluno
+        ]
     
     def atualizar(self, obj_aluno: Aluno, filtro=None) -> bool:
         print("✅ aluno_dao.atualizar()")

@@ -52,6 +52,13 @@ class FakeAlunoDao:
                 resultado.append(seguro)
         return resultado
 
+    def buscar_matriculas_por_turmas(self, turmas):
+        return [
+            doc["matricula_aluno"]
+            for doc in self.documentos.values()
+            if doc.get("turma") in turmas and doc.get("ativo") is not False
+        ]
+
     def atualizar(self, aluno):
         if aluno.matricula_aluno not in self.documentos:
             return False
@@ -252,6 +259,21 @@ class FakeProvaDao:
             resultado.append(seguro)
         return resultado
 
+    def buscar_por_id(self, id_prova):
+        doc = self.documentos.get(id_prova)
+        if not doc or not doc["ativo"]:
+            return None
+        seguro = deepcopy(doc)
+        seguro.pop("ativo", None)
+        return seguro
+
+    def atualizar_questoes(self, id_prova, ids_questoes):
+        doc = self.documentos.get(id_prova)
+        if not doc or not doc["ativo"]:
+            return False
+        doc["questoes"] = deepcopy(ids_questoes)
+        return True
+
     def campo_existe(self, campo, valor):
         return valor in self.documentos and self.documentos[valor]["ativo"]
 
@@ -270,10 +292,14 @@ class FakeProvaDao:
 
     @staticmethod
     def _doc(prova, id_prova):
+        professor = {"nome": prova.professor.nome}
+        if prova.professor.registro is not None:
+            professor["registro"] = prova.professor.registro
+
         return {
             "_id": id_prova,
             "id_turma": deepcopy(prova.id_turma),
-            "professor": {"nome": prova.professor.nome},
+            "professor": professor,
             "disciplina": {"codigo_disciplina": prova.disciplina.codigo_disciplina, "nome_disciplina": prova.disciplina.nome_disciplina},
             "status": prova.status,
             "tipo": prova.tipo,
@@ -283,3 +309,41 @@ class FakeProvaDao:
             "questoes": deepcopy(prova.questoes),
             "ativo": True,
         }
+
+
+class FakeProvaXAlunoDao:
+    def __init__(self):
+        self.documentos = {}
+
+    def sincronizar(self, id_prova, provas_x_alunos):
+        matriculas_atuais = {
+            prova_x_aluno.matricula_aluno
+            for prova_x_aluno in provas_x_alunos
+        }
+        self.documentos = {
+            chave: documento
+            for chave, documento in self.documentos.items()
+            if chave[0] != id_prova or chave[1] in matriculas_atuais
+        }
+
+        for prova_x_aluno in provas_x_alunos:
+            documento = {
+                "matricula_aluno": prova_x_aluno.matricula_aluno,
+                "id_prova": prova_x_aluno.id_prova,
+                "questoes": deepcopy(prova_x_aluno.questoes)
+            }
+            chave = (documento["id_prova"], documento["matricula_aluno"])
+            self.documentos[chave] = documento
+
+        return len(provas_x_alunos)
+
+    def buscar_por_id_prova(self, id_prova):
+        documentos = [
+            deepcopy(documento)
+            for (id_documento, _), documento in self.documentos.items()
+            if id_documento == id_prova
+        ]
+        return sorted(
+            documentos,
+            key=lambda documento: documento["matricula_aluno"]
+        )

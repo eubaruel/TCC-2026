@@ -35,6 +35,37 @@ class Prova_dao:
             doc["_id"] = str(doc["_id"])
         return resultado
 
+    def buscar_por_id(self, _id):
+        print("✅ prova_dao.buscar_por_id()")
+
+        try:
+            object_id = ObjectId(_id)
+        except:
+            return None
+
+        prova = self.__colecao.find_one(
+            {"_id": object_id, "ativo": {"$ne": False}},
+            {"ativo": 0}
+        )
+        if prova:
+            prova["_id"] = str(prova["_id"])
+
+        return prova
+
+    def atualizar_questoes(self, _id, ids_questoes) -> bool:
+        print("✅ prova_dao.atualizar_questoes()")
+
+        try:
+            object_id = ObjectId(_id)
+        except:
+            return False
+
+        resultado = self.__colecao.update_one(
+            {"_id": object_id, "ativo": {"$ne": False}},
+            {"$set": {"questoes": ids_questoes}}
+        )
+        return resultado.matched_count > 0
+
 
     def atualizar(self, obj_prova: Prova) -> bool:
         print("✅ prova_dao.atualizar()")
@@ -94,11 +125,15 @@ class Prova_dao:
         return resultado is not None
 
     def set_doc(self, obj_prova):
+        professor = {
+            "nome":obj_prova.professor.nome
+        }
+        if obj_prova.professor.registro is not None:
+            professor["registro"] = obj_prova.professor.registro
+
         doc = {
             "id_turma":obj_prova.id_turma,
-            "professor":{
-                "nome":obj_prova.professor.nome
-            },
+            "professor":professor,
             "disciplina":{
                 "codigo_disciplina":obj_prova.disciplina.codigo_disciplina,
                 "nome_disciplina":obj_prova.disciplina.nome_disciplina

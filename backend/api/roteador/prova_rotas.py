@@ -15,19 +15,28 @@ class Prova_rotas:
 
     
     def criar_rotas(self):
+        @self.__blueprint.route('/criar-prova', methods=['POST'])
+        @self.__prova_middleware.validar_criar_prova
+        def criar_prova():
+            return self.__prova_controle.criar_prova()
 
-        @self.__blueprint.route('/',methods=['POST'])
-        @self.__prova_middleware.validar_body
-        def cadastrar():
-            return self.__prova_controle.cadastrar()
-        
+        @self.__blueprint.route('/<string:_id>/adicionar-questoes', methods=['PATCH'])
+        @self.__prova_middleware.validar_id_prova
+        @self.__prova_middleware.validar_adicionar_questoes
+        def adicionar_questoes(_id):
+            return self.__prova_controle.adicionar_questoes(_id)
+
+        @self.__blueprint.route('/imprimir-provas/<string:_id>', methods=['GET'])
+        @self.__prova_middleware.validar_id_prova
+        def imprimir_provas(_id):
+            return self.__prova_controle.imprimir_provas(_id)
+
         @self.__blueprint.route('/',methods=['GET'])
         def ler():
             return self.__prova_controle.ler()
         
         @self.__blueprint.route('/<string:_id>', methods=['PUT'])
         @self.__prova_middleware.validar_id_prova
-        @self.__prova_middleware.validar_body
         def alterar(_id):
             return self.__prova_controle.alterar(_id)
 

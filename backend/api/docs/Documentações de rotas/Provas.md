@@ -1,6 +1,8 @@
-# Fluxo de Provas
+# Fluxo de provas
 
-Documentação completa das rotas responsáveis pelo cadastro, consulta, atualização e exclusão lógica de provas.
+Documentação das rotas responsáveis pela criação da prova-base, seleção das
+questões, geração das versões individuais, montagem para impressão, consulta,
+atualização e exclusão lógica.
 
 ## Endereço-base
 
@@ -8,133 +10,125 @@ Documentação completa das rotas responsáveis pelo cadastro, consulta, atualiz
 http://localhost:8080/api/v1/provas
 ```
 
-## Resumo das rotas
-
-| Método | Rota | Finalidade |
-|---|---|---|
-| `POST` | `/api/v1/provas/` | Cadastrar uma prova |
-| `GET` | `/api/v1/provas/` | Consultar provas |
-| `PUT` | `/api/v1/provas/{_id}` | Atualizar uma prova |
-| `DELETE` | `/api/v1/provas/{_id}` | Desativar uma prova |
-
 ## Autenticação
 
 Atualmente, as rotas de provas não exigem token JWT.
 
+## Resumo das rotas
+
+| Método | Rota | Finalidade |
+|---|---|---|
+| `POST` | `/api/v1/provas/criar-prova` | Criar a prova-base sem questões |
+| `PATCH` | `/api/v1/provas/{_id}/adicionar-questoes` | Definir as questões e gerar as versões dos alunos |
+| `GET` | `/api/v1/provas/imprimir-provas/{_id}` | Montar as versões completas para impressão |
+| `GET` | `/api/v1/provas/` | Consultar provas ativas |
+| `PUT` | `/api/v1/provas/{_id}` | Substituir os dados de uma prova ativa |
+| `DELETE` | `/api/v1/provas/{_id}` | Desativar uma prova |
+
 ---
 
-# Estrutura de uma prova
+# Visão geral do fluxo
 
-| Campo | Tipo | Obrigatório | Descrição |
-|---|---|---:|---|
-| `_id` | string | Gerado pela API | Identificador da prova no MongoDB |
-| `id_turma` | string ou lista de strings | Sim | Turma ou turmas que realizarão a prova |
-| `professor` | objeto | Sim | Professor responsável pela prova |
-| `professor.nome` | string | Sim | Nome completo do professor |
-| `disciplina` | objeto | Sim | Disciplina da prova |
-| `disciplina.codigo_disciplina` | string | Sim | Código da disciplina |
-| `disciplina.nome_disciplina` | string | Sim | Nome da disciplina |
-| `status` | string | Sim | Estado de correção da prova |
-| `tipo` | string | Sim | Tipo das questões da prova |
-| `serie` | inteiro | Sim | Série para a qual a prova será aplicada |
-| `bimestre` | string | Sim | Bimestre correspondente |
-| `data_de_aplicacao` | string | Sim | Data prevista para aplicação |
-| `questoes` | lista de strings | Sim | IDs das questões selecionadas |
-| `ativo` | booleano | Gerenciado pela API | Indica se a prova está ativa |
+1. O processo pedagógico cria uma prova-base por `/criar-prova`.
+2. A prova é armazenada com `questoes: []` e status
+   `Aguardando questões`.
+3. O professor envia os IDs escolhidos para `/adicionar-questoes`.
+4. A API valida e salva esses IDs na prova-base.
+5. Se a prova for objetiva, a API cria uma configuração individual na coleção
+   `provas_x_alunos` para cada aluno ativo das turmas vinculadas.
+6. `/imprimir-provas/{_id}` usa essas configurações para retornar as questões
+   completas na ordem de cada aluno e com as alternativas posicionadas.
 
-Exemplo:
+As provas dissertativas podem receber questões, mas não geram documentos em
+`provas_x_alunos` no fluxo atual.
+
+---
+
+# Estruturas armazenadas
+
+## Prova-base
+
+A coleção `provas` armazena somente os IDs das questões.
 
 ```json
 {
   "_id": "66c4a6c22ce79c0f588b1621",
-  "id_turma": "Turma 2026 A",
+  "id_turma": [
+    "Turma 2026 A",
+    "Turma 2026 B"
+  ],
   "professor": {
+    "registro": 101,
     "nome": "Carlos Silva"
   },
   "disciplina": {
     "codigo_disciplina": "MAT",
     "nome_disciplina": "Matemática"
   },
-  "status": "Não Corrigida",
+  "status": "Aguardando questões",
   "tipo": "Objetiva",
   "serie": 3,
   "bimestre": "1° bimestre",
   "data_de_aplicacao": "2026-08-20",
   "questoes": [
     "66c49f5a2ce79c0f588b1601",
-    "66c49f5a2ce79c0f588b1602",
-    "66c49f5a2ce79c0f588b1603",
-    "66c49f5a2ce79c0f588b1604",
-    "66c49f5a2ce79c0f588b1605"
-  ]
+    "66c49f5a2ce79c0f588b1602"
+  ],
+  "ativo": true
 }
 ```
 
----
+O campo `ativo` existe no banco, mas é omitido nas respostas de consulta.
 
-# Regra principal das questões
+## Versão individual: ProvaXAluno
 
-A prova recebe, armazena e retorna somente os IDs das questões.
-
-O campo `questoes` não deve conter os objetos completos das questões.
-
-Formato correto:
+A coleção `provas_x_alunos` armazena uma configuração por prova e matrícula.
 
 ```json
 {
-  "questoes": [
-    "66c49f5a2ce79c0f588b1601",
-    "66c49f5a2ce79c0f588b1602",
-    "66c49f5a2ce79c0f588b1603",
-    "66c49f5a2ce79c0f588b1604",
-    "66c49f5a2ce79c0f588b1605"
-  ]
-}
-```
-
-Formato incorreto:
-
-```json
-{
+  "matricula_aluno": 50280715,
+  "id_prova": "66c4a6c22ce79c0f588b1621",
   "questoes": [
     {
-      "_id": "66c49f5a2ce79c0f588b1601",
-      "enunciado": "Quanto é 2 + 2?",
-      "tipo_questao": "Objetiva"
+      "id_questao": "66c49f5a2ce79c0f588b1602",
+      "posicao_alternativa_correta": 4
+    },
+    {
+      "id_questao": "66c49f5a2ce79c0f588b1601",
+      "posicao_alternativa_correta": 2
     }
   ]
 }
 ```
 
-Caso o frontend precise exibir o conteúdo completo das questões de uma prova, deve:
+Não existe um campo separado com o número da questão. A posição do item no
+vetor `questoes` determina sua numeração na versão daquele aluno.
 
-1. consultar a prova;
-2. obter o vetor `questoes`;
-3. consultar o fluxo de questões utilizando os IDs retornados.
+A combinação abaixo é única no banco:
+
+```text
+id_prova + matricula_aluno
+```
+
+Assim, um aluno pode possuir versões de provas diferentes, mas não pode possuir
+dois documentos para a mesma prova.
 
 ---
 
-# Regras de negócio
+# Regras dos campos da prova
 
-## Identificador da prova
+## Identificador
 
-O campo `_id`:
+`_id` é gerado pelo MongoDB e convertido para string nas respostas. Normalmente
+é representado por 24 caracteres hexadecimais.
 
-- é gerado automaticamente pelo MongoDB;
-- é convertido para string nas respostas da API;
-- não deve ser enviado no cadastro;
-- identifica a prova nas rotas de atualização e exclusão;
-- normalmente possui 24 caracteres hexadecimais.
+O middleware das rotas com ID verifica a presença do parâmetro. A validação do
+formato ocorre quando o DAO tenta convertê-lo para `ObjectId`. A rota de
+impressão consulta `provas_x_alunos` diretamente pelo valor textual recebido.
 
-Exemplo:
+## Turmas
 
-```text
-66c4a6c22ce79c0f588b1621
-```
-
-## Turma
-
-O campo `id_turma` pode ser enviado como uma string:
+`id_turma` aceita uma string:
 
 ```json
 {
@@ -142,7 +136,7 @@ O campo `id_turma` pode ser enviado como uma string:
 }
 ```
 
-Também pode ser enviado como uma lista de strings:
+Também aceita uma lista:
 
 ```json
 {
@@ -153,427 +147,152 @@ Também pode ser enviado como uma lista de strings:
 }
 ```
 
-Cada turma:
+Cada turma deve:
 
-- deve ser uma string;
-- deve possuir pelo menos 10 caracteres;
-- tem os espaços externos removidos.
+- ser uma string;
+- ter os espaços externos removidos.
 
-Exemplo inválido:
+Limitações atuais:
 
-```json
-{
-  "id_turma": "3A"
-}
-```
+- a API não verifica a existência das turmas;
+- turmas repetidas não são rejeitadas pelo modelo;
+- uma lista vazia não é rejeitada pelo modelo.
 
-Atualmente:
-
-- a API não verifica se a turma informada existe;
-- a API não impede turmas repetidas;
-- uma lista vazia de turmas não é rejeitada pelo modelo atual.
+Na geração das versões individuais, turmas repetidas são desconsideradas e a
+consulta inclui somente alunos cujo `ativo` não seja `false`.
 
 ## Professor
 
-O campo `professor` deve conter:
+Na criação da prova-base, o professor deve conter registro e nome:
 
 ```json
 {
-  "nome": "Carlos Silva"
+  "professor": {
+    "registro": 101,
+    "nome": "Carlos Silva"
+  }
 }
 ```
 
-O nome do professor:
+O registro deve ser inteiro. O nome:
 
 - deve ser uma string;
-- deve possuir pelo menos 5 caracteres;
+- deve possuir ao menos 5 caracteres;
 - deve conter nome e sobrenome;
-- cada parte do nome deve possuir pelo menos 3 caracteres;
-- tem os espaços externos removidos;
-- é armazenado com as iniciais em letras maiúsculas.
+- exige ao menos 3 caracteres em cada parte;
+- é normalizado com iniciais maiúsculas.
 
-Exemplo:
+A criação não verifica se o professor existe ou está ativo no fluxo de usuários.
 
-```text
-Entrada:    "carlos silva"
-Armazenado: "Carlos Silva"
-```
-
-Atualmente, a API não consulta o fluxo de usuários para verificar se o professor informado está cadastrado ou ativo.
+Na rota `PUT`, o registro não é obrigatório pelo middleware atual. Se omitido,
+o documento atualizado preserva somente o nome do professor.
 
 ## Disciplina
 
-O campo `disciplina` deve possuir:
-
 ```json
 {
-  "codigo_disciplina": "MAT",
-  "nome_disciplina": "Matemática"
+  "disciplina": {
+    "codigo_disciplina": "MAT",
+    "nome_disciplina": "Matemática"
+  }
 }
 ```
 
-### Código da disciplina
+`codigo_disciplina` deve ser uma string e tem seus espaços externos removidos.
+`nome_disciplina` deve ser uma string com ao menos 3 caracteres e é normalizado
+com iniciais maiúsculas.
 
-O campo `codigo_disciplina`:
+A criação não consulta o fluxo de disciplinas. Entretanto, código e nome são
+utilizados para verificar a compatibilidade das questões selecionadas.
 
-- deve ser uma string;
-- não pode ser nulo;
-- tem os espaços externos removidos.
+## Tipo
 
-### Nome da disciplina
-
-O campo `nome_disciplina`:
-
-- deve ser uma string;
-- deve possuir pelo menos 3 caracteres;
-- tem os espaços externos removidos;
-- é armazenado com as iniciais em letras maiúsculas.
-
-Atualmente, o cadastro da prova não verifica se a disciplina existe no fluxo de disciplinas.
-
-Entretanto, a disciplina informada é utilizada para verificar a compatibilidade das questões selecionadas.
-
-## Status
-
-O campo `status` aceita somente:
-
-```text
-Corrigida
-Não Corrigida
-```
-
-Exemplo:
-
-```json
-{
-  "status": "Não Corrigida"
-}
-```
-
-A comparação é sensível a letras maiúsculas e minúsculas.
-
-Portanto, o seguinte valor é inválido:
-
-```json
-{
-  "status": "não corrigida"
-}
-```
-
-A API remove os espaços externos, mas não altera a capitalização do status.
-
-## Tipo da prova
-
-O campo `tipo` aceita somente:
+Valores aceitos:
 
 ```text
 Objetiva
 Dissertativa
 ```
 
-Exemplos:
-
-```json
-{
-  "tipo": "Objetiva"
-}
-```
-
-```json
-{
-  "tipo": "Dissertativa"
-}
-```
-
-O valor tem os espaços externos removidos e é normalizado com a primeira letra maiúscula.
-
-Por exemplo:
-
-```text
-Entrada:    "objetiva"
-Armazenado: "Objetiva"
-```
-
+O valor é normalizado com espaços externos removidos e iniciais maiúsculas.
 Todas as questões selecionadas devem possuir o mesmo tipo da prova.
 
-Uma prova objetiva aceita somente questões objetivas.
+Somente provas objetivas geram documentos em `provas_x_alunos`.
 
-Uma prova dissertativa aceita somente questões dissertativas.
+## Status
+
+O status é uma string sem lista fixa de valores.
+
+Na criação, não deve ser enviado. A API define automaticamente:
+
+```text
+Aguardando questões
+```
+
+`/adicionar-questoes` não altera o status. Na atualização completa por `PUT`, o
+status deve ser enviado e substitui o valor atual.
 
 ## Série
 
-O campo `serie`:
-
-- deve ser um número inteiro;
-- deve ser maior que zero.
-
-Exemplo válido:
-
-```json
-{
-  "serie": 3
-}
-```
-
-Exemplos inválidos:
-
-```json
-{
-  "serie": "3"
-}
-```
-
-```json
-{
-  "serie": 0
-}
-```
+Deve ser um número inteiro maior que zero.
 
 ## Bimestre
 
-O campo `bimestre`:
-
-- deve ser uma string;
-- não pode ser nulo;
-- tem os espaços externos removidos.
-
-Exemplo:
-
-```json
-{
-  "bimestre": "1° bimestre"
-}
-```
-
-Atualmente, a API não limita o bimestre a uma lista de valores específicos.
+Deve ser uma string. Os espaços externos são removidos, mas não existe uma
+lista fixa de bimestres permitidos.
 
 ## Data de aplicação
 
-O campo `data_de_aplicacao`:
-
-- deve ser uma string;
-- não pode ser nulo;
-- tem os espaços externos removidos.
-
-Formato recomendado:
+Deve ser uma string. O formato recomendado é:
 
 ```text
 AAAA-MM-DD
 ```
 
-Exemplo:
+Atualmente, a API não valida o formato, a existência da data no calendário ou
+se ela está no passado ou no futuro.
 
-```json
-{
-  "data_de_aplicacao": "2026-08-20"
-}
-```
+## Questões da prova-base
 
-Atualmente, a API não valida:
+O campo `questoes` é uma lista de IDs em formato string.
 
-- se a string segue o formato `AAAA-MM-DD`;
-- se a data existe no calendário;
-- se a data está no passado ou no futuro.
+Na criação, ele é gerenciado pela API e começa vazio. Em
+`/adicionar-questoes`, deve conter ao menos um ID.
 
-Portanto, o frontend deve enviar a data no formato padronizado.
+Regras aplicadas na adição e no `PUT`:
 
-## Questões
+- a estrutura deve ser uma lista;
+- deve haver ao menos uma questão;
+- cada ID deve ser uma string não vazia;
+- espaços externos são removidos;
+- IDs repetidos são rejeitados;
+- todas as questões devem existir e estar ativas;
+- o tipo da questão deve ser igual ao tipo da prova;
+- a questão deve possuir o código ou o nome da disciplina da prova.
 
-O campo `questoes`:
+A comparação da disciplina ignora maiúsculas, minúsculas e espaços externos.
 
-- deve ser uma lista;
-- deve possuir pelo menos 5 IDs;
-- deve conter somente strings;
-- não pode conter IDs vazios;
-- não pode conter IDs repetidos;
-- deve referenciar questões existentes;
-- deve referenciar somente questões ativas;
-- deve conter questões do mesmo tipo da prova;
-- deve conter questões compatíveis com a disciplina da prova.
-
-Exemplo válido:
+Exemplo válido com uma questão:
 
 ```json
 {
   "questoes": [
-    "66c49f5a2ce79c0f588b1601",
-    "66c49f5a2ce79c0f588b1602",
-    "66c49f5a2ce79c0f588b1603",
-    "66c49f5a2ce79c0f588b1604",
-    "66c49f5a2ce79c0f588b1605"
-  ]
-}
-```
-
-Os espaços externos dos IDs são removidos antes do armazenamento.
-
-A ordem dos IDs recebidos é preservada no documento da prova.
-
-### Quantidade mínima
-
-A prova deve possuir pelo menos cinco questões.
-
-Exemplo inválido:
-
-```json
-{
-  "questoes": [
-    "66c49f5a2ce79c0f588b1601",
-    "66c49f5a2ce79c0f588b1602"
-  ]
-}
-```
-
-### IDs como strings
-
-Cada questão deve ser representada por uma string.
-
-Exemplo inválido:
-
-```json
-{
-  "questoes": [
-    123,
-    456,
-    789,
-    101,
-    112
-  ]
-}
-```
-
-### IDs vazios
-
-Não são aceitos IDs vazios ou formados somente por espaços.
-
-Exemplo inválido:
-
-```json
-{
-  "questoes": [
-    "66c49f5a2ce79c0f588b1601",
-    "66c49f5a2ce79c0f588b1602",
-    "66c49f5a2ce79c0f588b1603",
-    "66c49f5a2ce79c0f588b1604",
-    "   "
-  ]
-}
-```
-
-### IDs repetidos
-
-A mesma questão não pode aparecer mais de uma vez na prova.
-
-Exemplo inválido:
-
-```json
-{
-  "questoes": [
-    "66c49f5a2ce79c0f588b1601",
-    "66c49f5a2ce79c0f588b1601",
-    "66c49f5a2ce79c0f588b1601",
-    "66c49f5a2ce79c0f588b1601",
     "66c49f5a2ce79c0f588b1601"
   ]
 }
 ```
 
-### Existência das questões
-
-Todos os IDs devem pertencer a questões existentes e ativas.
-
-A requisição é rejeitada quando:
-
-- o ID não possui um formato aceito pelo MongoDB;
-- o ID não existe;
-- a questão foi excluída logicamente;
-- uma ou mais questões não foram localizadas.
-
-### Compatibilidade de tipo
-
-O campo `tipo_questao` de cada questão deve corresponder ao campo `tipo` da prova.
-
-Exemplo:
-
-```text
-Tipo da prova: Objetiva
-Tipo exigido das questões: Objetiva
-```
-
-Uma questão dissertativa não pode ser inserida em uma prova objetiva.
-
-### Compatibilidade de disciplina
-
-Cada questão possui uma lista de disciplinas associadas.
-
-Para ser aceita, a questão deve conter pelo menos uma referência correspondente:
-
-- ao código da disciplina da prova; ou
-- ao nome da disciplina da prova.
-
-Exemplo de disciplina da prova:
-
-```json
-{
-  "codigo_disciplina": "MAT",
-  "nome_disciplina": "Matemática"
-}
-```
-
-A questão pode possuir:
-
-```json
-{
-  "disciplina": [
-    "MAT",
-    "Matemática"
-  ]
-}
-```
-
-A comparação ignora:
-
-- diferenças entre letras maiúsculas e minúsculas;
-- espaços externos.
-
-Assim, os seguintes valores são considerados compatíveis:
-
-```text
-MAT
-mat
-Mat
-```
-
-## Estado ativo
-
-A prova é cadastrada automaticamente com:
-
-```json
-{
-  "ativo": true
-}
-```
-
-O campo não deve ser enviado pelo frontend.
-
-A exclusão é lógica e altera o estado para:
-
-```json
-{
-  "ativo": false
-}
-```
-
-Provas inativas não aparecem nas consultas e não podem ser atualizadas.
+Não existe quantidade mínima de cinco questões. Qualquer quantidade a partir de
+uma é aceita.
 
 ---
 
-# Cadastrar prova
+# Criar prova-base
 
 ## Rota
 
 ```http
-POST /api/v1/provas/
+POST /api/v1/provas/criar-prova
 ```
 
 ## Cabeçalho
@@ -582,42 +301,7 @@ POST /api/v1/provas/
 Content-Type: application/json
 ```
 
-## JSON de entrada
-
-```json
-{
-  "prova": {
-    "id_turma": "Turma 2026 A",
-    "professor": {
-      "nome": "Carlos Silva"
-    },
-    "disciplina": {
-      "codigo_disciplina": "MAT",
-      "nome_disciplina": "Matemática"
-    },
-    "status": "Não Corrigida",
-    "tipo": "Objetiva",
-    "serie": 3,
-    "bimestre": "1° bimestre",
-    "data_de_aplicacao": "2026-08-20",
-    "questoes": [
-      "66c49f5a2ce79c0f588b1601",
-      "66c49f5a2ce79c0f588b1602",
-      "66c49f5a2ce79c0f588b1603",
-      "66c49f5a2ce79c0f588b1604",
-      "66c49f5a2ce79c0f588b1605"
-    ]
-  }
-}
-```
-
-Todos os campos apresentados são obrigatórios.
-
-O campo `_id` não deve ser enviado. Ele é gerado automaticamente pelo banco.
-
-O campo `ativo` também não deve ser enviado. A API atribui automaticamente o valor `true`.
-
-## Exemplo com várias turmas
+## Corpo
 
 ```json
 {
@@ -627,92 +311,84 @@ O campo `ativo` também não deve ser enviado. A API atribui automaticamente o v
       "Turma 2026 B"
     ],
     "professor": {
+      "registro": 101,
       "nome": "Carlos Silva"
     },
     "disciplina": {
       "codigo_disciplina": "MAT",
       "nome_disciplina": "Matemática"
     },
-    "status": "Não Corrigida",
     "tipo": "Objetiva",
     "serie": 3,
     "bimestre": "1° bimestre",
-    "data_de_aplicacao": "2026-08-20",
-    "questoes": [
-      "66c49f5a2ce79c0f588b1601",
-      "66c49f5a2ce79c0f588b1602",
-      "66c49f5a2ce79c0f588b1603",
-      "66c49f5a2ce79c0f588b1604",
-      "66c49f5a2ce79c0f588b1605"
-    ]
+    "data_de_aplicacao": "2026-08-20"
   }
+}
+```
+
+Todos os campos apresentados são obrigatórios.
+
+Os campos gerenciados abaixo não devem ser enviados:
+
+```text
+_id
+ativo
+status
+questoes
+```
+
+Se qualquer um deles estiver presente dentro de `prova`, o middleware retorna
+erro `400`. Outros campos desconhecidos não são persistidos pelo service atual.
+
+## Resultado da criação
+
+A API cria automaticamente:
+
+```json
+{
+  "status": "Aguardando questões",
+  "questoes": [],
+  "ativo": true
 }
 ```
 
 ## Resposta de sucesso
 
-Código HTTP:
-
-```http
-201 Created
-```
-
-Resposta:
+Código: `201 Created`.
 
 ```json
 {
   "sucesso": true,
-  "mensagem": "Cadastro realizado com sucesso",
+  "mensagem": "Prova criada com sucesso",
   "data": {
     "prova": {
       "_id": "66c4a6c22ce79c0f588b1621",
-      "id_turma": "Turma 2026 A",
+      "id_turma": [
+        "Turma 2026 A",
+        "Turma 2026 B"
+      ],
       "professor": {
+        "registro": 101,
         "nome": "Carlos Silva"
       },
       "disciplina": {
         "codigo_disciplina": "MAT",
         "nome_disciplina": "Matemática"
       },
-      "status": "Não Corrigida",
+      "status": "Aguardando questões",
       "tipo": "Objetiva",
       "serie": 3,
       "bimestre": "1° bimestre",
       "data_de_aplicacao": "2026-08-20",
-      "questoes": [
-        "66c49f5a2ce79c0f588b1601",
-        "66c49f5a2ce79c0f588b1602",
-        "66c49f5a2ce79c0f588b1603",
-        "66c49f5a2ce79c0f588b1604",
-        "66c49f5a2ce79c0f588b1605"
-      ]
+      "questoes": []
     }
   }
 }
 ```
 
-A resposta do cadastro é construída a partir do JSON recebido.
+## Erros principais
 
-Por isso, ela pode não exibir algumas normalizações realizadas antes do armazenamento, como:
-
-- remoção de espaços dos IDs das questões;
-- capitalização do tipo;
-- capitalização do nome do professor;
-- capitalização do nome da disciplina.
-
-Para obter a representação armazenada, realize posteriormente uma consulta `GET`.
-
-## Possíveis erros
-
-### Chave `prova` ausente
-
-Código HTTP:
-
-```http
-400 Bad Request
-```
-
-Resposta:
+Corpo sem a chave `prova`:
 
 ```json
 {
@@ -724,167 +400,130 @@ Resposta:
 }
 ```
 
-### Campo obrigatório ausente
+Campo obrigatório ausente, por exemplo `tipo`:
 
-Exemplo sem `status`:
+```json
+{
+  "sucesso": false,
+  "mensagem": "Erro na validação de dados",
+  "erro": {
+    "mensagem": "O campo 'tipo' é obrigatório!"
+  }
+}
+```
+
+Valores que não atendem às regras dos modelos retornam `400` com a mensagem
+geral `Dados inválidos` e o detalhe da validação.
+
+---
+
+# Adicionar questões
+
+## Rota
+
+```http
+PATCH /api/v1/provas/{_id}/adicionar-questoes
+```
+
+A operação substitui o vetor atual da prova-base. Ela não acrescenta itens ao
+vetor existente.
+
+## Corpo
 
 ```json
 {
   "prova": {
-    "id_turma": "Turma 2026 A",
-    "professor": {
-      "nome": "Carlos Silva"
+    "questoes": [
+      "66c49f5a2ce79c0f588b1601",
+      "66c49f5a2ce79c0f588b1602"
+    ]
+  }
+}
+```
+
+## Comportamento para provas objetivas
+
+Depois de validar e atualizar a prova-base, a API:
+
+1. busca os alunos ativos das turmas da prova;
+2. elimina matrículas repetidas;
+3. embaralha a ordem das questões separadamente para cada aluno;
+4. gera `posicao_alternativa_correta` entre `1` e `5` para cada questão;
+5. sincroniza os documentos na coleção `provas_x_alunos`.
+
+Para duas ou mais questões, a versão do aluno não permanece acidentalmente na
+mesma ordem da prova-base. Alunos diferentes ainda podem receber a mesma ordem
+por coincidência.
+
+Correspondência da posição da alternativa correta:
+
+```text
+1 = A
+2 = B
+3 = C
+4 = D
+5 = E
+```
+
+As alternativas ainda não são reorganizadas nesta rota. Apenas a posição futura
+é armazenada.
+
+## Sincronização e repetição da rota
+
+A combinação `id_prova + matricula_aluno` é atualizada com `upsert`. Portanto,
+repetir a rota não duplica documentos.
+
+Cada repetição gera novamente:
+
+- a ordem das questões;
+- a posição da alternativa correta de cada questão.
+
+Versões de alunos que não pertencem mais às turmas são removidas. Se nenhuma
+matrícula ativa for encontrada, todas as versões individuais daquela prova são
+removidas e `provas_alunos_geradas` retorna `0`.
+
+Documentos pertencentes a outras provas não são alterados.
+
+## Resposta de sucesso
+
+Código: `200 OK`.
+
+```json
+{
+  "sucesso": true,
+  "mensagem": "Questões adicionadas com sucesso",
+  "data": {
+    "prova": {
+      "_id": "66c4a6c22ce79c0f588b1621",
+      "questoes": [
+        "66c49f5a2ce79c0f588b1601",
+        "66c49f5a2ce79c0f588b1602"
+      ]
     },
-    "disciplina": {
-      "codigo_disciplina": "MAT",
-      "nome_disciplina": "Matemática"
-    },
-    "tipo": "Objetiva",
-    "serie": 3,
-    "bimestre": "1° bimestre",
-    "data_de_aplicacao": "2026-08-20",
-    "questoes": []
+    "provas_alunos_geradas": 32
   }
 }
 ```
 
-Resposta:
+O status da prova não é alterado.
 
-```json
-{
-  "sucesso": false,
-  "mensagem": "Erro na validação de dados",
-  "erro": {
-    "mensagem": "O campo 'status' é obrigatório!"
-  }
-}
-```
+Para uma prova dissertativa, a resposta também contém
+`provas_alunos_geradas`, mas seu valor é `0`.
 
-### Nome do professor ausente
+## Erros principais
 
-Resposta:
+| Situação | Código | Mensagem principal |
+|---|---:|---|
+| Prova inexistente, inativa ou ID inválido | `404` | `Prova não encontrada` |
+| Lista vazia | `400` | `Número de questões insuficiente` |
+| `questoes` não é lista | `400` | `Questões inválidas` |
+| ID não é string ou está vazio | `400` | `Id de questão inválido` |
+| IDs repetidos | `400` | `Questões repetidas` |
+| Questão inexistente ou inativa | `400` | `Questão não encontrada` |
+| Tipo incompatível | `400` | `Tipo de questão incompatível` |
+| Disciplina incompatível | `400` | `Disciplina incompatível` |
 
-```json
-{
-  "sucesso": false,
-  "mensagem": "Erro na validação de dados",
-  "erro": {
-    "mensagem": "O campo 'nome' do professor é obrigatório!"
-  }
-}
-```
-
-### Campo da disciplina ausente
-
-Exemplo sem `codigo_disciplina`.
-
-Resposta:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Erro na validação de dados",
-  "erro": {
-    "mensagem": "O campo 'codigo_disciplina' da disciplina é obrigatório!"
-  }
-}
-```
-
-### Quantidade insuficiente de questões
-
-Código HTTP:
-
-```http
-400 Bad Request
-```
-
-Resposta possível:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Número de questões insuficiente",
-  "erro": {
-    "mensagem": "A prova deve possuir ao menos cinco questões"
-  }
-}
-```
-
-Dependendo da quantidade de IDs e da etapa da validação atingida, a resposta também pode seguir o formato geral de erro do modelo:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Dados inválidos",
-  "erro": {
-    "detalhes": "A prova deve possuir ao menos cinco questões"
-  }
-}
-```
-
-Em ambos os casos, a regra é a mesma: são necessárias pelo menos cinco questões.
-
-### Campo `questoes` não é uma lista
-
-Resposta:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Questões inválidas",
-  "erro": {
-    "mensagem": "O campo 'questoes' deve ser uma lista de ids"
-  }
-}
-```
-
-### ID da questão não é string
-
-Resposta:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Id de questão inválido",
-  "erro": {
-    "mensagem": "O id da questão 3 deve ser uma string"
-  }
-}
-```
-
-A numeração começa em `1` e indica a posição do ID inválido no vetor.
-
-### ID vazio
-
-Resposta:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Id de questão inválido",
-  "erro": {
-    "mensagem": "O id da questão 5 não pode ser vazio"
-  }
-}
-```
-
-### Questões repetidas
-
-Resposta:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Questões repetidas",
-  "erro": {
-    "mensagem": "A prova não pode conter ids de questões repetidos"
-  }
-}
-```
-
-### Questão inexistente ou inativa
-
-Resposta:
+Exemplo para questão inexistente:
 
 ```json
 {
@@ -896,95 +535,128 @@ Resposta:
 }
 ```
 
-Por segurança lógica, a API não informa nessa resposta qual dos IDs não foi encontrado.
+Observação: a prova-base é atualizada antes da geração das versões individuais.
+O fluxo atual não utiliza transação entre as duas coleções.
 
-### Tipo incompatível
+---
 
-Exemplo: prova objetiva contendo uma questão dissertativa.
+# Imprimir provas
 
-Resposta:
+## Rota
+
+```http
+GET /api/v1/provas/imprimir-provas/{_id}
+```
+
+A rota não recebe corpo JSON e não altera documentos no banco.
+
+Ela consulta diretamente `provas_x_alunos`; não confirma novamente se a
+prova-base existe ou continua ativa. Por isso, versões que permanecerem nessa
+coleção após a exclusão lógica da prova ainda podem ser retornadas.
+
+## Montagem
+
+1. Busca em `provas_x_alunos` todos os documentos com o `id_prova` informado.
+2. Ordena as versões por `matricula_aluno`.
+3. Reúne os IDs necessários e busca as questões ativas em uma única consulta.
+4. Para cada aluno, percorre as questões na ordem armazenada em sua versão.
+5. Cria uma cópia de cada questão completa.
+6. Separa a alternativa correta, embaralha as incorretas e reinsere a correta
+   na posição definida.
+
+A conversão usada é:
+
+```python
+indice = posicao_alternativa_correta - 1
+```
+
+```text
+Posição 1 -> índice 0 -> A
+Posição 2 -> índice 1 -> B
+Posição 3 -> índice 2 -> C
+Posição 4 -> índice 3 -> D
+Posição 5 -> índice 4 -> E
+```
+
+As alternativas incorretas são embaralhadas novamente em cada chamada. A ordem
+das questões e a posição da correta permanecem definidas pelo documento do
+aluno.
+
+O campo `alternativa_correta` continua presente no objeto completo retornado.
+
+## Resposta de sucesso
+
+Código: `200 OK`.
 
 ```json
 {
-  "sucesso": false,
-  "mensagem": "Tipo de questão incompatível",
-  "erro": {
-    "mensagem": "A questão 2 não é do tipo Objetiva"
+  "sucesso": true,
+  "mensagem": "Provas montadas com sucesso",
+  "data": {
+    "id_prova": "66c4a6c22ce79c0f588b1621",
+    "provas_alunos": [
+      {
+        "matricula_aluno": 50280715,
+        "questoes": [
+          {
+            "_id": "66c49f5a2ce79c0f588b1602",
+            "assunto": "Álgebra",
+            "disciplina": [
+              "mat",
+              "matemática"
+            ],
+            "tipo_questao": "Objetiva",
+            "dificuldade": "Médio",
+            "autor": "Carlos Silva",
+            "enunciado": "Quanto é 2 + 2?",
+            "professor": {
+              "nome": "Carlos Silva"
+            },
+            "alternativas": [
+              {"id": "alt-2", "texto": "3"},
+              {"id": "alt-3", "texto": "5"},
+              {"id": "alt-4", "texto": "6"},
+              {"id": "alt-1", "texto": "4"},
+              {"id": "alt-5", "texto": "7"}
+            ],
+            "alternativa_correta": "alt-1"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
-O número apresentado indica a posição da questão no vetor recebido.
+No exemplo, a alternativa correta está na posição `4`, índice `3`, letra `D`.
 
-### Disciplina incompatível
+## Nenhuma versão encontrada
 
-Resposta:
+Um ID sem documentos associados, inclusive um valor fora do formato de
+`ObjectId`, retorna `200 OK`:
 
 ```json
 {
-  "sucesso": false,
-  "mensagem": "Disciplina incompatível",
-  "erro": {
-    "mensagem": "A questão 4 não pertence à disciplina da prova"
+  "sucesso": true,
+  "mensagem": "Provas montadas com sucesso",
+  "data": {
+    "id_prova": "id-sem-versoes",
+    "provas_alunos": []
   }
 }
 ```
 
-### Status inválido
+## Erros principais
 
-Resposta:
+| Situação | Código | Mensagem principal |
+|---|---:|---|
+| Questão referenciada inexistente ou inativa | `404` | `Questão não encontrada` |
+| Questão objetiva sem alternativas válidas | `400` | `Questão inválida` |
+| ID da alternativa correta não localizado | `400` | `Questão inválida` |
+| Posição não inteira ou fora do vetor | `400` | `Posição da alternativa correta inválida` |
 
-```json
-{
-  "sucesso": false,
-  "mensagem": "Dados inválidos",
-  "erro": {
-    "detalhes": "Status inválido"
-  }
-}
-```
-
-### Tipo inválido
-
-Resposta:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Dados inválidos",
-  "erro": {
-    "detalhes": "Tipo inválido"
-  }
-}
-```
-
-### Série inválida
-
-Resposta:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Dados inválidos",
-  "erro": {
-    "detalhes": "Série deve ser maior que zero"
-  }
-}
-```
-
-### Turma inválida
-
-Resposta:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Dados inválidos",
-  "erro": {
-    "detalhes": "Turma deve ter ao menos 10 caracteres"
-  }
-}
-```
+Se uma questão estiver ausente, a rota interrompe toda a montagem para não
+entregar provas incompletas.
 
 ---
 
@@ -996,23 +668,10 @@ Resposta:
 GET /api/v1/provas/
 ```
 
-A rota não exige corpo JSON.
+A rota não recebe corpo JSON e retorna somente provas cujo `ativo` não seja
+`false`.
 
-## Consultar todas as provas
-
-```http
-GET /api/v1/provas/
-```
-
-## Resposta de sucesso
-
-Código HTTP:
-
-```http
-200 OK
-```
-
-Resposta:
+## Resposta
 
 ```json
 {
@@ -1024,23 +683,20 @@ Resposta:
         "_id": "66c4a6c22ce79c0f588b1621",
         "id_turma": "Turma 2026 A",
         "professor": {
+          "registro": 101,
           "nome": "Carlos Silva"
         },
         "disciplina": {
           "codigo_disciplina": "MAT",
           "nome_disciplina": "Matemática"
         },
-        "status": "Não Corrigida",
+        "status": "Aguardando questões",
         "tipo": "Objetiva",
         "serie": 3,
         "bimestre": "1° bimestre",
         "data_de_aplicacao": "2026-08-20",
         "questoes": [
-          "66c49f5a2ce79c0f588b1601",
-          "66c49f5a2ce79c0f588b1602",
-          "66c49f5a2ce79c0f588b1603",
-          "66c49f5a2ce79c0f588b1604",
-          "66c49f5a2ce79c0f588b1605"
+          "66c49f5a2ce79c0f588b1601"
         ]
       }
     ]
@@ -1048,244 +704,38 @@ Resposta:
 }
 ```
 
-Na resposta:
+Sem resultados, a API retorna `200 OK` e `provas: []`.
 
-- `_id` é convertido para string;
-- `ativo` não é retornado;
-- `questoes` permanece como uma lista de IDs;
-- os objetos completos das questões não são incorporados;
-- somente provas ativas são retornadas.
+## Filtros
 
-## Consulta sem resultados
-
-Código HTTP:
-
-```http
-200 OK
-```
-
-Resposta:
-
-```json
-{
-  "sucesso": true,
-  "mensagem": "Executado com sucesso",
-  "data": {
-    "provas": []
-  }
-}
-```
-
----
-
-# Filtros de consulta
-
-Os filtros são enviados como parâmetros na URL.
-
-## Filtros permitidos
-
-| Parâmetro | Tipo esperado | Campo pesquisado |
+| Parâmetro | Conversão | Campo no MongoDB |
 |---|---|---|
-| `id` | string | `_id` da prova |
-| `id_turma` | string | Turma associada |
-| `codigo_disciplina` | string | Código da disciplina |
-| `nome_disciplina` | string | Nome da disciplina |
-| `nome` | string | Nome do professor |
-| `status` | string | Status da prova |
-| `tipo` | string | Tipo da prova |
-| `serie` | inteiro | Série da prova |
-| `bimestre` | string | Bimestre |
-| `data_de_aplicacao` | string | Data de aplicação |
+| `id` | string | `_id` |
+| `id_turma` | string | `id_turma` |
+| `codigo_disciplina` | string | `disciplina.codigo_disciplina` |
+| `nome_disciplina` | string | `disciplina.nome_disciplina` |
+| `nome` | string | `professor.nome` |
+| `status` | string | `status` |
+| `tipo` | string | `tipo` |
+| `serie` | inteiro | `serie` |
+| `bimestre` | string | `bimestre` |
+| `data_de_aplicacao` | string | `data_de_aplicacao` |
 
-Os filtros realizam correspondência exata com os valores armazenados.
-
-## Consultar por ID
+Exemplos:
 
 ```http
 GET /api/v1/provas/?id=66c4a6c22ce79c0f588b1621
-```
-
-O parâmetro público se chama `id`, embora o campo retornado seja `_id`.
-
-Se o valor não possuir um formato válido de `ObjectId`, a API retorna uma lista vazia, sem erro.
-
-## Consultar por turma
-
-```http
 GET /api/v1/provas/?id_turma=Turma%202026%20A
+GET /api/v1/provas/?codigo_disciplina=MAT&tipo=Objetiva&serie=3
 ```
 
-A consulta funciona tanto quando `id_turma` foi armazenado como string quanto quando foi armazenado como lista contendo a turma informada.
+Os filtros são combinados com condição lógica `E` e usam correspondência exata.
+No MongoDB, consultar uma string em `id_turma` também encontra documentos em que
+o campo é uma lista contendo essa string.
 
-## Consultar por código da disciplina
-
-```http
-GET /api/v1/provas/?codigo_disciplina=MAT
-```
-
-Internamente, o filtro é aplicado sobre:
-
-```text
-disciplina.codigo_disciplina
-```
-
-## Consultar por nome da disciplina
-
-```http
-GET /api/v1/provas/?nome_disciplina=Matemática
-```
-
-Internamente, o filtro é aplicado sobre:
-
-```text
-disciplina.nome_disciplina
-```
-
-## Consultar por professor
-
-```http
-GET /api/v1/provas/?nome=Carlos%20Silva
-```
-
-Internamente, o filtro é aplicado sobre:
-
-```text
-professor.nome
-```
-
-## Consultar por status
-
-```http
-GET /api/v1/provas/?status=Não%20Corrigida
-```
-
-## Consultar por tipo
-
-```http
-GET /api/v1/provas/?tipo=Objetiva
-```
-
-## Consultar por série
-
-```http
-GET /api/v1/provas/?serie=3
-```
-
-A série é convertida para número inteiro antes da pesquisa.
-
-## Consultar por bimestre
-
-```http
-GET /api/v1/provas/?bimestre=1°%20bimestre
-```
-
-## Consultar por data de aplicação
-
-```http
-GET /api/v1/provas/?data_de_aplicacao=2026-08-20
-```
-
-## Combinar filtros
-
-É possível combinar diferentes parâmetros:
-
-```http
-GET /api/v1/provas/?codigo_disciplina=MAT&tipo=Objetiva&serie=3&status=Não%20Corrigida
-```
-
-A prova precisa atender a todos os filtros informados.
-
-## Parâmetro desconhecido
-
-Exemplo:
-
-```http
-GET /api/v1/provas/?professor=101
-```
-
-Código HTTP:
-
-```http
-400 Bad Request
-```
-
-Resposta:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Parâmetro não permitido: professor",
-  "erro": null
-}
-```
-
-## Série inválida no filtro
-
-Exemplo:
-
-```http
-GET /api/v1/provas/?serie=terceira
-```
-
-Código HTTP:
-
-```http
-400 Bad Request
-```
-
-Resposta:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "serie inválido: terceira",
-  "erro": null
-}
-```
-
-## ID inválido no filtro
-
-Exemplo:
-
-```http
-GET /api/v1/provas/?id=id-invalido
-```
-
-Resposta:
-
-```json
-{
-  "sucesso": true,
-  "mensagem": "Executado com sucesso",
-  "data": {
-    "provas": []
-  }
-}
-```
-
-## Parâmetros vazios
-
-Parâmetros vazios são ignorados.
-
-Exemplo:
-
-```http
-GET /api/v1/provas/?status=
-```
-
-A requisição possui o mesmo efeito de uma consulta sem esse filtro.
-
-## Provas inativas
-
-As consultas adicionam automaticamente o filtro necessário para ignorar provas com:
-
-```json
-{
-  "ativo": false
-}
-```
-
-Não existe um filtro público `ativo`. Portanto, não é possível listar provas inativas por essas rotas.
+Parâmetros vazios são ignorados. Um parâmetro desconhecido retorna `400`. Um ID
+com formato inválido retorna uma lista vazia. Um valor não inteiro em `serie`
+também retorna `400`.
 
 ---
 
@@ -1297,58 +747,35 @@ Não existe um filtro público `ativo`. Portanto, não é possível listar prova
 PUT /api/v1/provas/{_id}
 ```
 
-Exemplo:
-
-```http
-PUT /api/v1/provas/66c4a6c22ce79c0f588b1621
-```
-
-## Cabeçalho
-
-```http
-Content-Type: application/json
-```
-
-## JSON de entrada
+A atualização não é parcial. O corpo deve apresentar novamente os dados da
+prova, incluindo status e questões.
 
 ```json
 {
   "prova": {
     "id_turma": "Turma 2026 B",
     "professor": {
+      "registro": 101,
       "nome": "Carlos Silva"
     },
     "disciplina": {
       "codigo_disciplina": "MAT",
       "nome_disciplina": "Matemática"
     },
-    "status": "Corrigida",
+    "status": "Pronta para aplicação",
     "tipo": "Objetiva",
     "serie": 3,
     "bimestre": "1° bimestre",
     "data_de_aplicacao": "2026-08-22",
     "questoes": [
       "66c49f5a2ce79c0f588b1601",
-      "66c49f5a2ce79c0f588b1602",
-      "66c49f5a2ce79c0f588b1603",
-      "66c49f5a2ce79c0f588b1604",
-      "66c49f5a2ce79c0f588b1605"
+      "66c49f5a2ce79c0f588b1602"
     ]
   }
 }
 ```
 
-Todos os campos são obrigatórios.
-
-A atualização não é parcial. É necessário enviar novamente a estrutura completa da prova.
-
-O `_id` não deve ser enviado no corpo. A prova é identificada pelo parâmetro da URL.
-
-As questões devem ser enviadas novamente como uma lista de IDs e passam por todas as validações do cadastro.
-
-## Campos substituídos
-
-A atualização substitui:
+O service substitui:
 
 - `id_turma`;
 - `professor`;
@@ -1360,19 +787,18 @@ A atualização substitui:
 - `data_de_aplicacao`;
 - `questoes`.
 
-O `_id` permanece o mesmo.
+`_id` e `ativo` são preservados.
 
-O campo `ativo` também é preservado.
+As questões passam pelas mesmas validações de existência, atividade, tipo,
+disciplina e repetição usadas em `/adicionar-questoes`.
+
+Importante: a rota `PUT` atualiza a prova-base, mas não recria nem sincroniza os
+documentos em `provas_x_alunos`. Para refazer as versões individuais de uma
+prova objetiva, utilize `/adicionar-questoes` depois da atualização.
 
 ## Resposta de sucesso
 
-Código HTTP:
-
-```http
-200 OK
-```
-
-Resposta:
+Código: `200 OK`.
 
 ```json
 {
@@ -1389,91 +815,34 @@ Resposta:
         "codigo_disciplina": "MAT",
         "nome_disciplina": "Matemática"
       },
-      "status": "Corrigida",
+      "status": "Pronta para aplicação",
       "tipo": "Objetiva",
       "serie": 3,
       "bimestre": "1° bimestre",
       "data_de_aplicacao": "2026-08-22",
       "questoes": [
         "66c49f5a2ce79c0f588b1601",
-        "66c49f5a2ce79c0f588b1602",
-        "66c49f5a2ce79c0f588b1603",
-        "66c49f5a2ce79c0f588b1604",
-        "66c49f5a2ce79c0f588b1605"
+        "66c49f5a2ce79c0f588b1602"
       ]
     }
   }
 }
 ```
 
-Assim como no cadastro, a resposta é construída a partir dos dados recebidos.
+A resposta do controle atual retorna o professor apenas com `nome`, embora o
+registro possa ter sido persistido se enviado. Para consultar o documento
+persistido, use `GET /api/v1/provas/?id={_id}`.
 
-Para obter os dados normalizados e confirmados no banco, consulte a prova com:
+## Erros principais
 
-```http
-GET /api/v1/provas/?id=66c4a6c22ce79c0f588b1621
-```
+- prova inexistente ou ID inválido: `400`, mensagem `Prova não existe`;
+- prova inativa: `400`, mensagem `Não foi possível atualizar a prova`;
+- corpo incompleto ou valores inválidos: `400` quando a falha é tratada pelos
+  modelos;
+- questão inválida: utiliza as mesmas mensagens da seleção de questões.
 
-## Prova inexistente ou ID inválido
-
-Código HTTP:
-
-```http
-400 Bad Request
-```
-
-Resposta:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Prova não existe",
-  "erro": {
-    "mensagem": "A prova com Id fornecido não existe no banco de dados"
-  }
-}
-```
-
-## Prova inativa
-
-Uma prova inativa não pode ser atualizada.
-
-Como o documento ainda existe no banco, a resposta pode seguir o formato:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Não foi possível atualizar a prova",
-  "erro": null
-}
-```
-
-Código HTTP:
-
-```http
-400 Bad Request
-```
-
-## Validações da atualização
-
-Antes de atualizar, a API valida novamente:
-
-- turma;
-- nome do professor;
-- disciplina;
-- status;
-- tipo;
-- série;
-- bimestre;
-- data de aplicação;
-- quantidade de questões;
-- formato dos IDs;
-- repetição dos IDs;
-- existência e estado das questões;
-- compatibilidade do tipo das questões;
-- compatibilidade da disciplina das questões.
-
-Se qualquer validação falhar, a prova não é atualizada.
+O middleware atual do `PUT` não valida previamente a estrutura completa do
+corpo. O cliente deve seguir exatamente o formato documentado.
 
 ---
 
@@ -1485,19 +854,7 @@ Se qualquer validação falhar, a prova não é atualizada.
 DELETE /api/v1/provas/{_id}
 ```
 
-Exemplo:
-
-```http
-DELETE /api/v1/provas/66c4a6c22ce79c0f588b1621
-```
-
-A rota não exige corpo JSON.
-
-## Exclusão lógica
-
-A prova não é removida fisicamente do banco.
-
-A API altera:
+A exclusão é lógica. A API altera:
 
 ```json
 {
@@ -1505,22 +862,12 @@ A API altera:
 }
 ```
 
-Depois da exclusão:
+Ela não remove o documento da coleção `provas` e não remove as versões
+existentes em `provas_x_alunos`.
 
-- a prova deixa de aparecer nas consultas;
-- o documento permanece no banco;
-- a prova não pode ser atualizada;
-- uma segunda tentativa de exclusão retorna `404`.
+## Sucesso
 
-## Resposta de sucesso
-
-Código HTTP:
-
-```http
-200 OK
-```
-
-Resposta:
+Código: `200 OK`.
 
 ```json
 {
@@ -1532,13 +879,7 @@ Resposta:
 
 ## Prova inexistente, inativa ou ID inválido
 
-Código HTTP:
-
-```http
-404 Not Found
-```
-
-Resposta:
+Código: `404 Not Found`.
 
 ```json
 {
@@ -1548,21 +889,11 @@ Resposta:
 }
 ```
 
-Para um ID inválido:
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Não existe prova com o id id-invalido",
-  "erro": null
-}
-```
-
 ---
 
 # Formato geral das respostas
 
-## Resposta de sucesso
+## Sucesso
 
 ```json
 {
@@ -1572,29 +903,7 @@ Para um ID inválido:
 }
 ```
 
-Quando não existem dados adicionais:
-
-```json
-{
-  "sucesso": true,
-  "mensagem": "Excluído com sucesso",
-  "data": null
-}
-```
-
-## Erro do middleware
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Erro na validação de dados",
-  "erro": {
-    "mensagem": "Descrição do campo ausente"
-  }
-}
-```
-
-## Erro de regra de negócio
+## Erro do middleware ou regra de negócio
 
 ```json
 {
@@ -1606,27 +915,21 @@ Quando não existem dados adicionais:
 }
 ```
 
-## Erro de validação do modelo
+## Erro de modelo
 
 ```json
 {
   "sucesso": false,
   "mensagem": "Dados inválidos",
   "erro": {
-    "detalhes": "Descrição do erro"
+    "detalhes": "Descrição da validação"
   }
 }
 ```
 
 ## Erro interno
 
-Código HTTP:
-
-```http
-500 Internal Server Error
-```
-
-Resposta:
+Código: `500 Internal Server Error`.
 
 ```json
 {
@@ -1640,105 +943,16 @@ Resposta:
 
 ---
 
-# Fluxo recomendado de utilização
+# Observações do estado atual
 
-1. Cadastre o professor pelo fluxo de usuários.
-2. Cadastre os alunos pelo fluxo de alunos.
-3. Cadastre a disciplina e associe sua turma e seus alunos.
-4. Cadastre questões no banco de questões.
-5. Consulte as questões disponíveis.
-6. Selecione pelo menos cinco questões compatíveis com a disciplina e o tipo da prova.
-7. Envie somente os IDs das questões no cadastro da prova.
-8. Consulte a prova para confirmar os dados armazenados.
-9. Atualize a prova enquanto ela estiver ativa.
-10. Exclua logicamente a prova quando ela não estiver mais em uso.
-
-## Exemplo de fluxo completo
-
-### Consultar questões objetivas da disciplina
-
-```http
-GET /api/v1/questoes/?disciplina=matemática&tipo_questao=Objetiva
-```
-
-A partir da resposta, o frontend deve extrair os valores de `_id`.
-
-### Cadastrar prova
-
-```http
-POST /api/v1/provas/
-```
-
-```json
-{
-  "prova": {
-    "id_turma": "Turma 2026 A",
-    "professor": {
-      "nome": "Carlos Silva"
-    },
-    "disciplina": {
-      "codigo_disciplina": "MAT",
-      "nome_disciplina": "Matemática"
-    },
-    "status": "Não Corrigida",
-    "tipo": "Objetiva",
-    "serie": 3,
-    "bimestre": "1° bimestre",
-    "data_de_aplicacao": "2026-08-20",
-    "questoes": [
-      "66c49f5a2ce79c0f588b1601",
-      "66c49f5a2ce79c0f588b1602",
-      "66c49f5a2ce79c0f588b1603",
-      "66c49f5a2ce79c0f588b1604",
-      "66c49f5a2ce79c0f588b1605"
-    ]
-  }
-}
-```
-
-### Consultar prova criada
-
-```http
-GET /api/v1/provas/?id=66c4a6c22ce79c0f588b1621
-```
-
-### Atualizar status da prova
-
-Embora o objetivo seja alterar o status, a atualização exige o envio da prova completa:
-
-```http
-PUT /api/v1/provas/66c4a6c22ce79c0f588b1621
-```
-
-```json
-{
-  "prova": {
-    "id_turma": "Turma 2026 A",
-    "professor": {
-      "nome": "Carlos Silva"
-    },
-    "disciplina": {
-      "codigo_disciplina": "MAT",
-      "nome_disciplina": "Matemática"
-    },
-    "status": "Corrigida",
-    "tipo": "Objetiva",
-    "serie": 3,
-    "bimestre": "1° bimestre",
-    "data_de_aplicacao": "2026-08-20",
-    "questoes": [
-      "66c49f5a2ce79c0f588b1601",
-      "66c49f5a2ce79c0f588b1602",
-      "66c49f5a2ce79c0f588b1603",
-      "66c49f5a2ce79c0f588b1604",
-      "66c49f5a2ce79c0f588b1605"
-    ]
-  }
-}
-```
-
-### Excluir prova
-
-```http
-DELETE /api/v1/provas/66c4a6c22ce79c0f588b1621
-```
+- Não há autenticação nas rotas de provas.
+- O status não possui enumeração fixa.
+- A API aceita provas com uma única questão.
+- Criação e atualização não confirmam a existência do professor, disciplina ou
+  turma em suas coleções correspondentes.
+- A geração das versões individuais ocorre somente em `/adicionar-questoes` e
+  somente para provas objetivas.
+- A impressão mantém `alternativa_correta` nos objetos retornados.
+- O embaralhamento das alternativas acontece em memória e não é persistido.
+- A exclusão da prova-base não remove automaticamente `provas_x_alunos`.
+- A rota de impressão não verifica o campo `ativo` da prova-base.

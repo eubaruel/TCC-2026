@@ -1,9 +1,0 @@
-{
-    "usuario":{
-        "registro":101,
-        "nome":"Carlos Silva",
-        "email":"carlos@example.com",
-        "senha":"Senha@123",
-        "role":"Professor"
-    }
-}

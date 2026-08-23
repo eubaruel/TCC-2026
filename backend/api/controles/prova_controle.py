@@ -7,16 +7,43 @@ class Prova_controle:
         print("⬆️  Prova_controle.constructor()")
         self.__prova_service = prova_service
 
-    
-    def cadastrar(self):
-        print("🔵 prova_controle.cadastrar()")
+    def criar_prova(self):
+        print("🔵 prova_controle.criar_prova()")
+        json_prova = request.json.get("prova")
+        prova_criada = self.__prova_service.criar_prova(json_prova)
+
+        return Resposta_json.sucesso(
+            mensagem = "Prova criada com sucesso",
+            data = {"prova": prova_criada},
+            codigo = 201
+        )
+
+    def adicionar_questoes(self, _id):
+        print("🔵 prova_controle.adicionar_questoes()")
 
         json_prova = request.json.get("prova")
-        id_criado = self.__prova_service.criar(json_prova)
+        resultado = self.__prova_service.adicionar_questoes(
+            _id,
+            json_prova.get("questoes")
+        )
+
         return Resposta_json.sucesso(
-            mensagem = "Cadastro realizado com sucesso",
-            data = {"prova":self._formatar_prova(json_prova,id_criado)},
-            codigo = 201
+            mensagem = "Questões adicionadas com sucesso",
+            data = resultado,
+            codigo = 200
+        )
+
+    def imprimir_provas(self, _id):
+        print("🔵 prova_controle.imprimir_provas()")
+
+        provas_alunos = self.__prova_service.imprimir_provas(_id)
+        return Resposta_json.sucesso(
+            mensagem = "Provas montadas com sucesso",
+            data = {
+                "id_prova": _id,
+                "provas_alunos": provas_alunos
+            },
+            codigo = 200
         )
     
     
