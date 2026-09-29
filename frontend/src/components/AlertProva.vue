@@ -52,95 +52,27 @@
 export default {
   name: "AlertProva",
   props: {
-    id: {
-      type: Number,
-      required: true,
-    },
-    titulo: {
-      type: String,
-      required: true,
-    },
-    mensagem: {
-      type: String,
-      required: true,
-    },
-    dataEntrega: {
-      type: String,
-      required: true,
-    },
-    disciplina: {
-      type: String,
-      default: "Não especificada",
-    },
-    turma: {
-      type: String,
-      default: "Não especificada",
-    },
-    bimestre: {
-      type: String,
-      default: "Não especificado",
-    },
-    semana: {
-      type: String,
-      default: "Não especificada",
-    },
-    tipoUsuario: {
-      type: String,
-      required: true,
-    },
-    entregueInicial: {
-      type: Boolean,
-      default: false,
-    },
+    id: { type: [String, Number], required: true },
+    titulo: { type: String, required: true },
+    mensagem: { type: String, required: true },
+    dataEntrega: { type: String, required: true },
+    disciplina: { type: String, default: "Não especificada" },
+    turma: { type: String, default: "Não especificada" },
+    bimestre: { type: String, default: "Não especificado" },
+    semana: { type: String, default: "Não especificada" },
+    tipoUsuario: { type: String, required: true },
+    entregueInicial: { type: Boolean, default: false },
   },
   data() {
-    return {
-      entregue: this.entregueInicial,
-      dataConfirmacao: null,
-    };
-  },
-  mounted() {
-    if (this.entregue) {
-      const entregueSalvo = localStorage.getItem(`prova_${this.id}_entregue`);
-      if (entregueSalvo) {
-        const data = JSON.parse(entregueSalvo);
-        this.dataConfirmacao = data.data;
-      }
-    }
+    return { entregue: this.entregueInicial, dataConfirmacao: null };
   },
   methods: {
     confirmarEntrega() {
-      window.$modal.abrir({
-        titulo: "Confirmar Entrega",
-        mensagem: "Tem certeza que deseja confirmar a entrega desta prova?",
-        tipo: "confirmacao",
-        onConfirm: () => {
-          this.entregue = true;
-          const dataAtual = new Date().toLocaleDateString("pt-BR");
-          this.dataConfirmacao = dataAtual;
-
-          localStorage.setItem(
-            `prova_${this.id}_entregue`,
-            JSON.stringify({
-              entregue: true,
-              data: dataAtual,
-            }),
-          );
-
-          this.$emit("confirmado", this.id);
-
-          window.$modal.abrir({
-            titulo: "Sucesso",
-            mensagem: "Prova confirmada com sucesso!",
-            tipo: "alerta",
-          });
-        },
-      });
+      // A API não disponibiliza endpoint para confirmação de entrega de prova.
     },
   },
 };
 </script>
-
 <style scoped>
 .alert-prova {
   background: white;

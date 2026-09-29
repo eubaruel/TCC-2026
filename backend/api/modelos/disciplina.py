@@ -1,9 +1,9 @@
-from usuario import Usuario
+from api.modelos.usuario import Usuario
 
 class Disciplina:
     def __init__(self):
 
-        self.__id_hash = None #string
+        self.__id_hash = None
         self.__codigo_disciplina = None #string
         self.__nome_disciplina = None #string
         self.__professor = None #objeto

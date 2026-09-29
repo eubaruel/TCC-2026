@@ -105,8 +105,11 @@ class Aluno:
         if not isinstance(value, str):
             raise TypeError("Situação do aluno deve ser uma string")
         
-        if value.isnumeric():
+        if not any(caractere.isalpha() for caractere in value):
             raise ValueError("Situação do aluno deve conter letras")
+
+        if any(caractere.isdigit() for caractere in value):
+            raise ValueError("Situação do aluno não deve conter números")
 
         self.__situacao = value
 
@@ -127,7 +130,7 @@ class Aluno:
             if len(value) not in range(5,151):
                 raise ValueError("Email deve conter de 5 a 150 caracteres")
             
-            padrao = "^[a-zA-Z0-9][a-zA-Z0-9._%+-]{0,63}@[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+            padrao = r"^[a-zA-Z0-9][a-zA-Z0-9._%+-]{0,63}@[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
             if not re.match(padrao,value):
                 raise ValueError("Email inválido")

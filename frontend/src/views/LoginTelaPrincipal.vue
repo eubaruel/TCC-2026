@@ -17,13 +17,18 @@ export default {
 
 <style scoped>
 .login_container_principal {
+  position: fixed;
+  inset: 0;
+  width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
   background-color: #00488b;
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 20px;
   box-sizing: border-box;
+  overflow-y: auto;
 }
 
 @media (max-width: 768px) {

@@ -69,141 +69,49 @@
 </template>
 
 <script>
-import { useAuthStore } from '@/stores/auth'
-import { useUsersStore } from '@/stores/users'
-import { useRouter } from 'vue-router'
+import { useAuthStore } from "@/stores/auth";
+import { useRouter } from "vue-router";
 
 export default {
-  name: 'LoginFormulario',
-  setup() {
-    const authStore = useAuthStore()
-    const usersStore = useUsersStore()
-    const router = useRouter()
-    return { authStore, usersStore, router }
-  },
-  data() {
-    return {
-      registro_usuario: '',
-      senha_usuario: '',
-      erroRegistro: '',
-      modalEsqueciSenha: false,
-      recuperarEmail: ''
-    }
-  },
-  mounted() {
-    this.usersStore.fetchUsers()
-  },
+  name: "LoginFormulario",
+  setup() { return { authStore: useAuthStore(), router: useRouter() }; },
+  data: () => ({
+    registro_usuario: "",
+    senha_usuario: "",
+    erroRegistro: "",
+    modalEsqueciSenha: false,
+    recuperarEmail: "",
+  }),
   methods: {
     validarRegistro() {
-      this.registro_usuario = this.registro_usuario.replace(/[^0-9]/g, '')
-      
-      if (this.registro_usuario.length > 10) {
-        this.registro_usuario = this.registro_usuario.slice(0, 10)
-      }
-      
-      if (this.registro_usuario.length === 0) {
-        this.erroRegistro = ''
-      } else if (this.registro_usuario.length > 10) {
-        this.erroRegistro = 'O registro não pode ter mais de 10 dígitos'
-      } else {
-        this.erroRegistro = ''
-      }
+      this.registro_usuario = this.registro_usuario.replace(/\D/g, "").slice(0, 10);
+      this.erroRegistro = "";
     },
-    
-    validarCampos() {
-      if (!this.registro_usuario) {
-        this.erroRegistro = 'Campo registro é obrigatório'
-        return false
-      }
-      
-      if (this.registro_usuario.length < 1) {
-        this.erroRegistro = 'O registro deve ter pelo menos 1 dígito'
-        return false
-      }
-      
-      if (this.registro_usuario.length > 10) {
-        this.erroRegistro = 'O registro não pode ter mais de 10 dígitos'
-        return false
-      }
-      
-      if (!/^\d+$/.test(this.registro_usuario)) {
-        this.erroRegistro = 'O registro deve conter apenas números'
-        return false
-      }
-      
-      return true
-    },
-    
     async processarLogin() {
-      this.erroRegistro = ''
-      
-      if (!this.validarCampos()) {
-        return
+      this.erroRegistro = "";
+      if (!this.registro_usuario) {
+        this.erroRegistro = "Informe o registro.";
+        return;
       }
-      
-      const registroNum = parseInt(this.registro_usuario)
-      const resultado = await this.authStore.login(registroNum, this.senha_usuario)
-      
+      const resultado = await this.authStore.login(Number(this.registro_usuario), this.senha_usuario);
       if (!resultado.success) {
-        window.$modal.abrir({
-          titulo: "Erro",
-          mensagem: resultado.message,
-          tipo: "alerta"
-        });
-        return
+        this.erroRegistro = resultado.message;
+        return;
       }
-      
-      this.router.push('/provas')
+      this.router.push("/provas");
     },
-    
     abrirModalEsqueciSenha() {
-      this.modalEsqueciSenha = true
-      this.recuperarEmail = ''
+      this.modalEsqueciSenha = true;
     },
-    
     fecharModal() {
-      this.modalEsqueciSenha = false
+      this.modalEsqueciSenha = false;
+      this.recuperarEmail = "";
     },
-    
     enviarRecuperacao() {
-      if (!this.recuperarEmail) {
-        window.$modal.abrir({
-          titulo: "Atenção",
-          mensagem: "Digite seu email",
-          tipo: "alerta"
-        });
-        return
-      }
-      
-      const usuario = this.usersStore.users.find(u => 
-        u.email === this.recuperarEmail && u.ativo === true
-      )
-      
-      if (!usuario) {
-        window.$modal.abrir({
-          titulo: "Erro",
-          mensagem: "Email não encontrado",
-          tipo: "alerta"
-        });
-        return
-      }
-      
-      let senhaTemporaria = '123456'
-      if (usuario.dataNascimento) {
-        senhaTemporaria = usuario.dataNascimento.replace(/-/g, '')
-      }
-      
-      this.usersStore.resetarSenha(usuario.id, senhaTemporaria)
-      
-      window.$modal.abrir({
-        titulo: "Sucesso",
-        mensagem: `Sua senha foi redefinida. Use sua data de nascimento como senha: ${senhaTemporaria}`,
-        tipo: "alerta"
-      });
-      this.fecharModal()
-    }
-  }
-}
+      // A API não disponibiliza endpoint para recuperação de senha.
+    },
+  },
+};
 </script>
 
 <style scoped>

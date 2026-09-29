@@ -1,4 +1,5 @@
 from api.modelos.aluno import Aluno
+from pymongo import UpdateOne
 
 class Aluno_dao:
     def __init__(self, banco_de_dados_dependency):
@@ -18,24 +19,56 @@ class Aluno_dao:
         
         return True
     
-    def importar_excel(self, docs: list) -> bool:
+    def importar_excel(self, docs: list) -> dict:
         print("✅ aluno_dao.importar_excel()")
-        self.__colecao.insert_many(docs)
+        operacoes = [
+            UpdateOne(
+                {"matricula_aluno": doc["matricula_aluno"]},
+                {"$set": doc},
+                upsert=True
+            )
+            for doc in docs
+        ]
+        resultado = self.__colecao.bulk_write(operacoes, ordered=False)
+        return {
+            "processados": len(docs),
+            "criados": resultado.upserted_count,
+            "atualizados": resultado.modified_count
+        }
     
     def consulta(self, filtro=None):
         print("✅ aluno_dao.consulta()")
         filtro = filtro or {}
-        resultado = list(self.__colecao.find(filtro, {"_id": 0}))
+        resultado = list(self.__colecao.find(filtro, {"_id": 0, "email_aluno": 0}))
         return resultado
+
+    def buscar_matriculas_por_turmas(self, turmas: list[str]) -> list[int]:
+        print("✅ aluno_dao.buscar_matriculas_por_turmas()")
+
+        if not turmas:
+            return []
+
+        alunos = self.__colecao.find(
+            {
+                "turma": {"$in": turmas},
+                "ativo": {"$ne": False}
+            },
+            {"_id": 0, "matricula_aluno": 1}
+        )
+        return [
+            aluno["matricula_aluno"]
+            for aluno in alunos
+            if "matricula_aluno" in aluno
+        ]
     
     def atualizar(self, obj_aluno: Aluno, filtro=None) -> bool:
         print("✅ aluno_dao.atualizar()")
+
+        filtro = {"matricula_aluno":obj_aluno.matricula_aluno}
         doc = {
             "$set": self.set_doc(obj_aluno)
         }
-
         resultado = self.__colecao.update_one(filtro,doc)
-
         return resultado.matched_count > 0
     
     def excluir(self, matricula_aluno) -> bool:
@@ -52,9 +85,9 @@ class Aluno_dao:
         resultado = self.__colecao.update_one(filtro, doc)
 
         if resultado.matched_count == 0:
-            return False  # não encontrou
+            return False
 
-        return resultado.modified_count > 0  # alterou ou não
+        return resultado.modified_count > 0
     
     def campo_existe(self,campo,valor):
         print("✅ aluno_dao.campo_existe()")
@@ -74,6 +107,4 @@ class Aluno_dao:
             "email_aluno": obj_aluno.email_aluno,
             "ativo":obj_aluno.ativo
         }
-
-        
 
