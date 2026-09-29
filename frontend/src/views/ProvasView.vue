@@ -32,7 +32,7 @@
 
     <!-- Botão Criar Prova - APENAS na aba "Minhas Provas" -->
     <div v-if="abaAtiva === 'minhas'" class="actions-bar">
-      <button @click="abrirEditor" class="btn-criar-prova">
+      <button @click="abrirEditor()" class="btn-criar-prova">
         <svg
           width="20"
           height="20"
@@ -143,28 +143,17 @@
         </div>
       </div>
     </div>
-
-    <!-- Modal do Editor -->
-    <div v-if="mostrarEditor" class="modal-overlay" @click.self="fecharEditor">
-      <EditorProva
-        :provaId="provaEmEdicao?.id || null"
-        :titulo="provaEmEdicao?.titulo || 'Nova Prova'"
-        @salvo="provaSalva"
-        @fechar="fecharEditor"
-      />
-    </div>
   </div>
 </template>
 
 <script>
-import EditorProva from "@/components/EditorProva.vue";
 import { useAuthStore } from "@/stores/auth";
 import { listarQuestoes } from "@/services/questoes";
 import { excluirProva as excluirProvaApi, listarProvas } from "@/services/provas";
+import { sanitizar } from "@/utils/html";
 
 export default {
   name: "ProvasView",
-  components: { EditorProva },
   setup() {
     return { authStore: useAuthStore() };
   },
@@ -172,8 +161,6 @@ export default {
     abaAtiva: "minhas",
     minhasProvas: [],
     todasQuestoes: [],
-    mostrarEditor: false,
-    provaEmEdicao: null,
     erro: "",
     carregando: true,
     excluindoId: null,
@@ -229,19 +216,10 @@ export default {
       }
     },
     abrirEditor(prova = null) {
-      this.provaEmEdicao = prova?.id ? prova : null;
-      this.mostrarEditor = true;
+      this.$router.push(prova?.id ? `/provas/editor/${prova.id}` : "/provas/editor");
     },
     editarProva(prova) {
       this.abrirEditor(prova);
-    },
-    fecharEditor() {
-      this.mostrarEditor = false;
-      this.provaEmEdicao = null;
-    },
-    async provaSalva() {
-      this.fecharEditor();
-      await this.carregarTudo();
     },
     formatarData(data) {
       return data ? new Date(`${data}T00:00:00`).toLocaleDateString("pt-BR") : "Data desconhecida";
@@ -251,7 +229,7 @@ export default {
     },
     async baixarProva(prova) {
       const questoes = this.todasQuestoes.filter((questao) => prova.questoes.includes(questao._id));
-      const corpo = questoes.map((questao, index) => `<section><p><strong>${index + 1}.</strong> ${questao.enunciado}</p>${questao.alternativas ? `<ol>${questao.alternativas.map((alternativa) => `<li>${alternativa.texto}</li>`).join("")}</ol>` : `<p>Linhas para resposta: ${questao.numero_linhas}</p>`}</section>`).join("");
+      const corpo = questoes.map((questao, index) => `<section><div><strong>${index + 1}.</strong> ${sanitizar(questao.enunciado)}</div>${questao.alternativas ? `<ol>${questao.alternativas.map((alternativa) => `<li>${sanitizar(alternativa.texto)}</li>`).join("")}</ol>` : `<p>Linhas para resposta: ${questao.numero_linhas}</p>`}</section>`).join("");
       const blob = new Blob([`<html><meta charset="UTF-8"><body><h1>${prova.titulo}</h1>${corpo}</body></html>`], { type: "text/html" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -496,20 +474,6 @@ export default {
   color: #aaa;
 }
 
-/* Modal Editor Overlay */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  padding: 20px;
-}
 
 @media (max-width: 768px) {
   .prova-card {
@@ -524,10 +488,6 @@ export default {
 
   .provas-tabs {
     overflow-x: auto;
-  }
-
-  .modal-overlay {
-    padding: 10px;
   }
 }
 </style>
