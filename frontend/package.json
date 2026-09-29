@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "core-js": "^3.8.3",
+    "dompurify": "^3.4.16",
     "pinia": "^3.0.4",
+    "quill": "^2.0.3",
     "vue": "^3.2.13",
     "vue-router": "^4.6.4"
   },

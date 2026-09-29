@@ -6,6 +6,7 @@ import ProvasView from "@/views/ProvasView.vue";
 import QuestoesView from "@/views/QuestoesView.vue";
 import GestaoUsuarios from "@/views/GestaoUsuarios.vue";
 import ConfiGuracoes from "@/views/ConfiGuracoes.vue";
+import CriarProvaView from "@/views/CriarProvaView.vue";
 import { useAuthStore } from "@/stores/auth";
 
 const routes = [
@@ -13,6 +14,14 @@ const routes = [
     path: "/",
     name: "Login",
     component: LoginTelaPrincipal,
+  },
+  {
+    // Tela cheia (fora da TelaPrincipal): sem barra lateral e sem cabeçalho de boas-vindas.
+    path: "/provas/editor/:id?",
+    name: "CriarProvaView",
+    component: CriarProvaView,
+    props: true,
+    meta: { requiresAuth: true, requiresProfessor: true },
   },
   {
     path: "/",

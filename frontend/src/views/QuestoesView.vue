@@ -57,13 +57,16 @@
               <span v-if="questao.autor" class="autor">Autor: {{ questao.autor }}</span>
               <span class="data-criacao">Criada em: {{ questao.dataCriacao }}</span>
             </div>
-            <p class="questao-texto">{{ questao.texto }}</p>
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <div class="questao-texto" v-html="sanitizar(questao.texto)"></div>
             <div v-if="questao.tipo === 'objetiva'" class="alternativas">
               <p><strong>Texto das Alternativas:</strong></p>
               <ul>
                 <li v-for="alt in questao.alternativas" :key="alt.letra" 
                     :class="{ correta: alt.letra === questao.alternativaCorreta }">
-                  {{ alt.letra }}) {{ alt.texto }}
+                  <span class="letra-alternativa">{{ alt.letra }})</span>
+                  <!-- eslint-disable-next-line vue/no-v-html -->
+                  <span class="texto-alternativa" v-html="sanitizar(alt.texto)"></span>
                 </li>
               </ul>
               <p class="correta-destaque">✅ Alternativa correta: {{ questao.alternativaCorreta }}</p>
@@ -250,13 +253,16 @@
               <span v-if="questaoItem.autor" class="autor">Autor: {{ questaoItem.autor }}</span>
               <span class="data-criacao">Criada em: {{ questaoItem.dataCriacao }}</span>
             </div>
-            <p class="questao-texto">{{ questaoItem.texto }}</p>
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <div class="questao-texto" v-html="sanitizar(questaoItem.texto)"></div>
             <div v-if="questaoItem.tipo === 'objetiva'" class="alternativas">
               <p><strong>Texto das Alternativas:</strong></p>
               <ul>
                 <li v-for="alt in questaoItem.alternativas" :key="alt.letra" 
                     :class="{ correta: alt.letra === questaoItem.alternativaCorreta }">
-                  {{ alt.letra }}) {{ alt.texto }}
+                  <span class="letra-alternativa">{{ alt.letra }})</span>
+                  <!-- eslint-disable-next-line vue/no-v-html -->
+                  <span class="texto-alternativa" v-html="sanitizar(alt.texto)"></span>
                 </li>
               </ul>
               <p class="correta-destaque">✅ Alternativa correta: {{ questaoItem.alternativaCorreta }}</p>
@@ -281,6 +287,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useProvaDraftStore } from "@/stores/provaDraft";
 import { listarDisciplinas } from "@/services/disciplinas";
 import { atualizarQuestao, criarQuestao, excluirQuestao, listarQuestoes } from "@/services/questoes";
+import { sanitizar, textoPuro } from "@/utils/html";
 
 const letras = ["A", "B", "C", "D", "E"];
 const novaQuestao = () => ({
@@ -323,6 +330,7 @@ export default {
     await Promise.all([this.carregarDisciplinas(), this.carregarQuestoes()]);
   },
   methods: {
+    sanitizar,
     getDificuldadeClass(dificuldade) {
       return { "Muito Fácil": "muito-facil", "Fácil": "facil", "Médio": "medio", "Difícil": "dificil", "Muito Difícil": "muito-dificil" }[dificuldade] || "medio";
     },
@@ -372,7 +380,7 @@ export default {
     buscarQuestoes() {
       this.buscou = true;
       const termo = this.busca.toLowerCase();
-      this.resultados = this.todasQuestoes.filter((questao) => [questao.disciplina, questao.assunto, questao.autor, questao.texto].some((campo) => campo?.toLowerCase().includes(termo)));
+      this.resultados = this.todasQuestoes.filter((questao) => [questao.disciplina, questao.assunto, questao.autor, textoPuro(questao.texto)].some((campo) => campo?.toLowerCase().includes(termo)));
     },
     payloadQuestao() {
       const disciplinaInformada = this.novaQuestao.disciplina.trim();
@@ -438,7 +446,7 @@ export default {
     },
     usarQuestao(questao) {
       this.draftStore.adicionar(questao);
-      this.router.push("/provas");
+      this.router.push("/provas/editor");
     },
   },
 };
@@ -631,6 +639,23 @@ export default {
   font-size: 14px;
   line-height: 1.5;
   margin-bottom: 16px;
+}
+
+.questao-texto :deep(img),
+.texto-alternativa :deep(img) {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 6px 0;
+}
+
+.letra-alternativa {
+  margin-right: 4px;
+}
+
+.texto-alternativa,
+.texto-alternativa :deep(p) {
+  display: inline;
 }
 
 .alternativas ul {

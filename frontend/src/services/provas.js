@@ -7,7 +7,12 @@ export const listarProvas = (params = {}) => {
   return api(`/provas/${query.size ? `?${query.toString()}` : ""}`);
 };
 
-export const criarProva = (prova) => api("/provas/", { method: "POST", body: { prova } });
+export const buscarProva = async (id) => (await listarProvas({ id })).provas?.[0] || null;
+
+export const criarProva = (prova) => api("/provas/criar-prova", { method: "POST", body: { prova } });
+
+export const adicionarQuestoes = (id, questoes) =>
+  api(`/provas/${id}/adicionar-questoes`, { method: "PATCH", body: { prova: { questoes } } });
 
 export const atualizarProva = (id, prova) => api(`/provas/${id}`, { method: "PUT", body: { prova } });
 
