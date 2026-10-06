@@ -1,11 +1,34 @@
 from flask import request,jsonify
 from api.services.prova_service import Prova_service
 from api.utils.resposta_json import Resposta_json
+from api.utils.resposta_erro_http import resposta_erro_http
 
 class Prova_controle:
-    def __init__(self, prova_service:Prova_service):
+    def __init__(self, prova_service:Prova_service, correcao_service=None):
         print("⬆️  Prova_controle.constructor()")
         self.__prova_service = prova_service
+        self.__correcao_service = correcao_service
+
+    def corrigir_provas(self):
+        arquivos = request.files.getlist("imagens")
+        if not arquivos or len(arquivos) > 50:
+            raise resposta_erro_http(400, "Envie de 1 a 50 arquivos no campo 'imagens'")
+        imagens = []
+        for arquivo in arquivos:
+            conteudo = arquivo.read(5 * 1024 * 1024 + 1)
+            if not conteudo:
+                raise resposta_erro_http(400, "Uma das imagens está vazia")
+            if len(conteudo) > 5 * 1024 * 1024:
+                raise resposta_erro_http(413, "Cada imagem deve ter no máximo 5 MiB")
+            imagens.append({
+                "arquivo": arquivo.filename or "cartao-resposta",
+                "bytes": conteudo,
+                "content_type": arquivo.mimetype or "application/octet-stream"
+            })
+        resultado = self.__correcao_service.corrigir(imagens)
+        return Resposta_json.sucesso(
+            mensagem="Correções processadas", data=resultado, codigo=200
+        )
 
     def criar_prova(self):
         print("🔵 prova_controle.criar_prova()")

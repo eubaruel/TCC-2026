@@ -42,6 +42,8 @@ from api.services.prova_x_aluno_service import Prova_x_aluno_service
 from api.DAOs.prova_dao import Prova_dao
 from api.DAOs.prova_x_aluno_dao import Prova_x_aluno_dao
 from api.roteador.prova_rotas import Prova_rotas
+from api.clientes.correcao_cliente import Correcao_cliente
+from api.services.correcao_service import Correcao_service
 
 import traceback
 
@@ -57,6 +59,8 @@ class Servidor:
         self.__porta = porta
 
         self.__app = Flask(__name__, static_folder= "static", static_url_path="")
+        self.__app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
+        self.__correcao_service = None
 
         # 🔹 Configuração de CORS (Cross-Origin Resource Sharing)
         #    Permite que clientes de outros domínios/portas acessem sua API
@@ -218,7 +222,17 @@ class Servidor:
             self.__questao_dao,
             self.__prova_x_aluno_service
         )
-        self.__prova_controle = Prova_controle(self.__prova_service)
+        cliente_correcao = Correcao_cliente(
+            os.getenv("CORRECAO_URL", "http://127.0.0.1:5000"),
+            timeout=float(os.getenv("CORRECAO_TIMEOUT", "30"))
+        )
+        self.__correcao_service = Correcao_service(
+            cliente_correcao,
+            self.__prova_x_aluno_dao,
+            self.__aluno_dao,
+            concorrencia=int(os.getenv("CORRECAO_CONCORRENCIA", "8"))
+        )
+        self.__prova_controle = Prova_controle(self.__prova_service, self.__correcao_service)
 
         prova_roteador = Prova_rotas(
             self.__prova_middleware,
@@ -278,5 +292,7 @@ class Servidor:
         self.__app.run(port=self.__porta, debug=False)
 
     def close(self):
+        if self.__correcao_service is not None:
+            self.__correcao_service.fechar()
         print("❌ Conexão com o servidor encerrada")
         self.__conexao_db.fechar_conexao()

@@ -1,4 +1,6 @@
 from pymongo import ASCENDING, UpdateOne
+from bson import ObjectId
+from bson.errors import InvalidId
 
 from api.modelos.prova_x_aluno import Prova_x_aluno
 
@@ -48,12 +50,25 @@ class Prova_x_aluno_dao:
     def buscar_por_id_prova(self, id_prova: str) -> list[dict]:
         print("✅ prova_x_aluno_dao.buscar_por_id_prova()")
 
-        return list(
+        registros = list(
             self.__colecao.find(
                 {"id_prova": id_prova},
-                {"_id": 0}
+                {}
             ).sort("matricula_aluno", ASCENDING)
         )
+        for registro in registros:
+            registro["_id"] = str(registro["_id"])
+        return registros
+
+    def buscar_por_id(self, id_prova_aluno: str):
+        try:
+            identificador = ObjectId(id_prova_aluno)
+        except (InvalidId, TypeError):
+            return None
+        registro = self.__colecao.find_one({"_id": identificador})
+        if registro:
+            registro["_id"] = str(registro["_id"])
+        return registro
 
     @staticmethod
     def set_doc(obj_prova_x_aluno: Prova_x_aluno) -> dict:

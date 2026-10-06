@@ -85,6 +85,7 @@ class Prova_x_aluno_service:
                 questoes_aluno.append(questao)
 
             provas_alunos.append({
+                "id_prova_aluno": registro["_id"],
                 "matricula_aluno": registro["matricula_aluno"],
                 "questoes": questoes_aluno
             })
