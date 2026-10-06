@@ -328,6 +328,9 @@ class FakeProvaXAlunoDao:
 
         for prova_x_aluno in provas_x_alunos:
             documento = {
+                "_id": self.documentos.get(
+                    (id_prova, prova_x_aluno.matricula_aluno), {}
+                ).get("_id", f"{len(self.documentos) + 1:024x}"),
                 "matricula_aluno": prova_x_aluno.matricula_aluno,
                 "id_prova": prova_x_aluno.id_prova,
                 "questoes": deepcopy(prova_x_aluno.questoes)

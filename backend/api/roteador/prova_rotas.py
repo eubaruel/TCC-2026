@@ -15,6 +15,10 @@ class Prova_rotas:
 
     
     def criar_rotas(self):
+        @self.__blueprint.route('/corrigir-provas', methods=['POST'])
+        def corrigir_provas():
+            return self.__prova_controle.corrigir_provas()
+
         @self.__blueprint.route('/criar-prova', methods=['POST'])
         @self.__prova_middleware.validar_criar_prova
         def criar_prova():

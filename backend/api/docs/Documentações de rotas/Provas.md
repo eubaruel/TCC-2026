@@ -21,6 +21,7 @@ Atualmente, as rotas de provas não exigem token JWT.
 | `POST` | `/api/v1/provas/criar-prova` | Criar a prova-base sem questões |
 | `PATCH` | `/api/v1/provas/{_id}/adicionar-questoes` | Definir as questões e gerar as versões dos alunos |
 | `GET` | `/api/v1/provas/imprimir-provas/{_id}` | Montar as versões completas para impressão |
+| `POST` | `/api/v1/provas/corrigir-provas` | Corrigir cartões-resposta em lote |
 | `GET` | `/api/v1/provas/` | Consultar provas ativas |
 | `PUT` | `/api/v1/provas/{_id}` | Substituir os dados de uma prova ativa |
 | `DELETE` | `/api/v1/provas/{_id}` | Desativar uma prova |
@@ -584,6 +585,10 @@ aluno.
 
 O campo `alternativa_correta` continua presente no objeto completo retornado.
 
+Cada versão também retorna `id_prova_aluno`, o `_id` de `provas_x_alunos`.
+O frontend deve inserir exatamente esse identificador textual no QR Code do
+cartão-resposta; ele não deve conter apenas a matrícula ou o ID da prova-base.
+
 ## Resposta de sucesso
 
 Código: `200 OK`.
@@ -596,6 +601,7 @@ Código: `200 OK`.
     "id_prova": "66c4a6c22ce79c0f588b1621",
     "provas_alunos": [
       {
+        "id_prova_aluno": "66c4a6c22ce79c0f588b1699",
         "matricula_aluno": 50280715,
         "questoes": [
           {
@@ -657,6 +663,108 @@ Um ID sem documentos associados, inclusive um valor fora do formato de
 
 Se uma questão estiver ausente, a rota interrompe toda a montagem para não
 entregar provas incompletas.
+
+---
+
+# Corrigir provas
+
+`POST /api/v1/provas/corrigir-provas`
+
+Recebe `multipart/form-data` com o campo repetido `imagens`. Cada arquivo deve
+conter um único cartão-resposta já recortado, incluindo o QR Code. São aceitos
+de 1 a 50 arquivos, até 5 MiB por imagem. O servidor limita o corpo total das
+requisições a 50 MiB, incluindo o multipart.
+
+```sh
+curl -X POST http://localhost:8080/api/v1/provas/corrigir-provas \
+  -F "imagens=@cartao-aluno-1.png" \
+  -F "imagens=@cartao-aluno-2.png"
+```
+
+O endereço acima é ilustrativo: utilize a porta configurada na API principal.
+No Windows, utilize `curl.exe` para evitar o alias do PowerShell.
+
+## Integração e lógica
+
+1. A API envia cada arquivo ao microserviço em `POST /processar`, no campo
+   multipart `imagem`, sem gravar imagens em disco.
+2. O microserviço retorna `qrcode` e `respostas`, com chaves textuais começando
+   em `"1"`. O QR Code deve conter exatamente o `_id` de `provas_x_alunos`,
+   disponibilizado na impressão como `id_prova_aluno`.
+3. A API busca esse registro e o nome do aluno pela matrícula. A ordem do vetor
+   `questoes` define a numeração; `posicao_alternativa_correta` de 1 a 5 define
+   A a E, respectivamente. Não é utilizado o gabarito da ordem original.
+4. Todas as questões têm o mesmo peso: `nota_prova = acertos / total * 10`,
+   arredondada para duas casas. `null` conta como erro. Uma resposta omitida
+   pelo microserviço é falha de integração, não uma questão em branco.
+
+O leitor atual possui dez posições. A correção aceita provas de 1 a 10 questões,
+ignora posições excedentes em provas menores e rejeita provas maiores. Isso
+não impõe um novo limite às rotas de criação ou impressão.
+
+## Resposta
+
+O lote retorna `200 OK`, inclusive quando há falhas individuais. O frontend deve
+examinar tanto `resultados` quanto `erros`. `indice` começa em zero e identifica
+o arquivo na ordem enviada; cada lista mantém essa ordem.
+
+```json
+{
+  "sucesso": true,
+  "mensagem": "Correções processadas",
+  "data": {
+    "resultados": [{
+      "indice": 0,
+      "arquivo": "cartao-aluno-1.png",
+      "id_prova_aluno": "66c4a6c22ce79c0f588b1699",
+      "matricula": 50280715,
+      "nome": "Carlos Silva",
+      "nota_prova": 6.67,
+      "gabarito_aluno": {"1": "A", "2": "D", "3": null},
+      "gabarito_correto": {"1": "A", "2": "D", "3": "E"}
+    }],
+    "erros": [{
+      "indice": 1,
+      "arquivo": "cartao-aluno-2.png",
+      "codigo": 422,
+      "mensagem": "QR Code não encontrado ou inválido"
+    }]
+  }
+}
+```
+
+Falhas individuais: `404` para registro/aluno inexistente, `422` para cartão ou
+gabarito incompatível, `502` para falha de comunicação/resposta inválida,
+`504` para timeout, `503` para fila ocupada e `500` para falha interna.
+O campo `codigo` não altera o status HTTP do lote.
+Ausência de arquivos, arquivos vazios ou mais de 50 arquivos geram HTTP `400`;
+imagem ou corpo acima do limite gera HTTP `413`.
+
+Nenhuma nota, imagem, resposta ou alteração de status é persistida nesta etapa.
+
+## Configuração e concorrência
+
+Instale o cliente HTTP no ambiente da API principal:
+`pip install -r requirements-correcao.txt`.
+
+| Variável de ambiente | Padrão | Finalidade |
+| --- | --- | --- |
+| `CORRECAO_URL` | `http://127.0.0.1:5000` | URL-base do microserviço, sem `/processar` |
+| `CORRECAO_TIMEOUT` | `30` | Timeout de leitura em segundos; conexão tem limite de 5 segundos |
+| `CORRECAO_CONCORRENCIA` | `8` | Máximo de tarefas simultâneas por processo da API |
+
+Um executor compartilhado permite chamadas concorrentes, com até duas vezes
+o limite de concorrência em tarefas admitidas (executando ou aguardando).
+Cada lote submete no máximo o limite de concorrência por vez. Se não houver
+vaga em um segundo, aquele arquivo recebe erro `503` e pode ser reenviado.
+As conexões HTTP são reutilizadas por worker, com sessões separadas.
+
+A requisição HTTP aguarda o fim do lote; não há fila persistente, identificador
+de job ou consulta posterior. A concorrência é nas chamadas ao microserviço,
+não uma transformação do Flask em aplicação assíncrona. Para requisições
+simultâneas, ambos os serviços precisam de servidores com capacidade de
+concorrência. A quantidade de correções por segundo depende do leitor, CPU,
+tamanho das imagens e configuração dos servidores; não há garantia de taxa.
 
 ---
 
