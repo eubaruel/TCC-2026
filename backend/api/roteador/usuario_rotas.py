@@ -15,6 +15,11 @@ class Usuario_rotas:
     
     def criar_rotas(self):
 
+        @self.__blueprint.route('/<int:registro>/alterar-senha', methods=['PATCH'])
+        @self.__usuario_middleware.validar_alterar_senha
+        def alterar_senha(registro):
+            return self.__usuario_controle.alterar_senha(registro)
+
         @self.__blueprint.route('/login',methods=['POST'])
         @self.__usuario_middleware.validar_login
         def login():

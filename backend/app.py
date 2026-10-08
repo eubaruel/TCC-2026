@@ -22,6 +22,9 @@ def main():
         # Inicializa servidor (DB, middlewares, roteadores)
         servidor.init()
 
+        # Apenas para desenvolvimento: remova esta chamada antes de produção.
+        servidor.inserir_usuarios_teste()
+
         # Inicia servidor Flask
         servidor.run()
         
