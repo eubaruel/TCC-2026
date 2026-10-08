@@ -10,6 +10,7 @@ from werkzeug.exceptions import HTTPException, NotFound
 
 from api.banco_de_dados.banco_de_dados import Banco_de_dados
 from api.utils.resposta_erro_http import resposta_erro_http
+from api.utils.usuarios_teste import inserir_usuarios_teste
 
 from api.middlewares.aluno_middleware import Aluno_middleware
 from api.controles.aluno_controle import Aluno_controle
@@ -284,6 +285,11 @@ class Servidor:
 
             return jsonify(resposta), 500
         
+    def inserir_usuarios_teste(self):
+        if self.__usuario_dao is None:
+            raise RuntimeError("Inicialize o servidor antes de inserir usuários de teste")
+        return inserir_usuarios_teste(self.__usuario_dao)
+
     def run(self):
         """Inicia o servidor Flask na porta configurada"""
         print("✅ Servidor iniciado com sucesso")

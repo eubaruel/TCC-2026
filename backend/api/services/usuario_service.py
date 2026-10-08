@@ -24,7 +24,7 @@ class Usuario_service:
 
         usuario_db = self.__usuario_dao.login(obj_usuario)
 
-        if not usuario_db or usuario_db is None:
+        if not usuario_db or not usuario_db.get("senha"):
             raise resposta_erro_http(
                 401,
                 "Usuário ou senha inválidos",
@@ -46,7 +46,8 @@ class Usuario_service:
                 'registro': usuario_db["registro"],
                 'nome': usuario_db["nome"],
                 'email':usuario_db["email"],
-                'role':usuario_db["role"]
+                'role':usuario_db["role"],
+                'deve_alterar_senha': usuario_db.get("deve_alterar_senha", True)
                 #"token": jwt.gerarToken(usuario["usuario"])
             }
         }
@@ -79,6 +80,38 @@ class Usuario_service:
             self.__usuario_dao.importar_excel(docs)
 
         return inseridos
+
+    def alterar_senha(self, registro, dados):
+        alvo = Usuario()
+        alvo.registro = registro
+        usuario_db = self.__usuario_dao.login(alvo)
+        if not usuario_db:
+            raise resposta_erro_http(404, "Usuário ativo não encontrado")
+        if not usuario_db.get("senha"):
+            raise resposta_erro_http(409, "Usuário sem senha cadastrada; corrija o cadastro")
+
+        redefinicao = "solicitante" in dados
+        if redefinicao:
+            credenciais = dados["solicitante"]
+            solicitante = self.login(credenciais)["usuario"]
+            if solicitante["role"] != "Processo pedagógico" or usuario_db["role"] != "Professor":
+                raise resposta_erro_http(403, "Somente o processo pedagógico pode redefinir a senha de um professor")
+        else:
+            alvo.set_senha_hash(usuario_db["senha"])
+            if not alvo.verificar_senha(dados["senha_atual"]):
+                raise resposta_erro_http(401, "Senha atual inválida")
+
+        nova_senha = Usuario()
+        nova_senha.senha = dados["nova_senha"]
+        alvo.set_senha_hash(usuario_db["senha"])
+        if alvo.verificar_senha(nova_senha.senha):
+            raise resposta_erro_http(400, "A nova senha deve ser diferente da senha atual")
+        nova_senha.gerar_hash_senha()
+        if not self.__usuario_dao.alterar_senha(
+            registro, nova_senha.senha, redefinicao, usuario_db["senha"]
+        ):
+            raise resposta_erro_http(409, "O usuário foi alterado durante a operação; tente novamente")
+        return {"registro": registro, "deve_alterar_senha": redefinicao}
     
     def criar(self, json_usuario: dict) -> bool:
         print("🟣 usuario_service.criar()")
@@ -151,5 +184,7 @@ class Usuario_service:
 
         doc = self.__usuario_dao.set_doc(obj_usuario)
         doc["registro"] = obj_usuario.registro
+        doc["senha"] = obj_usuario.senha
+        doc["deve_alterar_senha"] = True
 
         return doc

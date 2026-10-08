@@ -30,6 +30,7 @@ class Usuario_dao:
         doc = self.set_doc(obj_usuario)
         doc['senha'] = obj_usuario.senha
         doc['registro'] = obj_usuario.registro
+        doc['deve_alterar_senha'] = True
 
         resultado = self.__colecao.insert_one(doc)
 
@@ -42,6 +43,14 @@ class Usuario_dao:
     def importar_excel(self, docs: list) -> bool:
         print("✅ usuario_dao.importar_excel()")
         self.__colecao.insert_many(docs)
+
+    def criar_se_ausente(self, obj_usuario: Usuario) -> bool:
+        doc = self.set_doc(obj_usuario)
+        doc.update(registro=obj_usuario.registro, senha=obj_usuario.senha, deve_alterar_senha=True)
+        resultado = self.__colecao.update_one(
+            {"registro": obj_usuario.registro}, {"$setOnInsert": doc}, upsert=True
+        )
+        return resultado.upserted_id is not None
 
 
     def consulta(self, filtro=None):
@@ -87,6 +96,13 @@ class Usuario_dao:
         resultado = self.__colecao.find_one(filtro)
 
         return resultado is not None
+
+    def alterar_senha(self, registro, senha_hash, deve_alterar_senha, senha_anterior):
+        resultado = self.__colecao.update_one(
+            {"registro": registro, "ativo": True, "senha": senha_anterior},
+            {"$set": {"senha": senha_hash, "deve_alterar_senha": deve_alterar_senha}}
+        )
+        return resultado.matched_count > 0
 
     def set_doc(self, obj_usuario):
         return {

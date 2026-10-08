@@ -31,6 +31,12 @@ class Usuario_controle:
             data = {"usuario":self._formatar_usuario(json_usuario)},
             codigo = 201
         )
+
+    def alterar_senha(self, registro):
+        resultado = self.__usuario_service.alterar_senha(registro, request.json["usuario"])
+        return Resposta_json.sucesso(
+            mensagem="Senha alterada com sucesso", data={"usuario": resultado}, codigo=200
+        )
     
     def importar(self):
         print("🔵 aluno_controle.importar()")

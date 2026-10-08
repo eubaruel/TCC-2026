@@ -17,6 +17,7 @@ http://localhost:8080/api/v1/usuarios
 | `POST` | `/api/v1/usuarios/excel` | Importar usuários por planilha |
 | `GET` | `/api/v1/usuarios/` | Consultar usuários |
 | `PUT` | `/api/v1/usuarios/{registro}` | Atualizar um usuário |
+| `PATCH` | `/api/v1/usuarios/{registro}/alterar-senha` | Trocar senha ou redefinir a senha de um professor |
 | `DELETE` | `/api/v1/usuarios/{registro}` | Desativar um usuário |
 
 ## Autenticação
@@ -24,6 +25,9 @@ http://localhost:8080/api/v1/usuarios
 Atualmente, o login valida o registro e a senha, mas ainda não gera um token JWT.
 
 As demais rotas também não exigem token JWT neste momento.
+
+A rota de alteração de senha exige a senha atual ou as credenciais de um
+usuário ativo do processo pedagógico. Não confia em um papel enviado pelo frontend.
 
 ---
 
@@ -37,6 +41,7 @@ As demais rotas também não exigem token JWT neste momento.
 | `senha` | string | Sim no cadastro e login | Senha do usuário |
 | `role` | string | Sim | Papel do usuário no sistema |
 | `ativo` | booleano | Sim na atualização | Indica se o usuário está ativo |
+| `deve_alterar_senha` | booleano | Gerenciado pela API | Indica troca obrigatória da senha inicial ou redefinida |
 
 Exemplo:
 
@@ -652,7 +657,8 @@ Resposta:
       "registro": 101,
       "nome": "Carlos Silva",
       "email": "carlos@example.com",
-      "role": "Professor"
+      "role": "Professor",
+      "deve_alterar_senha": true
     }
   }
 }
@@ -951,19 +957,12 @@ Por isso, uma planilha com colunas ausentes ou dados inválidos pode retornar:
 
 Atualmente, a resposta não apresenta uma lista dos erros encontrados.
 
-## Limitação atual da senha importada
+## Senha importada
 
-Na implementação atual, a senha da planilha é validada e transformada em hash, mas o documento construído para a importação não inclui o campo `senha`.
-
-Consequentemente, usuários criados por essa importação podem ser armazenados sem senha e não conseguir realizar login.
-
-Esse é um comportamento atual da implementação e deve ser corrigido antes de utilizar a importação de usuários como fluxo definitivo de cadastro.
-
-Enquanto isso, para garantir que o usuário possa realizar login, utilize o cadastro individual:
-
-```http
-POST /api/v1/usuarios/
-```
+A senha da planilha é validada, convertida em hash bcrypt e armazenada no
+documento. Os novos usuários importados recebem `deve_alterar_senha: true`,
+assim como no cadastro individual. Registros antigos importados sem senha
+precisam de correção cadastral; não são automaticamente reparados.
 
 ---
 
@@ -1461,15 +1460,76 @@ não corresponde à rota e normalmente retorna `404 Not Found`.
 
 # Alteração de senha
 
-Atualmente, não existe uma rota específica para:
+`PATCH /api/v1/usuarios/{registro}/alterar-senha`
 
-- alterar senha;
-- redefinir senha;
-- recuperar senha esquecida.
+Cabeçalho: `Content-Type: application/json`. O registro na URL é do usuário
+cuja senha será alterada. Nenhum outro dado cadastral é atualizado.
 
-A rota `PUT /api/v1/usuarios/{registro}` não recebe nem atualiza o campo `senha`.
+## Troca pelo próprio usuário
 
-Uma funcionalidade de alteração de senha deverá ser implementada separadamente caso seja necessária.
+```json
+{
+  "usuario": {
+    "senha_atual": "Base123!",
+    "nova_senha": "Nova456!"
+  }
+}
+```
+
+A senha atual é verificada com bcrypt. A nova senha segue as mesmas regras
+do cadastro e deve ser diferente da atual. Após a troca,
+`deve_alterar_senha` fica `false`.
+
+## Redefinição pelo processo pedagógico
+
+```json
+{
+  "usuario": {
+    "nova_senha": "Temp456!",
+    "solicitante": {"registro": 200, "senha": "Pedagogico123!"}
+  }
+}
+```
+
+A API autentica o solicitante e consulta seu papel no banco. Somente um usuário
+ativo com papel `Processo pedagógico` pode redefinir a senha de um professor
+ativo. A senha anterior do professor não é exigida. A senha redefinida é
+temporária: `deve_alterar_senha` fica `true` novamente.
+
+Envie exclusivamente `senha_atual` ou `solicitante`, nunca ambos. Nenhum hash
+ou senha é retornado. Utilize HTTPS fora do ambiente local, pois as credenciais
+são enviadas no corpo da requisição. Quando houver autenticação por sessão/token,
+a identidade do solicitante deverá vir desse mecanismo.
+
+## Resposta de sucesso
+
+```json
+{
+  "sucesso": true,
+  "mensagem": "Senha alterada com sucesso",
+  "data": {"usuario": {"registro": 101, "deve_alterar_senha": false}}
+}
+```
+
+Na redefinição, o indicador acima será `true`.
+
+Erros: `400` para corpo inválido ou nova senha inválida/igual à atual;
+`401` para senha atual ou credenciais incorretas; `403` para papel não permitido;
+`404` para usuário-alvo inexistente/inativo; `409` para cadastro sem senha ou
+alteração concorrente. A atualização confere também o hash anterior para evitar
+sobrescrever outra troca ocorrida durante a operação.
+
+## Primeiro login
+
+O cadastro individual e a importação criam `deve_alterar_senha: true`.
+O login retorna esse indicador; usuários legados sem o campo são tratados como
+pendentes de troca, sem migração automática do banco. O frontend deve abrir a
+tela de alteração antes de liberar a navegação quando o indicador for `true`.
+Após o sucesso, pode atualizar o indicador local ou realizar novo login.
+
+A API não bloqueia as outras rotas enquanto a troca estiver pendente: ainda
+não há sessão/token para aplicar essa restrição. O frontend não foi alterado.
+Não há recuperação de senha por e-mail nesta implementação.
 
 ---
 
@@ -1647,13 +1707,13 @@ Resposta:
 
 1. Cadastre os usuários individualmente.
 2. Realize o login utilizando o registro e a senha.
-3. Armazene os dados públicos retornados conforme a necessidade do frontend.
+3. Se `deve_alterar_senha` for verdadeiro, solicite a troca pela rota específica antes de liberar a navegação.
 4. Consulte os usuários ativos ou inativos pelos filtros.
 5. Atualize nome, e-mail, papel ou estado quando necessário.
 6. Desative logicamente usuários que não devem mais acessar o sistema.
 7. Reative usuários pela atualização quando necessário.
 
-A importação por Excel deve ser utilizada somente depois da correção do armazenamento da senha dos usuários importados.
+A importação por Excel também armazena o hash e sinaliza a troca da senha inicial.
 
 ## Exemplo de fluxo completo
 
