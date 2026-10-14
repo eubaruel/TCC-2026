@@ -23,36 +23,18 @@ class Questao_middleware:
                 
             tipo = str(questao.get("tipo_questao", "")).strip().title()
 
-            if tipo == "Objetiva" and not (
-                "alternativas" in questao and "alternativa_correta" in questao
-            ):
+            if tipo != "Objetiva":
+                raise resposta_erro_http(
+                    400,
+                    "Erro na validação de dados",
+                    {"mensagem": "Apenas questões objetivas são permitidas"}
+                )
+
+            if not ("alternativas" in questao and "alternativa_correta" in questao):
                 raise resposta_erro_http(
                     400,
                     "Erro na validação de dados",
                     {"mensagem": "Questão objetiva exige alternativas e alternativa correta"}
-                )
-
-            if tipo == "Objetiva" and "numero_linhas" in questao:
-                raise resposta_erro_http(
-                    400,
-                    "Erro na validação de dados",
-                    {"mensagem": "Questão objetiva não deve possuir número de linhas"}
-                )
-
-            if tipo == "Dissertativa" and "numero_linhas" not in questao:
-                raise resposta_erro_http(
-                    400,
-                    "Erro na validação de dados",
-                    {"mensagem": "Questão dissertativa exige número de linhas"}
-                )
-
-            if tipo == "Dissertativa" and (
-                "alternativas" in questao or "alternativa_correta" in questao
-            ):
-                raise resposta_erro_http(
-                    400,
-                    "Erro na validação de dados",
-                    {"mensagem": "Questão dissertativa não deve possuir alternativas"}
                 )
                                 
             professor = questao["professor"]

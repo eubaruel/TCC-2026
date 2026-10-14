@@ -26,9 +26,7 @@ export default {
       if (!this.questoes.length) return '<p class="preview-vazio">Nenhuma questão adicionada.</p>';
       return this.questoes.map((questao, index) => {
         const enunciado = htmlVazio(questao.enunciado) ? `<p>${VAZIO}</p>` : questao.enunciado;
-        const resposta = this.metadados.tipo === "Objetiva"
-          ? `<ol class="preview-alternativas">${questao.alternativas.map((alternativa, i) => `<li><span class="preview-letra">${LETRAS[i]})</span><div>${htmlVazio(alternativa) ? VAZIO : alternativa}</div></li>`).join("")}</ol>`
-          : `<div class="preview-linhas">${'<div class="preview-linha"></div>'.repeat(Math.max(1, Number(questao.numeroLinhas) || 1))}</div>`;
+        const resposta = `<ol class="preview-alternativas">${questao.alternativas.map((alternativa, i) => `<li><span class="preview-letra">${LETRAS[i]})</span><div>${htmlVazio(alternativa) ? VAZIO : alternativa}</div></li>`).join("")}</ol>`;
         return `<div class="preview-questao"><div class="preview-numero">${index + 1}.</div><div class="preview-corpo">${enunciado}${resposta}</div></div>`;
       }).join("");
     },
@@ -154,11 +152,6 @@ export default {
 
 .folha :deep(.preview-letra) {
   font-weight: 600;
-}
-
-.folha :deep(.preview-linha) {
-  border-bottom: 1px solid #bbb;
-  height: 26px;
 }
 
 .folha :deep(.preview-vazio) {

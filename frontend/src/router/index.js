@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import LoginTelaPrincipal from "@/views/LoginTelaPrincipal.vue";
 import TelaPrincipal from "@/components/TelaPrincipal.vue";
-import AvisosView from "@/views/AvisosView.vue";
 import ProvasView from "@/views/ProvasView.vue";
 import QuestoesView from "@/views/QuestoesView.vue";
 import GestaoUsuarios from "@/views/GestaoUsuarios.vue";
@@ -29,11 +28,6 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       {
-        path: "avisos",
-        name: "AvisosView",
-        component: AvisosView,
-      },
-      {
         path: "provas",
         name: "ProvasView",
         component: ProvasView,
@@ -57,7 +51,7 @@ const routes = [
       },
       {
         path: "",
-        redirect: "/avisos",
+        redirect: "/provas",
       },
     ],
   },
@@ -74,9 +68,9 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !authStore.isLoggedIn) {
     next("/");
   } else if (to.meta.requiresProfessor && !authStore.isProfessor) {
-    next("/avisos");
+    next("/provas");
   } else if (to.meta.requiresProcesso && !authStore.isProcessoPedagogico) {
-    next("/avisos");
+    next("/provas");
   } else {
     next();
   }

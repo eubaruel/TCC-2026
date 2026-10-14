@@ -64,13 +64,11 @@ class Prova_service:
                 {"mensagem": "A prova informada não existe ou está inativa"}
             )
 
-        provas_alunos_geradas = 0
-        if str(prova.get("tipo", "")).strip().casefold() == "objetiva":
-            provas_alunos_geradas = self.__prova_x_aluno_service.gerar(
-                id_hash,
-                prova.get("id_turma"),
-                ids_normalizados
-            )
+        provas_alunos_geradas = self.__prova_x_aluno_service.gerar(
+            id_hash,
+            prova.get("id_turma"),
+            ids_normalizados
+        )
 
         return {
             "prova": {
@@ -169,6 +167,13 @@ class Prova_service:
         tipo_prova,
         disciplina_prova
     ):
+        if str(tipo_prova).strip().title() != "Objetiva":
+            raise resposta_erro_http(
+                400,
+                "Tipo de prova inválido",
+                {"mensagem": "Apenas provas objetivas são permitidas"}
+            )
+
         if not isinstance(ids_questoes, list):
             raise resposta_erro_http(
                 400,

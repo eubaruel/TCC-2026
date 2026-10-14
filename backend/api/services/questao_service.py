@@ -73,41 +73,34 @@ class Questao_service:
         professor.nome = dados_professor.get("nome")
         obj_questao.professor = professor
 
-        if obj_questao.tipo_questao == "Objetiva":
-            textos_alternativas = json_questao.get("alternativas")
-            if not isinstance(textos_alternativas, list):
-                raise TypeError("Alternativas devem ser uma lista")
+        textos_alternativas = json_questao.get("alternativas")
+        if not isinstance(textos_alternativas, list):
+            raise TypeError("Alternativas devem ser uma lista")
 
-            alternativas = []
-            for texto in textos_alternativas:
-                if not isinstance(texto, str):
-                    raise TypeError("Cada alternativa deve ser uma string")
-                texto = texto.strip()
-                if not texto:
-                    raise ValueError("Texto da alternativa não pode ser vazio")
-                alternativas.append(Alternativa(str(uuid4()), texto))
+        alternativas = []
+        for texto in textos_alternativas:
+            if not isinstance(texto, str):
+                raise TypeError("Cada alternativa deve ser uma string")
+            texto = texto.strip()
+            if not texto:
+                raise ValueError("Texto da alternativa não pode ser vazio")
+            alternativas.append(Alternativa(str(uuid4()), texto))
 
-            obj_questao.alternativas = alternativas
+        obj_questao.alternativas = alternativas
 
-            texto_correto = json_questao.get("alternativa_correta")
-            if not isinstance(texto_correto, str):
-                raise TypeError("Alternativa correta deve ser uma string")
-            texto_correto = texto_correto.strip()
+        texto_correto = json_questao.get("alternativa_correta")
+        if not isinstance(texto_correto, str):
+            raise TypeError("Alternativa correta deve ser uma string")
+        texto_correto = texto_correto.strip()
 
-            alternativa_correta = next(
-                (
-                    alternativa
-                    for alternativa in alternativas
-                    if alternativa.texto == texto_correto
-                ),
-                None
-            )
-            if alternativa_correta is None:
-                raise ValueError("Alternativa correta deve estar na lista de alternativas")
+        alternativa_correta = next(
+            (alternativa for alternativa in alternativas if alternativa.texto == texto_correto),
+            None
+        )
+        if alternativa_correta is None:
+            raise ValueError("Alternativa correta deve estar na lista de alternativas")
 
-            obj_questao.alternativa_correta = alternativa_correta.id
-        else:
-            obj_questao.numero_linhas = json_questao.get("numero_linhas")
+        obj_questao.alternativa_correta = alternativa_correta.id
 
         if "autor" not in json_questao:
             obj_questao.autor = obj_questao.professor.nome
@@ -126,13 +119,10 @@ class Questao_service:
             "enunciado": obj_questao.enunciado
         }
 
-        if obj_questao.tipo_questao == "Objetiva":
-            formatada["alternativas"] = [
-                {"id": alternativa.id, "texto": alternativa.texto}
-                for alternativa in obj_questao.alternativas
-            ]
-            formatada["alternativa_correta"] = obj_questao.alternativa_correta
-        else:
-            formatada["numero_linhas"] = obj_questao.numero_linhas
+        formatada["alternativas"] = [
+            {"id": alternativa.id, "texto": alternativa.texto}
+            for alternativa in obj_questao.alternativas
+        ]
+        formatada["alternativa_correta"] = obj_questao.alternativa_correta
 
         return formatada

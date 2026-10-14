@@ -24,7 +24,6 @@ export const novaQuestaoEditor = () => ({
   enunciado: "",
   alternativas: LETRAS.map(() => ""),
   indiceCorreta: 0,
-  numeroLinhas: 10,
   assinaturaSalva: null,
 });
 
@@ -40,7 +39,6 @@ export const questaoDoBanco = (questao) => {
     enunciado: questao.enunciado || "",
     alternativas: LETRAS.map((_, index) => alternativas[index]?.texto || ""),
     indiceCorreta: indiceCorreta >= 0 ? indiceCorreta : 0,
-    numeroLinhas: questao.numero_linhas || 10,
     professor: questao.professor,
     autor: questao.autor,
   };

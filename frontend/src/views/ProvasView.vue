@@ -1,7 +1,7 @@
 <template>
   <div class="provas-container">
     <div class="page-header">
-      <h2>Minhas Provas</h2>
+      <h2>{{ authStore.isProfessor ? "Minhas Provas" : "Provas" }}</h2>
       <div class="header-line"></div>
     </div>
 
@@ -12,7 +12,7 @@
         class="tab-btn"
         :class="{ ativo: abaAtiva === 'minhas' }"
       >
-        Minhas Provas ({{ minhasProvas.length }})
+        {{ authStore.isProfessor ? "Minhas Provas" : "Todas as Provas" }} ({{ minhasProvas.length }})
       </button>
       <button
         @click="abaAtiva = 'naoCorrigidas'"
@@ -30,9 +30,8 @@
       </button>
     </div>
 
-    <!-- Botão Criar Prova - APENAS na aba "Minhas Provas" -->
-    <div v-if="abaAtiva === 'minhas'" class="actions-bar">
-      <button @click="abrirEditor()" class="btn-criar-prova">
+    <div v-if="abaAtiva === 'minhas' && authStore.isProcessoPedagogico" class="actions-bar">
+      <button @click="mostrarCriacaoBase = true" class="btn-criar-prova">
         <svg
           width="20"
           height="20"
@@ -43,7 +42,7 @@
         >
           <path d="M12 5V19M5 12H19" stroke="white" stroke-width="2" />
         </svg>
-        Criar Prova
+        Criar Prova-base
       </button>
     </div>
 
@@ -78,7 +77,9 @@
             <path d="M12 16H8M16 12H8" stroke="currentColor" stroke-width="2" />
           </svg>
           <p>Nenhuma prova encontrada nesta categoria.</p>
-          <p v-if="abaAtiva === 'minhas'" class="sub">Clique em "Criar Prova" para começar.</p>
+          <p v-if="abaAtiva === 'minhas'" class="sub">
+            {{ authStore.isProfessor ? "As provas atribuídas a você aparecerão aqui." : 'Clique em "Criar Prova-base" para começar.' }}
+          </p>
         </div>
       </div>
       <div v-else>
@@ -107,6 +108,7 @@
               <h4>{{ prova.titulo || "Prova sem título" }}</h4>
               <div class="prova-metadata">
                 <span>📅 {{ formatarData(prova.criadaEm) }}</span>
+                <span v-if="authStore.isProcessoPedagogico">Professor: {{ prova.professor.nome }}</span>
                 <span class="status" :class="classeStatus(prova.status)">
                   {{
                     (prova.status || "rascunho").charAt(0).toUpperCase() +
@@ -118,6 +120,7 @@
           </div>
           <div class="prova-actions">
             <button
+              v-if="authStore.isProfessor"
               @click="editarProva(prova)"
               class="btn-editar"
               title="Editar"
@@ -143,6 +146,7 @@
         </div>
       </div>
     </div>
+    <CriarProvaBase v-if="mostrarCriacaoBase && authStore.isProcessoPedagogico" @fechar="mostrarCriacaoBase = false" @criada="provaBaseCriada" />
   </div>
 </template>
 
@@ -151,9 +155,11 @@ import { useAuthStore } from "@/stores/auth";
 import { listarQuestoes } from "@/services/questoes";
 import { excluirProva as excluirProvaApi, listarProvas } from "@/services/provas";
 import { sanitizar } from "@/utils/html";
+import CriarProvaBase from "@/components/CriarProvaBase.vue";
 
 export default {
   name: "ProvasView",
+  components: { CriarProvaBase },
   setup() {
     return { authStore: useAuthStore() };
   },
@@ -164,6 +170,7 @@ export default {
     erro: "",
     carregando: true,
     excluindoId: null,
+    mostrarCriacaoBase: false,
   }),
   computed: {
     provasNaoCorrigidas() {
@@ -202,18 +209,27 @@ export default {
     },
     async carregarProvas() {
       try {
-        const provas = (await listarProvas({ nome: this.authStore.user?.nome })).provas;
+        const filtro = this.authStore.isProfessor ? { registro: this.authStore.user.registro } : {};
+        const provas = (await listarProvas(filtro)).provas;
         if (!Array.isArray(provas)) throw new Error("O servidor retornou uma lista de provas inválida.");
-        this.minhasProvas = provas.map((prova) => ({
-          ...prova,
-          id: prova._id,
-          titulo: `${prova.disciplina.nome_disciplina} - ${Array.isArray(prova.id_turma) ? prova.id_turma.join(", ") : prova.id_turma}`,
-          criadaEm: prova.data_de_aplicacao,
-        }));
+        this.minhasProvas = provas.map(this.adaptarProva);
       } catch (error) {
         this.minhasProvas = [];
         this.erro = this.mensagemErro(error);
       }
+    },
+    adaptarProva(prova) {
+      return {
+        ...prova,
+        id: prova._id,
+        titulo: `${prova.disciplina.nome_disciplina} - ${Array.isArray(prova.id_turma) ? prova.id_turma.join(", ") : prova.id_turma}`,
+        criadaEm: prova.data_de_aplicacao,
+      };
+    },
+    provaBaseCriada(prova) {
+      this.minhasProvas.unshift(this.adaptarProva(prova));
+      this.abaAtiva = "minhas";
+      this.mostrarCriacaoBase = false;
     },
     abrirEditor(prova = null) {
       this.$router.push(prova?.id ? `/provas/editor/${prova.id}` : "/provas/editor");
@@ -229,7 +245,7 @@ export default {
     },
     async baixarProva(prova) {
       const questoes = this.todasQuestoes.filter((questao) => prova.questoes.includes(questao._id));
-      const corpo = questoes.map((questao, index) => `<section><div><strong>${index + 1}.</strong> ${sanitizar(questao.enunciado)}</div>${questao.alternativas ? `<ol>${questao.alternativas.map((alternativa) => `<li>${sanitizar(alternativa.texto)}</li>`).join("")}</ol>` : `<p>Linhas para resposta: ${questao.numero_linhas}</p>`}</section>`).join("");
+      const corpo = questoes.map((questao, index) => `<section><div><strong>${index + 1}.</strong> ${sanitizar(questao.enunciado)}</div><ol>${questao.alternativas.map((alternativa) => `<li>${sanitizar(alternativa.texto)}</li>`).join("")}</ol></section>`).join("");
       const blob = new Blob([`<html><meta charset="UTF-8"><body><h1>${prova.titulo}</h1>${corpo}</body></html>`], { type: "text/html" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");

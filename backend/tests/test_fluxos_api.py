@@ -193,12 +193,67 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
         resposta = self.questao_client.post("/api/v1/questoes/", json=payload)
         self.assertEqual(resposta.status_code, 400)
 
-    def test_middleware_rejeita_campos_do_tipo_errado(self):
+    def test_middleware_exige_alternativas_e_gabarito(self):
         payload = payload_questao(2)
         payload["questao"].pop("alternativas")
         payload["questao"].pop("alternativa_correta")
-        payload["questao"]["numero_linhas"] = 5
         self.assertEqual(self.questao_client.post("/api/v1/questoes/", json=payload).status_code, 400)
+
+    def test_cadastro_e_atualizacao_rejeitam_tipo_nao_objetivo(self):
+        payload = payload_questao(90)
+        questao = self.questao_client.post(
+            "/api/v1/questoes/", json=payload
+        ).get_json()["data"]["questao"]
+        payload["questao"]["tipo_questao"] = "Outro"
+        for metodo, rota in [
+            (self.questao_client.post, "/api/v1/questoes/"),
+            (self.questao_client.put, f"/api/v1/questoes/{questao['_id']}"),
+        ]:
+            with self.subTest(rota=rota):
+                self.assertEqual(metodo(rota, json=payload).status_code, 400)
+        self.assertEqual(self.questao_dao.documentos[questao["_id"]]["tipo_questao"], "Objetiva")
+
+    def test_prova_rejeita_tipo_nao_objetivo_na_criacao_e_atualizacao(self):
+        prova_dao = FakeProvaDao()
+        service = Prova_service(prova_dao, self.questao_dao, self.prova_x_aluno_service)
+        client = criar_app(
+            Prova_rotas(Prova_middleware(), Prova_controle(service)).criar_rotas(),
+            "/api/v1/provas"
+        ).test_client()
+        dados = {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "bimestre": "1° bimestre", "data_de_aplicacao": "2026-08-20"}
+        prova = client.post("/api/v1/provas/criar-prova", json={"prova": dados}).get_json()["data"]["prova"]
+        dados["tipo"] = "Outro"
+        self.assertEqual(client.post("/api/v1/provas/criar-prova", json={"prova": dados}).status_code, 400)
+        dados.update(status="Aguardando questões", questoes=[])
+        self.assertEqual(client.put(f"/api/v1/provas/{prova['_id']}", json={"prova": dados}).status_code, 400)
+        self.assertEqual(len(prova_dao.documentos), 1)
+        self.assertEqual(prova_dao.documentos[prova["_id"]]["tipo"], "Objetiva")
+
+    def test_modelos_aceitam_apenas_tipo_objetivo(self):
+        from api.modelos.prova import Prova
+        from api.modelos.questao import Questao
+
+        for modelo, campo in [(Prova(), "tipo"), (Questao(), "tipo_questao")]:
+            with self.subTest(modelo=type(modelo).__name__):
+                setattr(modelo, campo, " objetiva ")
+                self.assertEqual(getattr(modelo, campo), "Objetiva")
+                with self.assertRaises(ValueError):
+                    setattr(modelo, campo, "Outro")
+
+    def test_prova_objetiva_rejeita_questao_legada_de_outro_tipo(self):
+        questao = self.questao_client.post(
+            "/api/v1/questoes/", json=payload_questao(91)
+        ).get_json()["data"]["questao"]
+        self.questao_dao.documentos[questao["_id"]]["tipo_questao"] = "Outro"
+        prova_dao = FakeProvaDao()
+        service = Prova_service(prova_dao, self.questao_dao, self.prova_x_aluno_service)
+        with self.assertRaises(resposta_erro_http) as resultado:
+            service._validar_ids_questoes(
+                [questao["_id"]], "Objetiva",
+                {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}
+            )
+        self.assertEqual(resultado.exception.httpCode, 400)
+        self.assertEqual(resultado.exception.mensagem, "Tipo de questão incompatível")
 
     def test_criacao_da_prova_base_sem_questoes(self):
         prova_dao = FakeProvaDao()
@@ -219,6 +274,26 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
         self.assertEqual(prova_retornada["_id"], persistida["_id"])
         self.assertEqual(prova_retornada["questoes"], [])
         self.assertEqual(prova_retornada["status"], "Aguardando questões")
+        self.assertEqual(self.prova_x_aluno_dao.documentos, {})
+
+        # Mesmo nome, registros diferentes: a atribuição depende do registro.
+        payload["prova"]["professor"]["registro"] = 202
+        client.post("/api/v1/provas/criar-prova", json=payload)
+        consulta = client.get("/api/v1/provas/?registro=101")
+        self.assertEqual(consulta.status_code, 200)
+        self.assertEqual(consulta.get_json()["data"]["provas"], [prova_retornada])
+        consulta_por_id = client.get(f"/api/v1/provas/?registro=101&id={prova_retornada['_id']}")
+        self.assertEqual(consulta_por_id.get_json()["data"]["provas"], [prova_retornada])
+        self.assertEqual(client.get("/api/v1/provas/?registro=303").get_json()["data"]["provas"], [])
+
+    def test_consulta_provas_rejeita_registro_nao_inteiro(self):
+        controle = Prova_controle(Prova_service(FakeProvaDao(), self.questao_dao, self.prova_x_aluno_service))
+        client = criar_app(Prova_rotas(Prova_middleware(), controle).criar_rotas(), "/api/v1/provas").test_client()
+
+        resposta = client.get("/api/v1/provas/?registro=abc")
+
+        self.assertEqual(resposta.status_code, 400)
+        self.assertIn("registro inválido", resposta.get_json()["mensagem"])
 
     def test_criacao_da_prova_base_rejeita_campos_gerenciados_pela_api(self):
         prova_dao = FakeProvaDao()
@@ -545,11 +620,13 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
             json={"prova": {"questoes": [questao["_id"]]}}
         )
 
-        payload_prova = {"prova": {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Dissertativa", "serie": 3, "bimestre": "1° bimestre", "data_de_aplicacao": "2026-08-20"}}
+        payload_prova = {"prova": {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "bimestre": "1° bimestre", "data_de_aplicacao": "2026-08-20"}}
         prova = client.post(
             "/api/v1/provas/criar-prova",
             json=payload_prova
         ).get_json()["data"]["prova"]
+        # Simula um registro antigo de tipo não suportado, sem permitir seu cadastro.
+        prova_dao.documentos[prova["_id"]]["tipo"] = "Outro"
         incompativel = client.patch(
             f"/api/v1/provas/{prova['_id']}/adicionar-questoes",
             json={"prova": {"questoes": [questao["_id"]]}}
@@ -558,6 +635,7 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
         self.assertEqual(inexistente.status_code, 404)
         self.assertEqual(incompativel.status_code, 400)
         self.assertIn("Tipo", incompativel.get_json()["mensagem"])
+        self.assertEqual(prova_dao.documentos[prova["_id"]]["questoes"], [])
 
 
 if __name__ == "__main__":
