@@ -8,7 +8,7 @@ class Prova:
         self.__disciplina = None   #id da disciplina da prova
         self.__professor = None    #objeto professor autor da prova
         self.__status = None       #se a prova foi corrigida ou não
-        self.__tipo = None         #se é objetiva ou dissertativa
+        self.__tipo = None         #provas objetivas
         self.__serie = None        #para qual série essa prova foi feita 
         self.__bimestre = None    
         self.__data_de_aplicacao = None 
@@ -97,8 +97,8 @@ class Prova:
         if not isinstance(value, str):
             raise TypeError("Tipo deve ser string")
         value = value.strip().title()
-        if value not in ["Objetiva", "Dissertativa"]:
-            raise ValueError("Tipo inválido")
+        if value != "Objetiva":
+            raise ValueError("Apenas provas objetivas são permitidas")
         self.__tipo = value
 
 

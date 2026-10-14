@@ -31,7 +31,7 @@
       />
     </div>
 
-    <div v-if="tipo === 'Objetiva'" class="campo">
+    <div class="campo">
       <label>Alternativas (marque a correta)</label>
       <div v-for="(alternativa, index) in questao.alternativas" :key="index" class="alternativa">
         <label class="marcador" :class="{ correta: questao.indiceCorreta === index }">
@@ -53,16 +53,6 @@
       </div>
     </div>
 
-    <div v-else class="campo campo-linhas">
-      <label>Número de linhas para resposta</label>
-      <input
-        type="number"
-        min="1"
-        :value="questao.numeroLinhas"
-        @input="atualizar('numeroLinhas', Number($event.target.value))"
-      />
-    </div>
-
     <small v-if="questao._idBanco" class="aviso-banco">
       Questão já cadastrada no banco: alterações serão gravadas nela ao salvar.
     </small>
@@ -79,7 +69,6 @@ export default {
   props: {
     questao: { type: Object, required: true },
     numero: { type: Number, required: true },
-    tipo: { type: String, default: "Objetiva" },
     primeira: { type: Boolean, default: false },
     ultima: { type: Boolean, default: false },
   },
@@ -202,10 +191,6 @@ export default {
   border: 1px solid #d8d8d8;
   border-radius: 6px;
   font: inherit;
-}
-
-.campo-linhas input {
-  max-width: 160px;
 }
 
 .alternativa {

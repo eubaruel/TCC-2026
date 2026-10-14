@@ -46,8 +46,8 @@
           <div v-for="questao in resultados" :key="questao.id" class="questao-card">
             <div class="questao-header">
               <span class="disciplina">{{ questao.disciplina }}</span>
-              <span class="tipo-questao" :class="questao.tipo">
-                {{ questao.tipo === 'objetiva' ? 'Objetiva' : 'Dissertativa' }}
+              <span class="tipo-questao objetiva">
+                Objetiva
               </span>
               <span class="dificuldade" :class="getDificuldadeClass(questao.dificuldade)">
                 {{ questao.dificuldade }}
@@ -59,7 +59,7 @@
             </div>
             <!-- eslint-disable-next-line vue/no-v-html -->
             <div class="questao-texto" v-html="sanitizar(questao.texto)"></div>
-            <div v-if="questao.tipo === 'objetiva'" class="alternativas">
+            <div class="alternativas">
               <p><strong>Texto das Alternativas:</strong></p>
               <ul>
                 <li v-for="alt in questao.alternativas" :key="alt.letra" 
@@ -70,9 +70,6 @@
                 </li>
               </ul>
               <p class="correta-destaque">✅ Alternativa correta: {{ questao.alternativaCorreta }}</p>
-            </div>
-            <div v-else class="linhas-resposta">
-              <p><strong>Linhas para resposta:</strong> {{ questao.linhasResposta_json }} linhas</p>
             </div>
             <div class="questao-footer">
               <button v-if="isProfessor" @click="usarQuestao(questao)" class="btn-usar">
@@ -149,17 +146,8 @@
           </div>
           
           <div class="form-group">
-            <label>Tipo de Questão *</label>
-            <div class="radio-group">
-              <label class="radio-label">
-                <input type="radio" value="objetiva" v-model="novaQuestao.tipo" />
-                Objetiva
-              </label>
-              <label class="radio-label">
-                <input type="radio" value="dissertativa" v-model="novaQuestao.tipo" />
-                Dissertativa
-              </label>
-            </div>
+            <label>Tipo de Questão</label>
+            <input type="text" value="Objetiva" readonly />
           </div>
           
           <div class="form-group">
@@ -168,7 +156,7 @@
           </div>
           
           <!-- Campo para questão objetiva -->
-          <div v-if="novaQuestao.tipo === 'objetiva'" class="objetiva-fields">
+          <div class="objetiva-fields">
             <div class="form-group">
               <label>Texto das Alternativas</label>
               <div v-for="(alt, idx) in novaQuestao.alternativas" :key="idx" class="alternativa-item">
@@ -192,23 +180,6 @@
                 <option value="E">Alternativa E</option>
               </select>
               <small class="helper-text">Selecione qual alternativa é a correta</small>
-            </div>
-          </div>
-          
-          <!-- Campo para questão dissertativa -->
-          <div v-if="novaQuestao.tipo === 'dissertativa'" class="dissertativa-fields">
-            <div class="form-group">
-              <label>Quantidade de Linhas para Resposta_json *</label>
-              <input 
-                type="number" 
-                v-model.number="novaQuestao.linhasResposta_json" 
-                min="1" 
-                max="10"
-                step="1"
-                required
-                class="input-linhas"
-              />
-              <small class="helper-text">Digite um número inteiro entre 1 e 10 linhas</small>
             </div>
           </div>
           
@@ -242,8 +213,8 @@
           <div v-for="questaoItem in minhasQuestoes" :key="questaoItem.id" class="questao-card minhas">
             <div class="questao-header">
               <span class="disciplina">{{ questaoItem.disciplina }}</span>
-              <span class="tipo-questao" :class="questaoItem.tipo">
-                {{ questaoItem.tipo === 'objetiva' ? 'Objetiva' : 'Dissertativa' }}
+              <span class="tipo-questao objetiva">
+                Objetiva
               </span>
               <span class="dificuldade" :class="getDificuldadeClass(questaoItem.dificuldade)">
                 {{ questaoItem.dificuldade }}
@@ -255,7 +226,7 @@
             </div>
             <!-- eslint-disable-next-line vue/no-v-html -->
             <div class="questao-texto" v-html="sanitizar(questaoItem.texto)"></div>
-            <div v-if="questaoItem.tipo === 'objetiva'" class="alternativas">
+            <div class="alternativas">
               <p><strong>Texto das Alternativas:</strong></p>
               <ul>
                 <li v-for="alt in questaoItem.alternativas" :key="alt.letra" 
@@ -266,9 +237,6 @@
                 </li>
               </ul>
               <p class="correta-destaque">✅ Alternativa correta: {{ questaoItem.alternativaCorreta }}</p>
-            </div>
-            <div v-else class="linhas-resposta">
-              <p><strong>Linhas para resposta:</strong> {{ questaoItem.linhasResposta_json }} linhas</p>
             </div>
             <div class="questao-actions">
               <button @click="editarQuestao(questaoItem)" class="btn-editar">Editar</button>
@@ -294,11 +262,9 @@ const novaQuestao = () => ({
   disciplina: "",
   assunto: "",
   autor: "",
-  tipo: "objetiva",
   texto: "",
   alternativas: letras.map((letra) => ({ letra, texto: "" })),
   alternativaCorreta: "A",
-  linhasResposta_json: 10,
   dificuldade: "Médio",
 });
 
@@ -342,12 +308,10 @@ export default {
         id: questao._id,
         disciplina: disciplinasOriginais.join(", "),
         disciplinasOriginais,
-        tipo: questao.tipo_questao.toLowerCase(),
         texto: questao.enunciado,
         dataCriacao: "—",
         alternativas: questao.alternativas?.map((alternativa, index) => ({ ...alternativa, letra: letras[index] })) || [],
         alternativaCorreta: indiceCorreta >= 0 ? letras[indiceCorreta] : "",
-        linhasResposta_json: questao.numero_linhas,
       };
     },
     async carregarDisciplinas() {
@@ -394,17 +358,13 @@ export default {
         professor: { nome: this.authStore.user.nome },
         assunto: this.novaQuestao.assunto,
         disciplina: [...new Set(referenciasDisciplina.filter(Boolean))],
-        tipo_questao: this.novaQuestao.tipo === "objetiva" ? "Objetiva" : "Dissertativa",
+        tipo_questao: "Objetiva",
         dificuldade: this.novaQuestao.dificuldade,
         enunciado: this.novaQuestao.texto,
       };
       if (this.novaQuestao.autor) payload.autor = this.novaQuestao.autor;
-      if (this.novaQuestao.tipo === "objetiva") {
-        payload.alternativas = this.novaQuestao.alternativas.map((alternativa) => alternativa.texto);
-        payload.alternativa_correta = this.novaQuestao.alternativas.find((alternativa) => alternativa.letra === this.novaQuestao.alternativaCorreta)?.texto;
-      } else {
-        payload.numero_linhas = Number(this.novaQuestao.linhasResposta_json);
-      }
+      payload.alternativas = this.novaQuestao.alternativas.map((alternativa) => alternativa.texto);
+      payload.alternativa_correta = this.novaQuestao.alternativas.find((alternativa) => alternativa.letra === this.novaQuestao.alternativaCorreta)?.texto;
       return payload;
     },
     async salvarQuestao() {
@@ -438,7 +398,7 @@ export default {
       );
       const disciplinaLegada = [...(questao.disciplinasOriginais || [])]
         .sort((primeira, segunda) => segunda.length - primeira.length)[0] || "";
-      this.novaQuestao = { disciplina: disciplinaCadastrada?.nome_disciplina || disciplinaLegada, assunto: questao.assunto, autor: questao.autor, tipo: questao.tipo, texto: questao.texto, alternativas: questao.alternativas.map((alternativa) => ({ letra: alternativa.letra, texto: alternativa.texto })), alternativaCorreta: questao.alternativaCorreta, linhasResposta_json: questao.linhasResposta_json || 10, dificuldade: questao.dificuldade };
+      this.novaQuestao = { disciplina: disciplinaCadastrada?.nome_disciplina || disciplinaLegada, assunto: questao.assunto, autor: questao.autor, texto: questao.texto, alternativas: questao.alternativas.map((alternativa) => ({ letra: alternativa.letra, texto: alternativa.texto })), alternativaCorreta: questao.alternativaCorreta, dificuldade: questao.dificuldade };
       this.abaAtiva = "cadastrar";
     },
     excluirQuestao(id) {
@@ -598,11 +558,6 @@ export default {
   color: #17a2b8;
 }
 
-.tipo-questao.dissertativa {
-  background: #6c757d20;
-  color: #6c757d;
-}
-
 /* Estilos de dificuldade */
 .dificuldade {
   padding: 4px 12px;
@@ -678,12 +633,6 @@ export default {
   font-size: 13px;
   color: #28a745;
   font-weight: 500;
-}
-
-.linhas-resposta {
-  margin-top: 8px;
-  font-size: 13px;
-  color: #666;
 }
 
 .questao-footer {
@@ -836,10 +785,6 @@ export default {
   cursor: pointer;
 }
 
-.input-linhas {
-  width: 200px;
-}
-
 .btn-salvar-questao {
   width: 100%;
   padding: 14px;
@@ -893,8 +838,7 @@ export default {
     width: auto;
   }
   
-  .select-correta, 
-  .input-linhas {
+  .select-correta {
     width: 100%;
   }
 }

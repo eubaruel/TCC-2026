@@ -15,31 +15,6 @@
         <!-- Menu para Professor -->
         <template v-if="isProfessor">
           <router-link
-            to="/avisos"
-            class="nav-item"
-            :class="{ 'nav-item-expandido': hoverActive }"
-            active-class="nav-item-ativo"
-          >
-            <div class="nav-icon">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M12 2L15 8L22 9L17 14L18 21L12 17.5L6 21L7 14L2 9L9 8L12 2Z"
-                  stroke="white"
-                  stroke-width="2"
-                  fill="none"
-                />
-              </svg>
-            </div>
-            <span v-show="hoverActive" class="nav-texto">Avisos</span>
-          </router-link>
-
-          <router-link
             to="/provas"
             class="nav-item"
             :class="{ 'nav-item-expandido': hoverActive }"
@@ -102,31 +77,6 @@
 
         <!-- Menu para Processo Pedagógico -->
         <template v-if="isProcessoPedagogico">
-          <router-link
-            to="/avisos"
-            class="nav-item"
-            :class="{ 'nav-item-expandido': hoverActive }"
-            active-class="nav-item-ativo"
-          >
-            <div class="nav-icon">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M12 2L15 8L22 9L17 14L18 21L12 17.5L6 21L7 14L2 9L9 8L12 2Z"
-                  stroke="white"
-                  stroke-width="2"
-                  fill="none"
-                />
-              </svg>
-            </div>
-            <span v-show="hoverActive" class="nav-texto">Avisos</span>
-          </router-link>
-
           <router-link
             to="/provas"
             class="nav-item"

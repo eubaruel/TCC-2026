@@ -35,13 +35,14 @@ Atualmente, as rotas de provas não exigem token JWT.
    `Aguardando questões`.
 3. O professor envia os IDs escolhidos para `/adicionar-questoes`.
 4. A API valida e salva esses IDs na prova-base.
-5. Se a prova for objetiva, a API cria uma configuração individual na coleção
+5. A API cria uma configuração individual na coleção
    `provas_x_alunos` para cada aluno ativo das turmas vinculadas.
 6. `/imprimir-provas/{_id}` usa essas configurações para retornar as questões
    completas na ordem de cada aluno e com as alternativas posicionadas.
 
-As provas dissertativas podem receber questões, mas não geram documentos em
-`provas_x_alunos` no fluxo atual.
+O sistema cria e corrige apenas provas objetivas. Outros tipos são rejeitados
+com HTTP `400` na criação e atualização. As consultas retornam somente provas
+objetivas, sem excluir registros antigos do banco.
 
 ---
 
@@ -212,13 +213,13 @@ Valores aceitos:
 
 ```text
 Objetiva
-Dissertativa
 ```
 
 O valor é normalizado com espaços externos removidos e iniciais maiúsculas.
 Todas as questões selecionadas devem possuir o mesmo tipo da prova.
 
-Somente provas objetivas geram documentos em `provas_x_alunos`.
+Todas as provas geram documentos em `provas_x_alunos` ao receberem questões,
+quando há alunos ativos nas turmas vinculadas.
 
 ## Status
 
@@ -508,8 +509,7 @@ Código: `200 OK`.
 
 O status da prova não é alterado.
 
-Para uma prova dissertativa, a resposta também contém
-`provas_alunos_geradas`, mas seu valor é `0`.
+Se não houver alunos ativos nas turmas vinculadas, `provas_alunos_geradas` é `0`.
 
 ## Erros principais
 
@@ -823,6 +823,7 @@ Sem resultados, a API retorna `200 OK` e `provas: []`.
 | `codigo_disciplina` | string | `disciplina.codigo_disciplina` |
 | `nome_disciplina` | string | `disciplina.nome_disciplina` |
 | `nome` | string | `professor.nome` |
+| `registro` | inteiro | `professor.registro` |
 | `status` | string | `status` |
 | `tipo` | string | `tipo` |
 | `serie` | inteiro | `serie` |
@@ -833,6 +834,7 @@ Exemplos:
 
 ```http
 GET /api/v1/provas/?id=66c4a6c22ce79c0f588b1621
+GET /api/v1/provas/?registro=101
 GET /api/v1/provas/?id_turma=Turma%202026%20A
 GET /api/v1/provas/?codigo_disciplina=MAT&tipo=Objetiva&serie=3
 ```
@@ -842,8 +844,15 @@ No MongoDB, consultar uma string em `id_turma` também encontra documentos em qu
 o campo é uma lista contendo essa string.
 
 Parâmetros vazios são ignorados. Um parâmetro desconhecido retorna `400`. Um ID
-com formato inválido retorna uma lista vazia. Um valor não inteiro em `serie`
+com formato inválido retorna uma lista vazia. Um valor não inteiro em `serie` ou `registro`
 também retorna `400`.
+
+O frontend do processo pedagógico cria a prova-base pelo formulário da tela de
+provas, enviando apenas os metadados para `POST /criar-prova`. O `_id` retornado
+é guardado no card da listagem. O professor consulta as provas atribuídas a ele
+com `registro`, em vez de usar o nome, e utiliza esse mesmo ID para abrir o
+editor. As questões são adicionadas em uma etapa posterior; a criação da base
+não gera registros de `provaXaluno`.
 
 ---
 

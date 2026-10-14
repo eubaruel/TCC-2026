@@ -227,14 +227,11 @@ class FakeQuestaoDao:
             "enunciado": questao.enunciado,
             "ativo": True,
         }
-        if questao.tipo_questao == "Objetiva":
-            doc["alternativas"] = [
-                {"id": alternativa.id, "texto": alternativa.texto}
-                for alternativa in questao.alternativas
-            ]
-            doc["alternativa_correta"] = questao.alternativa_correta
-        else:
-            doc["numero_linhas"] = questao.numero_linhas
+        doc["alternativas"] = [
+            {"id": alternativa.id, "texto": alternativa.texto}
+            for alternativa in questao.alternativas
+        ]
+        doc["alternativa_correta"] = questao.alternativa_correta
         return doc
 
 
@@ -253,6 +250,16 @@ class FakeProvaDao:
         resultado = []
         for doc in self.documentos.values():
             if not doc["ativo"]:
+                continue
+            corresponde = True
+            for campo, esperado in (filtro or {}).items():
+                valor = doc
+                for parte in campo.split("."):
+                    valor = valor.get(parte) if isinstance(valor, dict) else None
+                if valor != esperado and not (isinstance(valor, list) and esperado in valor):
+                    corresponde = False
+                    break
+            if not corresponde:
                 continue
             seguro = deepcopy(doc)
             seguro.pop("ativo", None)

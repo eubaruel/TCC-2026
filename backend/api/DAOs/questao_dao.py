@@ -28,6 +28,9 @@ class Questao_dao:
         print("✅ questao_dao.consulta()")
 
         filtro = (filtro or {}).copy()
+        if str(filtro.get("tipo_questao", "Objetiva")).strip().title() != "Objetiva":
+            return []
+        filtro["tipo_questao"] = "Objetiva"
         filtro.setdefault("ativo", {"$ne": False})
         if "_id" in filtro:
             try:
@@ -64,6 +67,7 @@ class Questao_dao:
         resultado = list(self.__colecao.find(
             {
                 "_id": {"$in": ids_validos},
+                "tipo_questao": "Objetiva",
                 "ativo": {"$ne": False}
             },
             {"ativo": 0}
@@ -132,13 +136,10 @@ class Questao_dao:
             }
         }
 
-        if doc["tipo_questao"] == "Objetiva":
-            doc["alternativas"] = [
-                {"id": alternativa.id, "texto": alternativa.texto}
-                for alternativa in obj_questao.alternativas
-            ]
-            doc["alternativa_correta"] = obj_questao.alternativa_correta
-        else:
-            doc["numero_linhas"] = obj_questao.numero_linhas
+        doc["alternativas"] = [
+            {"id": alternativa.id, "texto": alternativa.texto}
+            for alternativa in obj_questao.alternativas
+        ]
+        doc["alternativa_correta"] = obj_questao.alternativa_correta
 
         return doc

@@ -56,10 +56,7 @@
             <div class="grade-campos">
               <div class="campo">
                 <label for="tipo">Tipo</label>
-                <select id="tipo" v-model="metadados.tipo">
-                  <option>Objetiva</option>
-                  <option>Dissertativa</option>
-                </select>
+                <input id="tipo" value="Objetiva" readonly />
               </div>
               <div class="campo">
                 <label for="serie">Série</label>
@@ -89,7 +86,6 @@
               :key="questao._idLocal"
               :questao="questao"
               :numero="index + 1"
-              :tipo="metadados.tipo"
               :primeira="index === 0"
               :ultima="index === questoes.length - 1"
               @atualizar="Object.assign(questao, $event)"
@@ -282,7 +278,6 @@ export default {
       if (!filaDoBanco.length) return;
 
       const primeira = filaDoBanco[0];
-      this.metadados.tipo = primeira.tipo_questao || (primeira.tipo === "objetiva" ? "Objetiva" : "Dissertativa");
       const referencias = primeira.disciplinasOriginais || (Array.isArray(primeira.disciplina) ? primeira.disciplina : []);
       const disciplina = this.disciplinas.find((item) =>
         referencias.some((ref) => [item.codigo_disciplina, item.nome_disciplina].some((valor) => valor.toLowerCase() === String(ref).toLowerCase())),
@@ -376,16 +371,12 @@ export default {
         autor: questao.autor || nomeProfessor,
         assunto: questao.assunto.trim(),
         disciplina: [...new Set([disciplina.codigo_disciplina, disciplina.nome_disciplina])],
-        tipo_questao: this.metadados.tipo,
+        tipo_questao: "Objetiva",
         dificuldade: questao.dificuldade,
         enunciado: sanitizar(questao.enunciado),
       };
-      if (this.metadados.tipo === "Objetiva") {
-        payload.alternativas = questao.alternativas.map((alternativa) => sanitizar(alternativa));
-        payload.alternativa_correta = payload.alternativas[questao.indiceCorreta];
-      } else {
-        payload.numero_linhas = Number(questao.numeroLinhas);
-      }
+      payload.alternativas = questao.alternativas.map((alternativa) => sanitizar(alternativa));
+      payload.alternativa_correta = payload.alternativas[questao.indiceCorreta];
       return payload;
     },
     // Guarda a "foto" do que está no banco para só enviar PUT de questões realmente alteradas.
@@ -415,13 +406,9 @@ export default {
         if (enunciados.has(chave)) return `Questão ${numero}: existe outra questão com o mesmo enunciado.`;
         enunciados.add(chave);
 
-        if (this.metadados.tipo === "Objetiva") {
-          if (questao.alternativas.some(htmlVazio)) return `Questão ${numero}: preencha as cinco alternativas.`;
-          const distintas = new Set(questao.alternativas.map((alternativa) => sanitizar(alternativa).trim()));
-          if (distintas.size !== questao.alternativas.length) return `Questão ${numero}: as alternativas devem ser diferentes entre si.`;
-        } else if (!Number.isInteger(questao.numeroLinhas) || questao.numeroLinhas <= 0) {
-          return `Questão ${numero}: informe o número de linhas.`;
-        }
+        if (questao.alternativas.some(htmlVazio)) return `Questão ${numero}: preencha as cinco alternativas.`;
+        const distintas = new Set(questao.alternativas.map((alternativa) => sanitizar(alternativa).trim()));
+        if (distintas.size !== questao.alternativas.length) return `Questão ${numero}: as alternativas devem ser diferentes entre si.`;
       }
       return "";
     },
@@ -455,7 +442,7 @@ export default {
           id_turma: turmas.length === 1 ? turmas[0] : turmas,
           professor: { registro: this.authStore.user.registro, nome: this.authStore.user.nome },
           disciplina: { ...this.disciplinaAtual },
-          tipo: this.metadados.tipo,
+          tipo: "Objetiva",
           serie: Number(this.metadados.serie),
           bimestre: this.metadados.bimestre,
           data_de_aplicacao: this.metadados.data_de_aplicacao,

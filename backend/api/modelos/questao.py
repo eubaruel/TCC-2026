@@ -9,13 +9,12 @@ class Questao:
         self.__professor = None   #id do professor que cadastrou a questão no sistema
         self.__assunto = None
         self.__disciplina = None
-        self.__tipo_questao = None   #se é objetiva ou dissertativa
+        self.__tipo_questao = None   #questões objetivas
         self.__dificuldade = None 
         self.__autor = None   #Ex: Professor, Universidades, etc.
         self.__enunciado = None   #gerado automaticamente no programa
         self.__alternativas = None  # Lista de objetos Alternativa
         self.__alternativa_correta = None  # Id da alternativa correta
-        self.__numero_linhas = None
 
     @property
     def id_hash(self):
@@ -127,8 +126,8 @@ class Questao:
         
         value = value.strip().title()
 
-        if value not in ["Objetiva","Dissertativa"]:
-            raise ValueError('Tipo da questão inválido')
+        if value != "Objetiva":
+            raise ValueError('Apenas questões objetivas são permitidas')
         
         self.__tipo_questao = value
 
@@ -200,19 +199,18 @@ class Questao:
         if self.tipo_questao is None:
             raise ValueError("Defina o tipo da questão antes das alternativas")
         
-        if self.tipo_questao == "Objetiva":
-            if value is None:
-                raise ValueError("Alternativas nula")
-            
-            if not isinstance(value, list):
-                raise TypeError("Alternativas deve ser list")
+        if value is None:
+            raise ValueError("Alternativas nula")
 
-            for alternativa in value:
-                if not isinstance(alternativa, Alternativa):
-                    raise TypeError("Cada alternativa deve ser uma instância de Alternativa")
+        if not isinstance(value, list):
+            raise TypeError("Alternativas deve ser list")
 
-            if len(value) < 5:
-                raise ValueError("Deve ter pelo menos 5 alternativas")
+        for alternativa in value:
+            if not isinstance(alternativa, Alternativa):
+                raise TypeError("Cada alternativa deve ser uma instância de Alternativa")
+
+        if len(value) < 5:
+            raise ValueError("Deve ter pelo menos 5 alternativas")
 
         self.__alternativas = value
 
@@ -242,21 +240,3 @@ class Questao:
             raise ValueError("Alternativa correta deve ser o id de uma alternativa da questão")
         
         self.__alternativa_correta = value
-
-
-    @property
-    def numero_linhas(self):
-        return self.__numero_linhas
-    
-    @numero_linhas.setter
-    def numero_linhas(self,value):
-        if value is None:
-            raise ValueError("Número de linhas nulo")
-        
-        if not isinstance(value, int):
-            raise TypeError("Número de linhas deve ser inteiro")
-        
-        if value <= 0:
-            raise ValueError("Número de linhas deve ser maior que zero")
-        
-        self.__numero_linhas = value

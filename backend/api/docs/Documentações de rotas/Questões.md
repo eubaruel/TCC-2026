@@ -25,12 +25,7 @@ Atualmente, as rotas de questões não exigem token JWT.
 
 # Estrutura de uma questão
 
-Uma questão pode ser:
-
-- `Objetiva`;
-- `Dissertativa`.
-
-Os campos específicos variam de acordo com o tipo.
+O sistema trabalha exclusivamente com questões do tipo `Objetiva`.
 
 ## Campos comuns
 
@@ -40,7 +35,7 @@ Os campos específicos variam de acordo com o tipo.
 | `professor.nome` | string | Sim | Nome completo do professor |
 | `assunto` | string | Sim | Assunto abordado pela questão |
 | `disciplina` | lista de strings | Sim | Disciplinas associadas |
-| `tipo_questao` | string | Sim | `Objetiva` ou `Dissertativa` |
+| `tipo_questao` | string | Sim | Somente `Objetiva` |
 | `dificuldade` | string | Sim | Nível de dificuldade |
 | `autor` | string | Não | Autor ou origem da questão |
 | `enunciado` | string | Sim | Texto principal da questão |
@@ -51,12 +46,6 @@ Os campos específicos variam de acordo com o tipo.
 |---|---|---:|---|
 | `alternativas` | lista de strings | Sim | Textos das alternativas |
 | `alternativa_correta` | string | Sim | Texto da alternativa correta |
-
-## Campos de questão dissertativa
-
-| Campo | Tipo | Obrigatório | Descrição |
-|---|---|---:|---|
-| `numero_linhas` | inteiro | Sim | Quantidade de linhas reservadas para resposta |
 
 ---
 
@@ -143,7 +132,6 @@ São aceitos somente:
 
 ```text
 Objetiva
-Dissertativa
 ```
 
 O valor não diferencia letras maiúsculas e minúsculas na entrada, pois é normalizado internamente.
@@ -279,26 +267,11 @@ Internamente, a API localiza a alternativa cujo texto é `"4"` e armazena o ID g
 
 A comparação entre o texto correto e o texto das alternativas diferencia letras maiúsculas e minúsculas.
 
-## Número de linhas
+## Campos obrigatórios da questão objetiva
 
-Em questões dissertativas, `numero_linhas`:
-
-- deve ser um número inteiro;
-- deve ser maior que zero.
-
-## Campos incompatíveis
-
-Uma questão objetiva:
-
-- deve possuir `alternativas`;
-- deve possuir `alternativa_correta`;
-- não pode possuir `numero_linhas`.
-
-Uma questão dissertativa:
-
-- deve possuir `numero_linhas`;
-- não pode possuir `alternativas`;
-- não pode possuir `alternativa_correta`.
+Toda questão deve possuir `alternativas` e `alternativa_correta`.
+Outros tipos são rejeitados com HTTP `400` no cadastro e na atualização.
+As consultas retornam somente questões objetivas, sem excluir registros antigos do banco.
 
 ---
 
@@ -500,116 +473,6 @@ Código HTTP:
   "mensagem": "Dados inválidos",
   "erro": {
     "detalhes": "Alternativa correta deve estar na lista de alternativas"
-  }
-}
-```
-
----
-
-# Cadastrar questão dissertativa
-
-## Rota
-
-```http
-POST /api/v1/questoes/
-```
-
-## JSON de entrada
-
-```json
-{
-  "questao": {
-    "professor": {
-      "nome": "Carlos Silva"
-    },
-    "assunto": "História do Brasil",
-    "disciplina": [
-      "HIS",
-      "História"
-    ],
-    "tipo_questao": "Dissertativa",
-    "dificuldade": "Difícil",
-    "autor": "Carlos Silva",
-    "enunciado": "Explique as principais causas da Revolução de 1930.",
-    "numero_linhas": 8
-  }
-}
-```
-
-Os campos abaixo não devem ser enviados:
-
-```text
-alternativas
-alternativa_correta
-```
-
-## Resposta de sucesso
-
-Código HTTP:
-
-```text
-201 Created
-```
-
-```json
-{
-  "sucesso": true,
-  "mensagem": "Cadastro realizado com sucesso",
-  "data": {
-    "questao": {
-      "_id": "64b000000000000000000002",
-      "professor": {
-        "nome": "Carlos Silva"
-      },
-      "assunto": "História Do Brasil",
-      "disciplina": [
-        "his",
-        "história"
-      ],
-      "tipo_questao": "Dissertativa",
-      "dificuldade": "Difícil",
-      "autor": "Carlos Silva",
-      "enunciado": "Explique as principais causas da Revolução de 1930.",
-      "numero_linhas": 8
-    }
-  }
-}
-```
-
-## Possíveis erros
-
-### Número de linhas ausente
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Erro na validação de dados",
-  "erro": {
-    "mensagem": "Questão dissertativa exige número de linhas"
-  }
-}
-```
-
-### Número de linhas inválido
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Dados inválidos",
-  "erro": {
-    "detalhes": "Número de linhas deve ser maior que zero"
-  }
-}
-```
-
-### Campos de questão objetiva enviados
-
-```json
-{
-  "sucesso": false,
-  "mensagem": "Erro na validação de dados",
-  "erro": {
-    "mensagem": "Questão dissertativa não deve possuir alternativas"
   }
 }
 ```
@@ -950,65 +813,6 @@ Código HTTP:
 ```
 
 Um `_id` em formato MongoDB inválido também resulta nesse erro.
-
----
-
-# Atualizar questão dissertativa
-
-## Rota
-
-```http
-PUT /api/v1/questoes/{_id}
-```
-
-## JSON de entrada
-
-```json
-{
-  "questao": {
-    "professor": {
-      "nome": "Carlos Silva"
-    },
-    "assunto": "História do Brasil",
-    "disciplina": [
-      "HIS",
-      "História"
-    ],
-    "tipo_questao": "Dissertativa",
-    "dificuldade": "Médio",
-    "autor": "Carlos Silva",
-    "enunciado": "Explique as consequências da Revolução de 1930.",
-    "numero_linhas": 10
-  }
-}
-```
-
-## Resposta de sucesso
-
-```json
-{
-  "sucesso": true,
-  "mensagem": "Atualizado com sucesso",
-  "data": {
-    "questao": {
-      "_id": "64b000000000000000000002",
-      "professor": {
-        "nome": "Carlos Silva"
-      },
-      "assunto": "História Do Brasil",
-      "disciplina": [
-        "his",
-        "história"
-      ],
-      "tipo_questao": "Dissertativa",
-      "dificuldade": "Médio",
-      "autor": "Carlos Silva",
-      "enunciado": "Explique as consequências da Revolução de 1930.",
-      "numero_linhas": 10
-    }
-  }
-}
-```
 
 ---
 

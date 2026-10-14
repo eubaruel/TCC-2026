@@ -75,10 +75,11 @@ class Prova_controle:
 
         tipos = {
             "serie":int,
+            "registro":int,
         }
 
         campos_permitidos = ["id","id_turma","codigo_disciplina",
-                            "nome_disciplina","nome",
+                            "nome_disciplina","nome","registro",
                             "status","tipo","serie","bimestre",
                             "data_de_aplicacao"
                             ]
@@ -153,6 +154,9 @@ class Prova_controle:
 
                 elif key == "nome":
                     filtro["professor.nome"] = conversor(value)
+
+                elif key == "registro":
+                    filtro["professor.registro"] = conversor(value)
 
                 elif key == "codigo_disciplina":
                     filtro["disciplina.codigo_disciplina"] = conversor(value)

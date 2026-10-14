@@ -23,6 +23,9 @@ class Prova_dao:
         print("✅ prova_dao.consulta()")
 
         filtro = (filtro or {}).copy()
+        if str(filtro.get("tipo", "Objetiva")).strip().title() != "Objetiva":
+            return []
+        filtro["tipo"] = "Objetiva"
         filtro.setdefault("ativo", {"$ne": False})
         if "_id" in filtro:
             try:
@@ -44,7 +47,7 @@ class Prova_dao:
             return None
 
         prova = self.__colecao.find_one(
-            {"_id": object_id, "ativo": {"$ne": False}},
+            {"_id": object_id, "ativo": {"$ne": False}, "tipo": "Objetiva"},
             {"ativo": 0}
         )
         if prova:
@@ -61,7 +64,7 @@ class Prova_dao:
             return False
 
         resultado = self.__colecao.update_one(
-            {"_id": object_id, "ativo": {"$ne": False}},
+            {"_id": object_id, "ativo": {"$ne": False}, "tipo": "Objetiva"},
             {"$set": {"questoes": ids_questoes}}
         )
         return resultado.matched_count > 0
