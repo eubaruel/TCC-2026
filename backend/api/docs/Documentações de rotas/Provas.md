@@ -1,8 +1,8 @@
 # Fluxo de provas
 
 Documentação das rotas responsáveis pela criação da prova-base, seleção das
-questões, geração das versões individuais, montagem para impressão, consulta,
-atualização e exclusão lógica.
+questões, geração das versões individuais, conclusão/envio ao pedagógico, montagem
+para impressão, consulta, atualização e exclusão lógica.
 
 ## Endereço-base
 
@@ -19,11 +19,12 @@ Atualmente, as rotas de provas não exigem token JWT.
 | Método | Rota | Finalidade |
 |---|---|---|
 | `POST` | `/api/v1/provas/criar-prova` | Criar a prova-base sem questões |
-| `PATCH` | `/api/v1/provas/{_id}/adicionar-questoes` | Definir as questões e gerar as versões dos alunos |
+| `PATCH` | `/api/v1/provas/{_id}/adicionar-questoes` | Salvar os IDs selecionados e gerar/preservar as versões dos alunos |
+| `PATCH` | `/api/v1/provas/{_id}/enviar` | Concluir a prova, enviar ao pedagógico e encerrar a edição |
 | `GET` | `/api/v1/provas/imprimir-provas/{_id}` | Montar as versões completas para impressão |
 | `POST` | `/api/v1/provas/corrigir-provas` | Corrigir cartões-resposta em lote |
 | `GET` | `/api/v1/provas/` | Consultar provas ativas |
-| `PUT` | `/api/v1/provas/{_id}` | Substituir os dados de uma prova ativa |
+| `PUT` | `/api/v1/provas/{_id}` | Atualizar metadados antes de vincular questões; não altera status ou seleção |
 | `DELETE` | `/api/v1/provas/{_id}` | Desativar uma prova |
 
 ---
@@ -33,12 +34,17 @@ Atualmente, as rotas de provas não exigem token JWT.
 1. O processo pedagógico cria uma prova-base por `/criar-prova`.
 2. A prova é armazenada com `questoes: []` e status
    `Aguardando questões`.
-3. O professor envia os IDs escolhidos para `/adicionar-questoes`.
-4. A API valida e salva esses IDs na prova-base.
-5. A API cria uma configuração individual na coleção
-   `provas_x_alunos` para cada aluno ativo das turmas vinculadas.
-6. `/imprimir-provas/{_id}` usa essas configurações para retornar as questões
-   completas na ordem de cada aluno e com as alternativas posicionadas.
+3. O professor abre a base existente e apenas seleciona e ordena questões do banco.
+   Não cria/edita questões nem altera metadados nessa tela.
+4. O frontend envia somente IDs para `/adicionar-questoes`. A base fica `Em elaboração`.
+5. A API cria configurações em `provas_x_alunos` para os alunos ativos. Repetir
+   a mesma seleção, com versões completas, preserva os gabaritos individuais.
+6. `PATCH /{_id}/enviar` verifica as versões e conclui a prova como
+   `Enviada ao pedagógico`. A edição passa a ser bloqueada.
+7. A listagem pedagógica mostra provas enviadas, não bases em elaboração,
+   sem filtrar pelo nome ou registro do funcionário pedagógico como professor.
+8. `/imprimir-provas/{_id}` usa as configurações individuais para retornar
+   as questões completas e as alternativas posicionadas.
 
 O sistema cria e corrige apenas provas objetivas. Outros tipos são rejeitados
 com HTTP `400` na criação e atualização. As consultas retornam somente provas
@@ -67,7 +73,7 @@ A coleção `provas` armazena somente os IDs das questões.
     "codigo_disciplina": "MAT",
     "nome_disciplina": "Matemática"
   },
-  "status": "Aguardando questões",
+"status": "Em elaboração",
   "tipo": "Objetiva",
   "serie": 3,
   "bimestre": "1° bimestre",
@@ -81,6 +87,9 @@ A coleção `provas` armazena somente os IDs das questões.
 ```
 
 O campo `ativo` existe no banco, mas é omitido nas respostas de consulta.
+Os campos internos `operacao_em_andamento` e `geracao_pendente` controlam
+concorrência e recuperação. Não fazem parte do corpo enviado pelo frontend
+nem das provas retornadas nas respostas públicas.
 
 ## Versão individual: ProvaXAluno
 
@@ -186,8 +195,8 @@ O registro deve ser inteiro. O nome:
 
 A criação não verifica se o professor existe ou está ativo no fluxo de usuários.
 
-Na rota `PUT`, o registro não é obrigatório pelo middleware atual. Se omitido,
-o documento atualizado preserva somente o nome do professor.
+Na rota `PUT`, o registro também é exigido pelo service e retornado na resposta.
+Não é permitido trocar o professor depois de vincular questões.
 
 ## Disciplina
 
@@ -231,8 +240,11 @@ Na criação, não deve ser enviado. A API define automaticamente:
 Aguardando questões
 ```
 
-`/adicionar-questoes` não altera o status. Na atualização completa por `PUT`, o
-status deve ser enviado e substitui o valor atual.
+O fluxo usa `Aguardando questões` na criação, `Em elaboração` após salvar a
+seleção e `Enviada ao pedagógico` ao concluir. Apenas os dois primeiros permitem
+edição. Status posteriores, como `Não Corrigida` e `Corrigida`, também são
+somente leitura para a montagem. O modelo continua aceitando strings, sem enum.
+`PUT` deve preservar o status; somente a rota dedicada realiza o envio.
 
 ## Série
 
@@ -259,18 +271,20 @@ se ela está no passado ou no futuro.
 O campo `questoes` é uma lista de IDs em formato string.
 
 Na criação, ele é gerenciado pela API e começa vazio. Em
-`/adicionar-questoes`, deve conter ao menos um ID.
+`/adicionar-questoes`, deve conter de 1 a 10 IDs.
 
-Regras aplicadas na adição e no `PUT`:
+Regras aplicadas na seleção e novamente antes de concluir:
 
 - a estrutura deve ser uma lista;
-- deve haver ao menos uma questão;
+- deve haver de 1 a 10 questões, conforme a capacidade do leitor de correção;
 - cada ID deve ser uma string não vazia;
 - espaços externos são removidos;
 - IDs repetidos são rejeitados;
 - todas as questões devem existir e estar ativas;
 - o tipo da questão deve ser igual ao tipo da prova;
-- a questão deve possuir o código ou o nome da disciplina da prova.
+- a questão deve possuir o código ou o nome da disciplina da prova;
+- enunciado e cinco alternativas distintas devem estar preenchidos (texto ou imagem);
+- os IDs das alternativas devem ser distintos e a correta deve apontar para um deles.
 
 A comparação da disciplina ignora maiúsculas, minúsculas e espaços externos.
 
@@ -284,8 +298,13 @@ Exemplo válido com uma questão:
 }
 ```
 
-Não existe quantidade mínima de cinco questões. Qualquer quantidade a partir de
-uma é aceita.
+Não existe quantidade mínima de cinco questões: uma questão é suficiente.
+Seleções acima de dez são rejeitadas com HTTP `400` antes de salvar a seleção
+ou gerar versões individuais. O envio também revalida esse limite, inclusive
+para provas antigas. Os registros existentes não são truncados nem apagados.
+No frontend, o contador mostra a quantidade selecionada e o máximo; ao atingir
+dez, a adição é bloqueada. Uma seleção em lote que excederia o máximo não é
+adicionada, e um aviso orienta a selecionar individualmente as questões desejadas.
 
 ---
 
@@ -427,8 +446,10 @@ geral `Dados inválidos` e o detalhe da validação.
 PATCH /api/v1/provas/{_id}/adicionar-questoes
 ```
 
-A operação substitui o vetor atual da prova-base. Ela não acrescenta itens ao
-vetor existente.
+A operação substitui o vetor atual da prova-base, preservando a ordem enviada.
+Ela não acrescenta itens ao vetor existente. Aceita somente o campo `questoes`
+com strings de IDs; objetos completos e metadados adicionais são rejeitados.
+Provas concluídas retornam `409` e não têm suas versões alteradas.
 
 ## Corpo
 
@@ -475,16 +496,49 @@ As alternativas ainda não são reorganizadas nesta rota. Apenas a posição fut
 A combinação `id_prova + matricula_aluno` é atualizada com `upsert`. Portanto,
 repetir a rota não duplica documentos.
 
-Cada repetição gera novamente:
+Se a lista e sua ordem não mudaram, e existem versões para todos os alunos ativos
+com as mesmas questões, a API reutiliza as configurações: não embaralha novamente.
+A resposta informa `versoes_regeneradas: false` e a quantidade já disponível.
 
-- a ordem das questões;
-- a posição da alternativa correta de cada questão.
+Seleção ou ordem diferente, mudança nos alunos ativos, versões ausentes ou
+inconsistentes exigem geração/sincronização, ainda durante a elaboração.
+Antes de gerar, os IDs e `geracao_pendente: true` são gravados juntos na prova-base.
+Esse indicador só é removido depois que toda a sincronização termina com sucesso.
+Se o salvamento anterior falhou depois de gravar os IDs, repetir o PATCH refaz
+a geração, mesmo que os registros presentes pareçam completos, sem criar outra
+prova-base. Enquanto houver geração pendente, a prova não pode ser enviada.
 
 Versões de alunos que não pertencem mais às turmas são removidas. Se nenhuma
 matrícula ativa for encontrada, todas as versões individuais daquela prova são
 removidas e `provas_alunos_geradas` retorna `0`.
 
 Documentos pertencentes a outras provas não são alterados.
+
+## Concorrência entre geração e conclusão
+
+Seleção/geração, envio, atualização de metadados e exclusão lógica usam a mesma
+reserva por prova, adquirida com uma atualização atômica no MongoDB. Somente uma
+operação pode possuir a reserva; a prova é relida depois da aquisição. O token
+da reserva também é exigido nas escritas e na liberação, impedindo que outra
+requisição altere ou libere a operação em andamento.
+
+Uma requisição concorrente para a mesma prova recebe HTTP `409`, com orientação
+para aguardar e tentar novamente. Ela não fica em uma fila nem inicia geração.
+Provas diferentes continuam podendo ser processadas em paralelo. A proteção
+fica no banco e não depende de todas as requisições usarem o mesmo processo Flask.
+
+A reserva cobre a validação, a gravação dos IDs e toda a geração das versões;
+no envio, cobre a conferência das versões e a mudança de status. Assim, gabaritos
+anteriores não podem habilitar a conclusão durante uma nova geração, inclusive
+quando só a ordem dos mesmos IDs foi alterada.
+
+A reserva é liberada ao terminar a operação ou ao ocorrer uma exceção tratável.
+Ela não expira automaticamente: se o processo for encerrado abruptamente antes
+da liberação, será necessária recuperação administrativa da reserva no banco,
+apenas após confirmar que a operação anterior não pode mais executar. Não remova
+`geracao_pendente` nessa recuperação; se existir, repita o salvamento da seleção
+para refazer a geração antes de enviar. A ausência de expiração evita liberar
+uma geração lenta ainda em execução e permitir outra escrita sobre seus resultados.
 
 ## Resposta de sucesso
 
@@ -497,17 +551,21 @@ Código: `200 OK`.
   "data": {
     "prova": {
       "_id": "66c4a6c22ce79c0f588b1621",
+      "status": "Em elaboração",
       "questoes": [
         "66c49f5a2ce79c0f588b1601",
         "66c49f5a2ce79c0f588b1602"
       ]
     },
-    "provas_alunos_geradas": 32
+    "provas_alunos_geradas": 32,
+    "versoes_regeneradas": true
   }
 }
 ```
 
-O status da prova não é alterado.
+A resposta inclui a prova-base completa (metadados, ID, status e seleção).
+O exemplo acima destaca apenas ID, status e questões. `provas_alunos_geradas`
+representa a quantidade disponível, inclusive quando as versões foram reutilizadas.
 
 Se não houver alunos ativos nas turmas vinculadas, `provas_alunos_geradas` é `0`.
 
@@ -517,12 +575,16 @@ Se não houver alunos ativos nas turmas vinculadas, `provas_alunos_geradas` é `
 |---|---:|---|
 | Prova inexistente, inativa ou ID inválido | `404` | `Prova não encontrada` |
 | Lista vazia | `400` | `Número de questões insuficiente` |
+| Mais de dez questões | `400` | `Limite de questões excedido` |
 | `questoes` não é lista | `400` | `Questões inválidas` |
 | ID não é string ou está vazio | `400` | `Id de questão inválido` |
 | IDs repetidos | `400` | `Questões repetidas` |
 | Questão inexistente ou inativa | `400` | `Questão não encontrada` |
 | Tipo incompatível | `400` | `Tipo de questão incompatível` |
 | Disciplina incompatível | `400` | `Disciplina incompatível` |
+| Enunciado, alternativas ou correta inválidos no banco | `400` | `Questão incompleta` |
+| Prova concluída | `409` | `Prova concluída não pode ser editada` |
+| Outra operação na mesma prova | `409` | `Há outra operação em andamento nesta prova. Aguarde e tente novamente` |
 
 Exemplo para questão inexistente:
 
@@ -541,6 +603,35 @@ O fluxo atual não utiliza transação entre as duas coleções.
 
 ---
 
+# Concluir e enviar ao processo pedagógico
+
+```http
+PATCH /api/v1/provas/{_id}/enviar
+```
+
+Sem corpo JSON. A rota utiliza os IDs já salvos na prova-base, não recebe
+objetos de questões e não gera novos gabaritos.
+
+O service verifica a existência da prova, a integridade das questões e versões
+individuais completas para os alunos ativos. Se não houver versões, retorna
+`409` e orienta conferir os alunos e salvar a seleção novamente.
+Se houver uma operação em andamento, retorna `409` sem concluir a prova.
+Uma geração anterior não finalizada também retorna `409` (`Geração de versões
+pendente`) e exige salvar novamente antes do envio. Essas verificações ocorrem
+sob a mesma reserva usada pela geração, impedindo alterações dos gabaritos entre
+a conferência das versões e a conclusão.
+
+Sucesso: `200`, com `data.prova` (mesmo ID e status `Enviada ao pedagógico`)
+e `data.provas_alunos_geradas` (quantidade disponível). Repetir o envio de uma
+prova já enviada é idempotente: preserva status e gabaritos.
+
+Após enviar, `PUT`, `PATCH /adicionar-questoes` e `DELETE` retornam `409`.
+O editor exibe apenas visualização, sem ações de seleção, reordenação ou edição.
+Questões vinculadas a provas concluídas também não podem ser alteradas/excluídas
+pelo fluxo do banco, impedindo que o conteúdo e o gabarito mudem indiretamente.
+
+---
+
 # Imprimir provas
 
 ## Rota
@@ -551,9 +642,14 @@ GET /api/v1/provas/imprimir-provas/{_id}
 
 A rota não recebe corpo JSON e não altera documentos no banco.
 
-Ela consulta diretamente `provas_x_alunos`; não confirma novamente se a
-prova-base existe ou continua ativa. Por isso, versões que permanecerem nessa
-coleção após a exclusão lógica da prova ainda podem ser retornadas.
+Antes de consultar `provas_x_alunos`, a API verifica a prova-base pelo ID:
+ela deve existir, estar ativa (`ativo` diferente de `false`) e ser objetiva.
+Base inexistente, inativa, de tipo não suportado ou ID inválido retorna HTTP
+`404` (`Prova não encontrada`), mesmo que ainda existam versões individuais.
+Essas versões não são apagadas nem alteradas pela impressão. Uma base válida
+e concluída sem versões continua retornando `200` com `provas_alunos: []`.
+Bases ainda em `Aguardando questões` ou `Em elaboração` retornam `409`:
+`Conclua e envie a prova antes de imprimir`.
 
 ## Montagem
 
@@ -579,9 +675,10 @@ Posição 4 -> índice 3 -> D
 Posição 5 -> índice 4 -> E
 ```
 
-As alternativas incorretas são embaralhadas novamente em cada chamada. A ordem
-das questões e a posição da correta permanecem definidas pelo documento do
-aluno.
+As alternativas incorretas são embaralhadas usando uma semente derivada do ID
+da versão individual e do ID da questão. Repetir a impressão mantém a mesma
+ordem, sem gravar novos dados ou regenerar gabaritos. A ordem das questões e a
+posição da correta permanecem definidas pelo documento do aluno.
 
 O campo `alternativa_correta` continua presente no objeto completo retornado.
 
@@ -638,15 +735,15 @@ No exemplo, a alternativa correta está na posição `4`, índice `3`, letra `D`
 
 ## Nenhuma versão encontrada
 
-Um ID sem documentos associados, inclusive um valor fora do formato de
-`ObjectId`, retorna `200 OK`:
+Uma base existente, ativa, objetiva e concluída, mas sem versões individuais,
+retorna `200 OK`. Base inexistente ou ID inválido retorna `404`, não lista vazia:
 
 ```json
 {
   "sucesso": true,
   "mensagem": "Provas montadas com sucesso",
   "data": {
-    "id_prova": "id-sem-versoes",
+    "id_prova": "66c4a6c22ce79c0f588b1621",
     "provas_alunos": []
   }
 }
@@ -656,10 +753,42 @@ Um ID sem documentos associados, inclusive um valor fora do formato de
 
 | Situação | Código | Mensagem principal |
 |---|---:|---|
+| Prova-base inexistente, inativa, não objetiva ou ID inválido | `404` | `Prova não encontrada` |
+| Prova ainda editável | `409` | `Conclua e envie a prova antes de imprimir` |
 | Questão referenciada inexistente ou inativa | `404` | `Questão não encontrada` |
 | Questão objetiva sem alternativas válidas | `400` | `Questão inválida` |
 | ID da alternativa correta não localizado | `400` | `Questão inválida` |
 | Posição não inteira ou fora do vetor | `400` | `Posição da alternativa correta inválida` |
+
+## Integração de impressão no frontend
+
+O processo pedagógico usa o botão de impressão no card recebido para abrir
+`/provas/imprimir/{id}`. A tela consulta os metadados da base e esta rota de
+impressão; não monta versões a partir da listagem genérica de questões.
+Ela exibe todas as versões, com matrícula, questões e alternativas na ordem
+retornada. A renderização reutiliza `PreviewProva.vue` e o template local.
+
+`CartaoResposta.vue` utiliza o desenho do modelo anexado, armazenado no frontend
+em `src/assets/templates/cartao-resposta.png`, e sobrepõe metadados e o QR Code
+gerado localmente pela biblioteca `qrcode`. O conteúdo do QR é exclusivamente
+`id_prova_aluno`. A área de nome do aluno permanece em branco para preenchimento.
+
+O cartão possui proporção `1200 × 286`, a mesma da normalização do leitor.
+A grade permanece com **dez colunas por cinco linhas**, independentemente da
+quantidade de questões. Preencher todo o retângulo somente nas primeiras N
+colunas e deixar as demais em branco. A região lida continua em X de 13,7% a
+53,6% e Y de 40% a 88%; o QR fica fora dessa região. Para corrigir, recortar o
+cartão completo, incluindo seu contorno e QR, sem incluir o corpo da prova.
+
+O botão `Imprimir provas` aguarda fontes e imagens antes de abrir a impressão
+nativa do navegador. Usar papel A4, escala 100% e desativar os cabeçalhos e rodapés
+do navegador. Cada aluno começa em uma página nova; questões longas podem
+continuar em páginas adicionais.
+
+No MVP não foi criado um novo status de impressão: a conclusão já bloqueia
+alteração/exclusão da prova, regeneração de versões e alteração/exclusão das
+questões vinculadas. Exigir conclusão antes de imprimir reaproveita essa
+proteção, inclusive se o usuário cancelar o diálogo de impressão.
 
 Se uma questão estiver ausente, a rota interrompe toda a montagem para não
 entregar provas incompletas.
@@ -691,7 +820,11 @@ No Windows, utilize `curl.exe` para evitar o alias do PowerShell.
 2. O microserviço retorna `qrcode` e `respostas`, com chaves textuais começando
    em `"1"`. O QR Code deve conter exatamente o `_id` de `provas_x_alunos`,
    disponibilizado na impressão como `id_prova_aluno`.
-3. A API busca esse registro e o nome do aluno pela matrícula. A ordem do vetor
+3. A API busca o registro individual e valida a prova-base usando seu campo
+   `id_prova` (não o ID do QR Code). A base deve existir, estar ativa e ser
+   objetiva. Vínculo ausente/inválido ou base indisponível gera erro individual
+   `404` (`Prova-base não encontrada ou inativa`), sem calcular uma nota.
+   Depois dessa validação, busca o nome do aluno pela matrícula. A ordem do vetor
    `questoes` define a numeração; `posicao_alternativa_correta` de 1 a 5 define
    A a E, respectivamente. Não é utilizado o gabarito da ordem original.
 4. Todas as questões têm o mesmo peso: `nota_prova = acertos / total * 10`,
@@ -699,8 +832,9 @@ No Windows, utilize `curl.exe` para evitar o alias do PowerShell.
    pelo microserviço é falha de integração, não uma questão em branco.
 
 O leitor atual possui dez posições. A correção aceita provas de 1 a 10 questões,
-ignora posições excedentes em provas menores e rejeita provas maiores. Isso
-não impõe um novo limite às rotas de criação ou impressão.
+ignora posições excedentes em provas menores e rejeita provas maiores. As rotas
+de seleção e envio aplicam o mesmo limite; a criação da prova-base continua sem
+questões. A impressão não altera nem remove registros antigos acima do limite.
 
 ## Resposta
 
@@ -733,10 +867,12 @@ o arquivo na ordem enviada; cada lista mantém essa ordem.
 }
 ```
 
-Falhas individuais: `404` para registro/aluno inexistente, `422` para cartão ou
+Falhas individuais: `404` para registro/aluno inexistente ou prova-base
+indisponível (incluindo versões órfãs de provas desativadas), `422` para cartão ou
 gabarito incompatível, `502` para falha de comunicação/resposta inválida,
 `504` para timeout, `503` para fila ocupada e `500` para falha interna.
 O campo `codigo` não altera o status HTTP do lote.
+Uma base inválida não interrompe a correção das imagens válidas do mesmo lote.
 Ausência de arquivos, arquivos vazios ou mais de 50 arquivos geram HTTP `400`;
 imagem ou corpo acima do limite gera HTTP `413`.
 
@@ -798,7 +934,7 @@ A rota não recebe corpo JSON e retorna somente provas cujo `ativo` não seja
           "codigo_disciplina": "MAT",
           "nome_disciplina": "Matemática"
         },
-        "status": "Aguardando questões",
+"status": "Em elaboração",
         "tipo": "Objetiva",
         "serie": 3,
         "bimestre": "1° bimestre",
@@ -849,117 +985,50 @@ também retorna `400`.
 
 O frontend do processo pedagógico cria a prova-base pelo formulário da tela de
 provas, enviando apenas os metadados para `POST /criar-prova`. O `_id` retornado
-é guardado no card da listagem. O professor consulta as provas atribuídas a ele
+identifica a base criada. O professor consulta as provas atribuídas a ele
 com `registro`, em vez de usar o nome, e utiliza esse mesmo ID para abrir o
-editor. As questões são adicionadas em uma etapa posterior; a criação da base
+editor, sem recriação. A listagem pedagógica oculta a base até seu envio pelo
+professor. As questões são selecionadas em uma etapa posterior; a criação da base
 não gera registros de `provaXaluno`.
 
 ---
 
 # Atualizar prova
 
-## Rota
-
 ```http
 PUT /api/v1/provas/{_id}
 ```
 
-A atualização não é parcial. O corpo deve apresentar novamente os dados da
-prova, incluindo status e questões.
+Mantida para atualização dos metadados da base antes de vincular questões.
+O frontend de seleção não utiliza essa rota: envia apenas IDs no PATCH.
+
+O corpo completo deve conter os metadados, professor com registro e nome,
+`questoes` igual à seleção já persistida e `status` igual ao atual.
+Não é possível concluir nem alterar a seleção por PUT (`400`).
+Após vincular questões, alterações dos metadados retornam `409`, para não
+desalinhar turmas, disciplina e versões individuais. Após concluir, qualquer
+atualização retorna `409`. Prova inexistente/inativa/ID inválido retorna `404`.
+
+Exemplo para uma base ainda sem questões:
 
 ```json
 {
   "prova": {
     "id_turma": "Turma 2026 B",
-    "professor": {
-      "registro": 101,
-      "nome": "Carlos Silva"
-    },
-    "disciplina": {
-      "codigo_disciplina": "MAT",
-      "nome_disciplina": "Matemática"
-    },
-    "status": "Pronta para aplicação",
+    "professor": { "registro": 101, "nome": "Carlos Silva" },
+    "disciplina": { "codigo_disciplina": "MAT", "nome_disciplina": "Matemática" },
     "tipo": "Objetiva",
     "serie": 3,
     "bimestre": "1° bimestre",
     "data_de_aplicacao": "2026-08-22",
-    "questoes": [
-      "66c49f5a2ce79c0f588b1601",
-      "66c49f5a2ce79c0f588b1602"
-    ]
+    "status": "Aguardando questões",
+    "questoes": []
   }
 }
 ```
 
-O service substitui:
-
-- `id_turma`;
-- `professor`;
-- `disciplina`;
-- `status`;
-- `tipo`;
-- `serie`;
-- `bimestre`;
-- `data_de_aplicacao`;
-- `questoes`.
-
-`_id` e `ativo` são preservados.
-
-As questões passam pelas mesmas validações de existência, atividade, tipo,
-disciplina e repetição usadas em `/adicionar-questoes`.
-
-Importante: a rota `PUT` atualiza a prova-base, mas não recria nem sincroniza os
-documentos em `provas_x_alunos`. Para refazer as versões individuais de uma
-prova objetiva, utilize `/adicionar-questoes` depois da atualização.
-
-## Resposta de sucesso
-
-Código: `200 OK`.
-
-```json
-{
-  "sucesso": true,
-  "mensagem": "Atualizado com sucesso",
-  "data": {
-    "prova": {
-      "_id": "66c4a6c22ce79c0f588b1621",
-      "id_turma": "Turma 2026 B",
-      "professor": {
-        "nome": "Carlos Silva"
-      },
-      "disciplina": {
-        "codigo_disciplina": "MAT",
-        "nome_disciplina": "Matemática"
-      },
-      "status": "Pronta para aplicação",
-      "tipo": "Objetiva",
-      "serie": 3,
-      "bimestre": "1° bimestre",
-      "data_de_aplicacao": "2026-08-22",
-      "questoes": [
-        "66c49f5a2ce79c0f588b1601",
-        "66c49f5a2ce79c0f588b1602"
-      ]
-    }
-  }
-}
-```
-
-A resposta do controle atual retorna o professor apenas com `nome`, embora o
-registro possa ter sido persistido se enviado. Para consultar o documento
-persistido, use `GET /api/v1/provas/?id={_id}`.
-
-## Erros principais
-
-- prova inexistente ou ID inválido: `400`, mensagem `Prova não existe`;
-- prova inativa: `400`, mensagem `Não foi possível atualizar a prova`;
-- corpo incompleto ou valores inválidos: `400` quando a falha é tratada pelos
-  modelos;
-- questão inválida: utiliza as mesmas mensagens da seleção de questões.
-
-O middleware atual do `PUT` não valida previamente a estrutura completa do
-corpo. O cliente deve seguir exatamente o formato documentado.
+Sucesso: `200`, com `data.prova` contendo os metadados, registro/nome do professor,
+status, questões e o mesmo ID. A rota não gera versões individuais.
 
 ---
 
@@ -972,6 +1041,8 @@ DELETE /api/v1/provas/{_id}
 ```
 
 A exclusão é lógica. A API altera:
+
+Permitida somente antes da conclusão. Provas concluídas retornam `409`.
 
 ```json
 {
@@ -1001,7 +1072,7 @@ Código: `404 Not Found`.
 ```json
 {
   "sucesso": false,
-  "mensagem": "Não existe prova com o id 66c4a6c22ce79c0f588b1621",
+  "mensagem": "Prova não encontrada",
   "erro": null
 }
 ```

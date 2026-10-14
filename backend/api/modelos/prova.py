@@ -2,6 +2,10 @@ from api.modelos.usuario import Usuario
 from api.modelos.disciplina import Disciplina
 
 class Prova:
+    MAX_QUESTOES = 10
+    STATUS_EDITAVEIS = ("Aguardando questões", "Em elaboração")
+    STATUS_ENVIADA = "Enviada ao pedagógico"
+
     def __init__(self):
         self.__id_hash = None   
         self.__id_turma = None     #id das turmas as quais farão essa prova

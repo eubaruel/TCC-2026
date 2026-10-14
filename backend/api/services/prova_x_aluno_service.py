@@ -80,7 +80,8 @@ class Prova_x_aluno_service:
                 )
                 self._embaralhar_alternativas(
                     questao,
-                    configuracao["posicao_alternativa_correta"]
+                    configuracao["posicao_alternativa_correta"],
+                    gerador=random.Random(f"{registro['_id']}:{configuracao['id_questao']}")
                 )
                 questoes_aluno.append(questao)
 
@@ -91,6 +92,20 @@ class Prova_x_aluno_service:
             })
 
         return provas_alunos
+
+    def quantidade_versoes(self, id_prova: str, ids_questoes: list[str], id_turma=None) -> int:
+        registros = self.__prova_x_aluno_dao.buscar_por_id_prova(id_prova)
+        if id_turma is not None:
+            matriculas = set(self.__aluno_dao.buscar_matriculas_por_turmas(self._normalizar_turmas(id_turma)))
+            if {registro["matricula_aluno"] for registro in registros} != matriculas:
+                return 0
+        # Versões de uma seleção anterior não podem habilitar o envio.
+        esperado = set(ids_questoes)
+        if any(len(registro.get("questoes", [])) != len(ids_questoes)
+               or {item.get("id_questao") for item in registro.get("questoes", [])} != esperado
+               for registro in registros):
+            return 0
+        return len(registros)
 
     def _gerar_questoes(self, ids_questoes: list[str]) -> list[dict]:
         ordem_original = list(ids_questoes)
@@ -115,7 +130,8 @@ class Prova_x_aluno_service:
     def _embaralhar_alternativas(
         self,
         questao: dict,
-        posicao_alternativa_correta: int
+        posicao_alternativa_correta: int,
+        gerador=None
     ) -> None:
         alternativas = questao.get("alternativas")
         id_alternativa_correta = questao.get("alternativa_correta")
@@ -171,7 +187,7 @@ class Prova_x_aluno_service:
             for alternativa in alternativas
             if alternativa.get("id") != id_alternativa_correta
         ]
-        self.__gerador_aleatorio.shuffle(alternativas_incorretas)
+        (gerador or self.__gerador_aleatorio).shuffle(alternativas_incorretas)
         alternativas_incorretas.insert(
             indice_alternativa_correta,
             alternativa_correta

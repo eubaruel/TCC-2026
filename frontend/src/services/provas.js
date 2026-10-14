@@ -17,3 +17,9 @@ export const adicionarQuestoes = (id, questoes) =>
 export const atualizarProva = (id, prova) => api(`/provas/${id}`, { method: "PUT", body: { prova } });
 
 export const excluirProva = (id) => api(`/provas/${id}`, { method: "DELETE" });
+
+export const enviarProva = (id) => api(`/provas/${id}/enviar`, { method: "PATCH" });
+
+export const imprimirProvas = (id) => api(`/provas/imprimir-provas/${id}`);
+
+export const provaEditavel = (prova) => ["Aguardando questões", "Em elaboração"].includes(prova.status);

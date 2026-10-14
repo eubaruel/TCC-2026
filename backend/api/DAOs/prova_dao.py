@@ -33,7 +33,7 @@ class Prova_dao:
             except:
                 return []
 
-        resultado = list(self.__colecao.find(filtro, {"ativo": 0}))
+        resultado = list(self.__colecao.find(filtro, {"ativo": 0, "operacao_em_andamento": 0, "geracao_pendente": 0}))
         for doc in resultado:
             doc["_id"] = str(doc["_id"])
         return resultado
@@ -48,14 +48,40 @@ class Prova_dao:
 
         prova = self.__colecao.find_one(
             {"_id": object_id, "ativo": {"$ne": False}, "tipo": "Objetiva"},
-            {"ativo": 0}
+            {"ativo": 0, "operacao_em_andamento": 0}
         )
         if prova:
             prova["_id"] = str(prova["_id"])
 
         return prova
 
-    def atualizar_questoes(self, _id, ids_questoes) -> bool:
+    def reservar_operacao(self, _id, token) -> bool:
+        try:
+            object_id = ObjectId(_id)
+        except:
+            return False
+        resultado = self.__colecao.update_one(
+            {"_id": object_id, "ativo": {"$ne": False}, "tipo": "Objetiva",
+             "operacao_em_andamento": {"$exists": False}},
+            {"$set": {"operacao_em_andamento": token}}
+        )
+        return resultado.matched_count > 0
+
+    def liberar_operacao(self, _id, token):
+        self.__colecao.update_one(
+            {"_id": ObjectId(_id), "operacao_em_andamento": token},
+            {"$unset": {"operacao_em_andamento": ""}}
+        )
+
+    def concluir_geracao(self, _id, token) -> bool:
+        resultado = self.__colecao.update_one(
+            {"_id": ObjectId(_id), "ativo": {"$ne": False},
+             "status": {"$in": list(Prova.STATUS_EDITAVEIS)}, "operacao_em_andamento": token},
+            {"$unset": {"geracao_pendente": ""}}
+        )
+        return resultado.matched_count > 0
+
+    def atualizar_questoes(self, _id, ids_questoes, token=None, geracao_pendente=False) -> bool:
         print("✅ prova_dao.atualizar_questoes()")
 
         try:
@@ -63,19 +89,36 @@ class Prova_dao:
         except:
             return False
 
+        campos = {"questoes": ids_questoes, "status": "Em elaboração"}
+        if geracao_pendente:
+            campos["geracao_pendente"] = True
         resultado = self.__colecao.update_one(
-            {"_id": object_id, "ativo": {"$ne": False}, "tipo": "Objetiva"},
-            {"$set": {"questoes": ids_questoes}}
+            {"_id": object_id, "ativo": {"$ne": False}, "tipo": "Objetiva",
+             "status": {"$in": list(Prova.STATUS_EDITAVEIS)},
+             "operacao_em_andamento": token if token else {"$exists": False}},
+            {"$set": campos}
+        )
+        return resultado.matched_count > 0
+
+    def enviar(self, _id, ids_questoes, token=None) -> bool:
+        resultado = self.__colecao.update_one(
+            {"_id": ObjectId(_id), "ativo": {"$ne": False}, "tipo": "Objetiva",
+             "status": {"$in": list(Prova.STATUS_EDITAVEIS)}, "questoes": ids_questoes,
+             "geracao_pendente": {"$ne": True},
+             "operacao_em_andamento": token if token else {"$exists": False}},
+            {"$set": {"status": Prova.STATUS_ENVIADA}}
         )
         return resultado.matched_count > 0
 
 
-    def atualizar(self, obj_prova: Prova) -> bool:
+    def atualizar(self, obj_prova: Prova, token=None) -> bool:
         print("✅ prova_dao.atualizar()")
 
         _id = obj_prova.id_hash
         try:
-            filtro = {"_id": ObjectId(_id), "ativo": {"$ne": False}}
+            filtro = {"_id": ObjectId(_id), "ativo": {"$ne": False},
+                      "status": {"$in": list(Prova.STATUS_EDITAVEIS)},
+                      "operacao_em_andamento": token if token else {"$exists": False}}
         except:
             return False
 
@@ -87,7 +130,7 @@ class Prova_dao:
         return resultado.matched_count > 0
 
 
-    def excluir(self, _id) -> bool:
+    def excluir(self, _id, token=None) -> bool:
         print("✅ prova_dao.excluir()")
 
         try:
@@ -96,7 +139,9 @@ class Prova_dao:
             return False
 
         resultado = self.__colecao.update_one(
-            {"_id": object_id, "ativo": {"$ne": False}},
+            {"_id": object_id, "ativo": {"$ne": False},
+             "status": {"$in": list(Prova.STATUS_EDITAVEIS)},
+             "operacao_em_andamento": token if token else {"$exists": False}},
             {"$set": {"ativo": False}}
         )
 

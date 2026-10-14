@@ -231,6 +231,7 @@ class Servidor:
             cliente_correcao,
             self.__prova_x_aluno_dao,
             self.__aluno_dao,
+            self.__prova_dao,
             concorrencia=int(os.getenv("CORRECAO_CONCORRENCIA", "8"))
         )
         self.__prova_controle = Prova_controle(self.__prova_service, self.__correcao_service)

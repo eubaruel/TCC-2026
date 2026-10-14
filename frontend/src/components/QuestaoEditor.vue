@@ -2,91 +2,49 @@
   <div class="questao-editor">
     <div class="questao-cabecalho">
       <h4>Questão {{ numero }}</h4>
-      <div class="questao-acoes">
+      <div v-if="!bloqueada" class="questao-acoes">
         <button type="button" title="Mover para cima" :disabled="primeira" @click="$emit('mover', -1)">↑</button>
         <button type="button" title="Mover para baixo" :disabled="ultima" @click="$emit('mover', 1)">↓</button>
         <button type="button" class="btn-remover" title="Remover questão" @click="$emit('remover')">🗑️</button>
       </div>
     </div>
-
     <div class="linha-campos">
-      <div class="campo">
-        <label>Assunto</label>
-        <input :value="questao.assunto" placeholder="Ex.: Álgebra" @input="atualizar('assunto', $event.target.value)" />
-      </div>
-      <div class="campo">
-        <label>Dificuldade</label>
-        <select :value="questao.dificuldade" @change="atualizar('dificuldade', $event.target.value)">
-          <option v-for="nivel in dificuldades" :key="nivel">{{ nivel }}</option>
-        </select>
-      </div>
+      <div class="campo"><label>Assunto</label><p>{{ questao.assunto }}</p></div>
+      <div class="campo"><label>Dificuldade</label><p>{{ questao.dificuldade }}</p></div>
     </div>
-
     <div class="campo">
       <label>Enunciado</label>
-      <EditorQuill
-        :modelValue="questao.enunciado"
-        placeholder="Digite o enunciado da questão. Use o ícone de imagem para inserir figuras."
-        @update:modelValue="atualizar('enunciado', $event)"
-      />
+      <!-- eslint-disable-next-line vue/no-v-html -->
+      <div v-html="sanitizar(questao.enunciado)"></div>
     </div>
-
     <div class="campo">
-      <label>Alternativas (marque a correta)</label>
+      <label>Alternativas — correta destacada</label>
       <div v-for="(alternativa, index) in questao.alternativas" :key="index" class="alternativa">
-        <label class="marcador" :class="{ correta: questao.indiceCorreta === index }">
-          <input
-            type="radio"
-            :name="`correta-${questao._idLocal}`"
-            :checked="questao.indiceCorreta === index"
-            @change="atualizar('indiceCorreta', index)"
-          />
-          {{ letras[index] }}
-        </label>
-        <EditorQuill
-          class="alternativa-editor"
-          compacto
-          :modelValue="alternativa"
-          :placeholder="`Alternativa ${letras[index]}`"
-          @update:modelValue="atualizarAlternativa(index, $event)"
-        />
+        <span class="marcador" :class="{ correta: questao.indiceCorreta === index }">{{ letras[index] }}</span>
+        <!-- eslint-disable-next-line vue/no-v-html -->
+        <div class="alternativa-editor" v-html="sanitizar(alternativa)"></div>
       </div>
     </div>
-
-    <small v-if="questao._idBanco" class="aviso-banco">
-      Questão já cadastrada no banco: alterações serão gravadas nela ao salvar.
-    </small>
+    <small class="aviso-banco">Conteúdo do banco de questões: somente seleção e ordenação nesta tela.</small>
   </div>
 </template>
 
 <script>
-import EditorQuill from "@/components/EditorQuill.vue";
 import { LETRAS } from "@/stores/provaDraft";
+import { sanitizar } from "@/utils/html";
 
 export default {
   name: "QuestaoEditor",
-  components: { EditorQuill },
   props: {
     questao: { type: Object, required: true },
     numero: { type: Number, required: true },
     primeira: { type: Boolean, default: false },
     ultima: { type: Boolean, default: false },
+    bloqueada: { type: Boolean, default: false },
   },
-  emits: ["atualizar", "mover", "remover"],
-  data: () => ({
-    letras: LETRAS,
-    dificuldades: ["Muito Fácil", "Fácil", "Médio", "Difícil", "Muito Difícil"],
-  }),
-  methods: {
-    atualizar(campo, valor) {
-      this.$emit("atualizar", { [campo]: valor });
-    },
-    atualizarAlternativa(index, valor) {
-      const alternativas = [...this.questao.alternativas];
-      alternativas[index] = valor;
-      this.atualizar("alternativas", alternativas);
-    },
-  },
+  emits: ["mover", "remover"],
+  data: () => ({ letras: LETRAS }),
+  methods: { sanitizar },
 };
 </script>
 
@@ -184,15 +142,6 @@ export default {
   color: #aaa;
 }
 
-.campo input,
-.campo select {
-  width: 100%;
-  padding: 9px 10px;
-  border: 1px solid #d8d8d8;
-  border-radius: 6px;
-  font: inherit;
-}
-
 .alternativa {
   display: flex;
   gap: 10px;
@@ -214,12 +163,9 @@ export default {
   border-radius: 8px;
   border: 1px solid #e0e0e0;
   font-weight: 600;
-  cursor: pointer;
 }
 
-.marcador input {
-  width: auto;
-}
+.campo :deep(img) { max-width: 100%; height: auto; }
 
 .marcador.correta {
   background: #28a74520;

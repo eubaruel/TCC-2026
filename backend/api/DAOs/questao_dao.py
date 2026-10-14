@@ -1,4 +1,5 @@
 from api.modelos.questao import Questao
+from api.modelos.prova import Prova
 from bson import ObjectId
 import re
 
@@ -121,6 +122,13 @@ class Questao_dao:
         resultado = self.__colecao.find_one(filtro, {"_id":1})
 
         return resultado is not None
+
+    def usada_em_prova_concluida(self, id_questao):
+        return self.__banco_de_dados["provas"].find_one(
+            {"questoes": id_questao, "ativo": {"$ne": False},
+             "status": {"$nin": list(Prova.STATUS_EDITAVEIS)}},
+            {"_id": 1}
+        ) is not None
 
     
     def set_doc(self,obj_questao):

@@ -2,16 +2,18 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from threading import BoundedSemaphore
 
+from api.modelos.prova import Prova
 from api.utils.resposta_erro_http import resposta_erro_http
 
 
 class Correcao_service:
-    def __init__(self, cliente, prova_x_aluno_dao, aluno_dao, concorrencia=8):
+    def __init__(self, cliente, prova_x_aluno_dao, aluno_dao, prova_dao, concorrencia=8):
         if concorrencia < 1:
             raise ValueError("A concorrência deve ser maior que zero")
         self.cliente = cliente
         self.prova_x_aluno_dao = prova_x_aluno_dao
         self.aluno_dao = aluno_dao
+        self.prova_dao = prova_dao
         self.concorrencia = concorrencia
         # O executor é compartilhado por todas as requisições deste processo.
         self._executor = ThreadPoolExecutor(max_workers=concorrencia)
@@ -66,9 +68,13 @@ class Correcao_service:
         if not registro:
             raise resposta_erro_http(404, "ProvaXAluno não encontrada")
 
+        id_prova = registro.get("id_prova")
+        if not isinstance(id_prova, str) or not id_prova.strip() or not self.prova_dao.buscar_por_id(id_prova.strip()):
+            raise resposta_erro_http(404, "Prova-base não encontrada ou inativa")
+
         questoes = registro.get("questoes", [])
-        if not 1 <= len(questoes) <= 10:
-            raise resposta_erro_http(422, "O leitor suporta provas de 1 a 10 questões")
+        if not 1 <= len(questoes) <= Prova.MAX_QUESTOES:
+            raise resposta_erro_http(422, f"O leitor suporta provas de 1 a {Prova.MAX_QUESTOES} questões")
         aluno = self.aluno_dao.buscar_por_matricula(registro["matricula_aluno"])
         if not aluno:
             raise resposta_erro_http(404, "Aluno não encontrado")

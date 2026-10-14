@@ -2,9 +2,6 @@ import { defineStore } from "pinia";
 
 export const LETRAS = ["A", "B", "C", "D", "E"];
 
-let contadorLocal = 0;
-const novoIdLocal = () => `local-${Date.now()}-${++contadorLocal}`;
-
 export const novosMetadados = () => ({
   turmasTexto: "",
   codigo_disciplina: "",
@@ -16,39 +13,25 @@ export const novosMetadados = () => ({
   status: "Aguardando questões",
 });
 
-export const novaQuestaoEditor = () => ({
-  _idLocal: novoIdLocal(),
-  _idBanco: null,
-  assunto: "",
-  dificuldade: "Médio",
-  enunciado: "",
-  alternativas: LETRAS.map(() => ""),
-  indiceCorreta: 0,
-  assinaturaSalva: null,
-});
-
 // Converte uma questão vinda da API para o formato usado no editor.
 export const questaoDoBanco = (questao) => {
   const alternativas = Array.isArray(questao.alternativas) ? questao.alternativas : [];
   const indiceCorreta = alternativas.findIndex((alternativa) => alternativa.id === questao.alternativa_correta);
   return {
-    ...novaQuestaoEditor(),
     _idBanco: questao._id,
     assunto: questao.assunto || "",
     dificuldade: questao.dificuldade || "Médio",
     enunciado: questao.enunciado || "",
-    alternativas: LETRAS.map((_, index) => alternativas[index]?.texto || ""),
-    indiceCorreta: indiceCorreta >= 0 ? indiceCorreta : 0,
-    professor: questao.professor,
-    autor: questao.autor,
+    alternativas: alternativas.map((alternativa) => alternativa.texto || ""),
+    indiceCorreta,
   };
 };
 
 export const useProvaDraftStore = defineStore("provaDraft", {
   state: () => ({
-    // Questões escolhidas no banco (QuestoesView) para iniciar uma nova prova.
+    // Questões escolhidas no banco para adicionar a uma prova-base existente.
     questoes: [],
-    // Rascunho da tela de criação: só vai para o banco no primeiro salvamento.
+    // Seleção local: o salvamento envia somente os IDs para a prova-base.
     provaId: null,
     metadados: novosMetadados(),
     questoesEditor: [],
@@ -67,7 +50,7 @@ export const useProvaDraftStore = defineStore("provaDraft", {
     iniciarNova() {
       this.provaId = null;
       this.metadados = novosMetadados();
-      this.questoesEditor = [novaQuestaoEditor()];
+      this.questoesEditor = [];
       this.sujo = false;
     },
     marcarSujo() {

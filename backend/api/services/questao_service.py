@@ -47,6 +47,7 @@ class Questao_service:
         obj_questao = Questao()
         self._setar_modelo_questao(obj_questao, json_questao)
         obj_questao.id_hash = id_hash
+        self._exigir_edicao(id_hash)
 
         sucesso = self.__questao_dao.atualizar(obj_questao)
         if not sucesso:
@@ -62,7 +63,12 @@ class Questao_service:
         print("🟣 questao_service.excluir()")
         obj_questao = Questao()
         obj_questao.id_hash = id_hash
+        self._exigir_edicao(id_hash)
         return self.__questao_dao.excluir(obj_questao.id_hash)
+
+    def _exigir_edicao(self, id_hash):
+        if self.__questao_dao.usada_em_prova_concluida(id_hash):
+            raise resposta_erro_http(409, "Questão vinculada a uma prova concluída não pode ser alterada ou excluída")
 
     def _setar_modelo_questao(self, obj_questao, json_questao):
         for campo in self._CAMPOS_QUESTAO:

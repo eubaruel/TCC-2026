@@ -1,7 +1,7 @@
 // Template local usado enquanto a rota de templates não existir no backend.
 // Marcadores substituídos pelo PreviewProva.vue:
 //   {{DISCIPLINA}} {{CODIGO_DISCIPLINA}} {{TURMAS}} {{SERIE}} {{BIMESTRE}}
-//   {{DATA_APLICACAO}} {{PROFESSOR}} {{TIPO}} {{QUESTOES}}
+//   {{DATA_APLICACAO}} {{PROFESSOR}} {{MATRICULA}} {{TIPO}} {{QUESTOES}}
 // O template vindo do banco deve seguir os mesmos marcadores.
 export default `
 <header class="prova-cabecalho">
@@ -17,7 +17,7 @@ export default `
         <td><strong>Série:</strong> {{SERIE}} · <strong>Bimestre:</strong> {{BIMESTRE}}</td>
       </tr>
       <tr>
-        <td colspan="2"><strong>Aluno(a):</strong> ____________________________________________ <strong>Nº:</strong> ______</td>
+        <td colspan="2"><strong>Aluno(a):</strong> ____________________________________________ <strong>Matrícula:</strong> {{MATRICULA}}</td>
       </tr>
     </tbody>
   </table>

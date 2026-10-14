@@ -1,4 +1,6 @@
 from copy import deepcopy
+from threading import Lock
+from api.modelos.prova import Prova
 
 
 class FakeAlunoDao:
@@ -170,6 +172,11 @@ class FakeQuestaoDao:
     def __init__(self):
         self.documentos = {}
         self.sequencia = 0
+        self.provas = {}
+
+    def usada_em_prova_concluida(self, id_questao):
+        return any(id_questao in prova.get("questoes", []) and prova.get("ativo") is not False
+                   and prova.get("status") not in Prova.STATUS_EDITAVEIS for prova in self.provas.values())
 
     def campo_existe(self, campo, valor):
         return any(str(doc.get(campo, "")).lower() == str(valor).lower() for doc in self.documentos.values())
@@ -239,6 +246,7 @@ class FakeProvaDao:
     def __init__(self):
         self.documentos = {}
         self.sequencia = 0
+        self._reserva_lock = Lock()
 
     def criar(self, prova):
         self.sequencia += 1
@@ -263,6 +271,8 @@ class FakeProvaDao:
                 continue
             seguro = deepcopy(doc)
             seguro.pop("ativo", None)
+            seguro.pop("operacao_em_andamento", None)
+            seguro.pop("geracao_pendente", None)
             resultado.append(seguro)
         return resultado
 
@@ -272,27 +282,65 @@ class FakeProvaDao:
             return None
         seguro = deepcopy(doc)
         seguro.pop("ativo", None)
+        seguro.pop("operacao_em_andamento", None)
         return seguro
 
-    def atualizar_questoes(self, id_prova, ids_questoes):
+    def reservar_operacao(self, id_prova, token):
+        with self._reserva_lock:
+            doc = self.documentos.get(id_prova)
+            if not doc or not doc["ativo"] or "operacao_em_andamento" in doc:
+                return False
+            doc["operacao_em_andamento"] = token
+            return True
+
+    def liberar_operacao(self, id_prova, token):
+        with self._reserva_lock:
+            doc = self.documentos.get(id_prova)
+            if doc and doc.get("operacao_em_andamento") == token:
+                doc.pop("operacao_em_andamento")
+
+    def concluir_geracao(self, id_prova, token):
         doc = self.documentos.get(id_prova)
-        if not doc or not doc["ativo"]:
+        if not self._pode_alterar(doc, token):
+            return False
+        doc.pop("geracao_pendente", None)
+        return True
+
+    @staticmethod
+    def _pode_alterar(doc, token):
+        return bool(doc and doc["ativo"] and doc["status"] in Prova.STATUS_EDITAVEIS
+                    and doc.get("operacao_em_andamento") == token)
+
+    def atualizar_questoes(self, id_prova, ids_questoes, token=None, geracao_pendente=False):
+        doc = self.documentos.get(id_prova)
+        if not self._pode_alterar(doc, token):
             return False
         doc["questoes"] = deepcopy(ids_questoes)
+        doc["status"] = "Em elaboração"
+        if geracao_pendente:
+            doc["geracao_pendente"] = True
+        return True
+
+    def enviar(self, id_prova, ids_questoes, token=None):
+        doc = self.documentos.get(id_prova)
+        if not self._pode_alterar(doc, token) or doc["questoes"] != ids_questoes or doc.get("geracao_pendente"):
+            return False
+        doc["status"] = Prova.STATUS_ENVIADA
         return True
 
     def campo_existe(self, campo, valor):
         return valor in self.documentos and self.documentos[valor]["ativo"]
 
-    def atualizar(self, prova):
-        if prova.id_hash not in self.documentos:
+    def atualizar(self, prova, token=None):
+        doc = self.documentos.get(prova.id_hash)
+        if not self._pode_alterar(doc, token):
             return False
-        self.documentos[prova.id_hash] = self._doc(prova, prova.id_hash)
+        doc.update(self._doc(prova, prova.id_hash))
         return True
 
-    def excluir(self, id_prova):
+    def excluir(self, id_prova, token=None):
         doc = self.documentos.get(id_prova)
-        if not doc or not doc["ativo"]:
+        if not self._pode_alterar(doc, token):
             return False
         doc["ativo"] = False
         return True

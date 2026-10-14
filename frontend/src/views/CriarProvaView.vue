@@ -1,21 +1,20 @@
 <template>
   <div class="criar-prova" :class="temaAtual">
-    <!-- Barra superior -->
     <header class="barra-superior">
-      <button type="button" class="btn-voltar" title="Voltar" @click="voltar">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M15 18L9 12L15 6" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
+      <button type="button" class="btn-voltar" title="Voltar" :disabled="salvando" @click="voltar">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18L9 12L15 6" stroke-linecap="round" stroke-linejoin="round" /></svg>
       </button>
       <h1>{{ tituloTela }}</h1>
       <span v-if="draft.sujo" class="indicador-alteracoes">Alterações não salvas</span>
-      <button type="button" class="btn-salvar" :disabled="salvando || carregando" @click="salvar()">
-        {{ salvando ? "Salvando..." : "💾 Salvar" }}
-      </button>
+      <template v-if="editavel">
+        <button type="button" class="btn-salvar" :disabled="salvando || carregando || Boolean(erroCarregamento)" @click="salvar">
+          {{ salvando ? "Aguarde..." : "💾 Salvar seleção" }}
+        </button>
+        <button type="button" class="btn-salvar" :disabled="salvando || carregando || Boolean(erroCarregamento)" @click="confirmarEnvio">Concluir e enviar</button>
+      </template>
     </header>
 
     <div class="area-trabalho">
-      <!-- Metade esquerda: campos de preenchimento -->
       <section class="painel painel-campos">
         <p v-if="carregando" class="mensagem-info">Carregando dados da prova...</p>
         <template v-else>
@@ -23,115 +22,51 @@
             {{ erroCarregamento }}
             <button type="button" class="btn-secundario" @click="carregar">Tentar novamente</button>
           </p>
-
-          <div class="bloco">
-            <h3>Dados da prova</h3>
-            <div class="campo">
-              <label for="turmas">Turma(s)</label>
-              <textarea
-                id="turmas"
-                v-model="metadados.turmasTexto"
-                rows="2"
-                placeholder="Uma turma por linha, por exemplo:&#10;Turma 2026 A"
-              ></textarea>
-            </div>
-
-            <div class="campo">
-              <label for="disciplina">Disciplina</label>
-              <select v-if="!modoDisciplinaManual" id="disciplina" :value="metadados.codigo_disciplina" @change="selecionarDisciplina($event.target.value)">
-                <option value="">Selecione</option>
-                <option v-for="disciplina in disciplinas" :key="disciplina.codigo_disciplina" :value="disciplina.codigo_disciplina">
-                  {{ disciplina.nome_disciplina }} ({{ disciplina.codigo_disciplina }})
-                </option>
-              </select>
-              <div v-else class="disciplina-manual">
-                <input v-model.trim="metadados.codigo_disciplina" placeholder="Código, ex.: MAT" />
-                <input v-model.trim="metadados.nome_disciplina" placeholder="Nome, ex.: Matemática" />
-              </div>
-              <button v-if="disciplinas.length" type="button" class="btn-link" @click="alternarModoDisciplina">
-                {{ modoDisciplinaManual ? "Selecionar disciplina cadastrada" : "Informar disciplina manualmente" }}
-              </button>
-            </div>
-
-            <div class="grade-campos">
-              <div class="campo">
-                <label for="tipo">Tipo</label>
-                <input id="tipo" value="Objetiva" readonly />
-              </div>
-              <div class="campo">
-                <label for="serie">Série</label>
-                <input id="serie" v-model.number="metadados.serie" type="number" min="1" />
-              </div>
-              <div class="campo">
-                <label for="bimestre">Bimestre</label>
-                <input id="bimestre" v-model.trim="metadados.bimestre" placeholder="1° bimestre" />
-              </div>
-              <div class="campo">
-                <label for="dataAplicacao">Data de aplicação</label>
-                <input id="dataAplicacao" v-model="metadados.data_de_aplicacao" type="date" />
-              </div>
-              <div v-if="draft.provaId" class="campo">
-                <label for="status">Status</label>
-                <select id="status" v-model="metadados.status">
-                  <option v-for="status in opcoesStatus" :key="status">{{ status }}</option>
-                </select>
+          <template v-if="prova">
+            <p class="mensagem-info">{{ editavel ? "Selecione as questões do banco. Os dados da prova e o conteúdo das questões são mantidos como cadastrados." : "Prova concluída: somente visualização. A edição não é mais permitida." }}</p>
+            <div class="bloco">
+              <h3>Dados da prova</h3>
+              <div class="campo"><label for="professor">Professor responsável</label><input id="professor" :value="prova.professor.nome" readonly /></div>
+              <div class="campo"><label for="turmas">Turma(s)</label><textarea id="turmas" :value="metadados.turmasTexto" rows="2" readonly></textarea></div>
+              <div class="campo"><label for="disciplina">Disciplina</label><input id="disciplina" :value="metadados.nome_disciplina" readonly /></div>
+              <div class="grade-campos">
+                <div class="campo"><label for="tipo">Tipo</label><input id="tipo" value="Objetiva" readonly /></div>
+                <div class="campo"><label for="serie">Série</label><input id="serie" :value="metadados.serie" readonly /></div>
+                <div class="campo"><label for="bimestre">Bimestre</label><input id="bimestre" :value="metadados.bimestre" readonly /></div>
+                <div class="campo"><label for="dataAplicacao">Data de aplicação</label><input id="dataAplicacao" :value="metadados.data_de_aplicacao" type="date" readonly /></div>
+                <div class="campo"><label for="status">Status</label><input id="status" :value="metadados.status" readonly /></div>
               </div>
             </div>
-          </div>
-
-          <div class="bloco">
-            <h3>Questões ({{ questoes.length }})</h3>
-            <QuestaoEditor
-              v-for="(questao, index) in questoes"
-              :key="questao._idLocal"
-              :questao="questao"
-              :numero="index + 1"
-              :primeira="index === 0"
-              :ultima="index === questoes.length - 1"
-              @atualizar="Object.assign(questao, $event)"
-              @mover="moverQuestao(index, $event)"
-              @remover="removerQuestao(index)"
-            />
-
-            <div class="acoes-questoes">
-              <button type="button" class="btn-primario" @click="adicionarQuestao">+ Nova questão</button>
-              <div class="importar-banco">
-                <select v-model="questaoBancoSelecionada" :disabled="!questoesBancoCompativeis.length">
-                  <option value="">
-                    {{ questoesBancoCompativeis.length ? "Importar questão do banco..." : "Nenhuma questão compatível no banco" }}
-                  </option>
-                  <option v-for="questao in questoesBancoCompativeis" :key="questao._id" :value="questao._id">
-                    {{ resumo(questao.enunciado) }}
-                  </option>
-                </select>
-                <button type="button" class="btn-secundario" :disabled="!questaoBancoSelecionada" @click="importarQuestao">Importar</button>
+            <div class="bloco">
+              <h3>Questões ({{ questoes.length }}/{{ limiteQuestoes }})</h3>
+              <p class="mensagem-info">O leitor de correção suporta provas de 1 a {{ limiteQuestoes }} questões.</p>
+              <p v-if="editavel && questoes.length > limiteQuestoes" class="mensagem-erro" role="alert">Remova as questões excedentes antes de salvar ou enviar.</p>
+              <p v-if="!questoes.length" class="mensagem-info">Nenhuma questão selecionada.</p>
+              <QuestaoEditor v-for="(questao, index) in questoes" :key="questao._idBanco"
+                :questao="questao" :numero="index + 1" :primeira="index === 0" :ultima="index === questoes.length - 1"
+                :bloqueada="!editavel || salvando || Boolean(erroCarregamento)"
+                @mover="moverQuestao(index, $event)" @remover="removerQuestao(index)" />
+              <div v-if="editavel" class="acoes-questoes">
+                <div class="importar-banco">
+                  <select v-model="questaoBancoSelecionada" :disabled="salvando || Boolean(erroCarregamento) || questoes.length >= limiteQuestoes || !questoesBancoCompativeis.length" aria-label="Questão do banco">
+                    <option value="">{{ questoesBancoCompativeis.length ? "Selecionar questão do banco..." : "Nenhuma questão compatível disponível" }}</option>
+                    <option v-for="questao in questoesBancoCompativeis" :key="questao._id" :value="questao._id">{{ resumo(questao.enunciado) }}</option>
+                  </select>
+                  <button type="button" class="btn-secundario" :disabled="salvando || questoes.length >= limiteQuestoes || !questaoBancoSelecionada" @click="importarQuestao">Adicionar</button>
+                </div>
               </div>
             </div>
-          </div>
-
-          <p v-if="erro" class="mensagem-erro">{{ erro }}</p>
+          </template>
+          <p v-if="aviso" class="mensagem-info" role="status">{{ aviso }}</p>
+          <p v-if="erro" class="mensagem-erro" role="alert">{{ erro }}</p>
         </template>
       </section>
-
-      <!-- Metade direita: prova montada a partir do template -->
       <section class="painel painel-preview">
-        <PreviewProva
-          :template="template"
-          :metadados="metadados"
-          :questoes="questoes"
-          :professor="authStore.user?.nome || ''"
-        />
+        <PreviewProva :template="template" :metadados="metadados" :questoes="questoes" :professor="prova?.professor.nome || ''" />
       </section>
     </div>
-
-    <ModalSairEdicao
-      :visivel="mostrarModalSair"
-      :salvando="salvando"
-      :provaSalva="Boolean(draft.provaId)"
-      @cancelar="cancelarSaida"
-      @sair-sem-salvar="sairSemSalvar"
-      @salvar-e-sair="salvarESair"
-    />
+    <ModalSairEdicao :visivel="mostrarModalSair" :salvando="salvando" :provaSalva="Boolean(draft.provaId)"
+      @cancelar="cancelarSaida" @sair-sem-salvar="sairSemSalvar" @salvar-e-sair="salvarESair" />
   </div>
 </template>
 
@@ -140,93 +75,52 @@ import QuestaoEditor from "@/components/QuestaoEditor.vue";
 import PreviewProva from "@/components/PreviewProva.vue";
 import ModalSairEdicao from "@/components/ModalSairEdicao.vue";
 import { useAuthStore } from "@/stores/auth";
-import { novaQuestaoEditor, questaoDoBanco, useProvaDraftStore } from "@/stores/provaDraft";
-import { listarDisciplinas } from "@/services/disciplinas";
-import { atualizarQuestao, criarQuestao, listarQuestoes } from "@/services/questoes";
-import { adicionarQuestoes, atualizarProva, buscarProva, criarProva } from "@/services/provas";
+import { questaoDoBanco, useProvaDraftStore } from "@/stores/provaDraft";
+import { listarQuestoes } from "@/services/questoes";
+import { adicionarQuestoes, buscarProva, enviarProva, provaEditavel } from "@/services/provas";
 import { obterTemplateProva } from "@/services/templates";
-import { htmlVazio, sanitizar, textoPuro } from "@/utils/html";
+import { htmlVazio, textoPuro } from "@/utils/html";
 
 export default {
   name: "CriarProvaView",
   components: { QuestaoEditor, PreviewProva, ModalSairEdicao },
-  props: {
-    id: { type: String, default: null },
-  },
+  props: { id: { type: String, required: true } },
   setup() {
     return { authStore: useAuthStore(), draft: useProvaDraftStore() };
   },
   data: () => ({
-    temaAtual: "tema-claro",
-    template: "",
-    disciplinas: [],
-    bancoQuestoes: [],
-    modoDisciplinaManual: false,
-    questaoBancoSelecionada: "",
-    carregando: true,
-    salvando: false,
-    erro: "",
-    erroCarregamento: "",
-    mostrarModalSair: false,
-    destinoPendente: null,
-    liberarSaida: false,
-    monitorandoAlteracoes: false,
+    limiteQuestoes: 10,
+    temaAtual: "tema-claro", template: "", prova: null, bancoQuestoes: [],
+    questaoBancoSelecionada: "", carregando: true, salvando: false,
+    erro: "", erroCarregamento: "", aviso: "", versoes: null,
+    mostrarModalSair: false, destinoPendente: null, liberarSaida: false, monitorandoAlteracoes: false,
   }),
   computed: {
-    metadados() {
-      return this.draft.metadados;
-    },
-    questoes() {
-      return this.draft.questoesEditor;
-    },
-    tituloTela() {
-      const nome = this.metadados.nome_disciplina;
-      if (!this.draft.provaId) return nome ? `Nova prova · ${nome}` : "Nova prova";
-      return nome ? `Editar prova · ${nome}` : "Editar prova";
-    },
-    opcoesStatus() {
-      return [...new Set(["Aguardando questões", "Não Corrigida", "Corrigida", this.metadados.status].filter(Boolean))];
-    },
-    disciplinaAtual() {
-      const codigo = String(this.metadados.codigo_disciplina || "").trim();
-      const nome = String(this.metadados.nome_disciplina || "").trim();
-      return codigo && nome ? { codigo_disciplina: codigo, nome_disciplina: nome } : null;
-    },
+    metadados() { return this.draft.metadados; },
+    questoes() { return this.draft.questoesEditor; },
+    editavel() { return Boolean(this.prova && provaEditavel(this.prova)); },
+    tituloTela() { return `${this.editavel ? "Selecionar questões" : "Visualizar prova"} · ${this.metadados.nome_disciplina || "Prova"}`; },
     questoesBancoCompativeis() {
-      const disciplina = this.disciplinaAtual;
-      if (!disciplina) return [];
-      const referencias = [disciplina.codigo_disciplina, disciplina.nome_disciplina].map((item) => item.toLowerCase());
-      const idsNaProva = new Set(this.questoes.map((questao) => questao._idBanco).filter(Boolean));
-      return this.bancoQuestoes.filter((questao) =>
-        !idsNaProva.has(questao._id)
-        && questao.tipo_questao === this.metadados.tipo
-        && Array.isArray(questao.disciplina)
-        && questao.disciplina.some((item) => referencias.includes(String(item).trim().toLowerCase())),
-      );
+      if (!this.prova) return [];
+      const referencias = [this.metadados.codigo_disciplina, this.metadados.nome_disciplina].map((valor) => valor.trim().toLowerCase());
+      const selecionadas = new Set(this.questoes.map((questao) => questao._idBanco));
+      return this.bancoQuestoes.filter((questao) => !selecionadas.has(questao._id)
+        && questao.tipo_questao === "Objetiva"
+        && questao.disciplina?.some((valor) => referencias.includes(String(valor).trim().toLowerCase())));
     },
   },
   watch: {
-    "draft.metadados": {
-      deep: true,
-      handler() {
-        if (this.monitorandoAlteracoes) this.draft.marcarSujo();
-      },
-    },
-    "draft.questoesEditor": {
-      deep: true,
-      handler() {
-        if (this.monitorandoAlteracoes) this.draft.marcarSujo();
-      },
-    },
+    "draft.questoesEditor": { deep: true, handler() {
+      if (this.monitorandoAlteracoes && this.editavel) this.draft.marcarSujo();
+    } },
   },
   async mounted() {
     window.addEventListener("beforeunload", this.aoFecharJanela);
     await this.carregar();
   },
-  beforeUnmount() {
-    window.removeEventListener("beforeunload", this.aoFecharJanela);
-  },
+  beforeUnmount() { window.removeEventListener("beforeunload", this.aoFecharJanela); },
   beforeRouteLeave(to) {
+    if (this.salvando) return false;
     if (this.liberarSaida || !this.draft.sujo) {
       this.draft.descartarRascunho();
       return true;
@@ -236,9 +130,7 @@ export default {
     return false;
   },
   methods: {
-    mensagemErro(error) {
-      return error?.details || error?.message || "Não foi possível concluir a operação.";
-    },
+    mensagemErro(error) { return error?.details || error?.message || "Não foi possível concluir a operação."; },
     resumo(html) {
       const texto = textoPuro(html) || "[questão com imagem]";
       return texto.length > 90 ? `${texto.slice(0, 90)}…` : texto;
@@ -246,106 +138,57 @@ export default {
     async carregar() {
       this.monitorandoAlteracoes = false;
       this.carregando = true;
-      this.erro = "";
-      this.erroCarregamento = "";
-
-      const [resTemplate, resDisciplinas, resQuestoes] = await Promise.allSettled([
-        obterTemplateProva(),
-        listarDisciplinas(),
-        listarQuestoes(),
-      ]);
-      const falhas = [];
-      this.template = resTemplate.status === "fulfilled" ? resTemplate.value : "";
-      if (resTemplate.status === "rejected") falhas.push(this.mensagemErro(resTemplate.reason));
-      this.disciplinas = resDisciplinas.status === "fulfilled" && Array.isArray(resDisciplinas.value?.disciplinas) ? resDisciplinas.value.disciplinas : [];
-      if (resDisciplinas.status === "rejected") falhas.push(this.mensagemErro(resDisciplinas.reason));
-      this.bancoQuestoes = resQuestoes.status === "fulfilled" && Array.isArray(resQuestoes.value?.questoes) ? resQuestoes.value.questoes : [];
-      if (resQuestoes.status === "rejected") falhas.push(this.mensagemErro(resQuestoes.reason));
-      this.erroCarregamento = [...new Set(falhas)].join(" ");
-      this.modoDisciplinaManual = !this.disciplinas.length;
-
-      if (this.id) await this.carregarProvaExistente();
-      else this.iniciarNovaProva();
-
-      this.carregando = false;
-      await this.$nextTick();
-      this.monitorandoAlteracoes = true;
-    },
-    iniciarNovaProva() {
-      const filaDoBanco = [...this.draft.questoes];
-      this.draft.iniciarNova();
-      this.draft.limpar();
-      if (!filaDoBanco.length) return;
-
-      const primeira = filaDoBanco[0];
-      const referencias = primeira.disciplinasOriginais || (Array.isArray(primeira.disciplina) ? primeira.disciplina : []);
-      const disciplina = this.disciplinas.find((item) =>
-        referencias.some((ref) => [item.codigo_disciplina, item.nome_disciplina].some((valor) => valor.toLowerCase() === String(ref).toLowerCase())),
-      );
-      if (disciplina) {
-        this.selecionarDisciplina(disciplina.codigo_disciplina);
-      } else if (referencias.length) {
-        this.modoDisciplinaManual = true;
-        this.metadados.nome_disciplina = [...referencias].sort((a, b) => String(b).length - String(a).length)[0];
-      }
-
-      const completas = filaDoBanco
-        .map((item) => this.bancoQuestoes.find((questao) => questao._id === item._id))
-        .filter(Boolean);
-      this.draft.questoesEditor = completas.map((questao) => this.comAssinatura(questaoDoBanco(questao)));
-      if (!this.draft.questoesEditor.length) this.draft.questoesEditor = [novaQuestaoEditor()];
-    },
-    async carregarProvaExistente() {
+      this.erro = ""; this.erroCarregamento = ""; this.aviso = ""; this.prova = null;
+      this.versoes = null; this.questaoBancoSelecionada = "";
       this.draft.iniciarNova();
       try {
-        const prova = await buscarProva(this.id);
-        if (!prova) {
-          this.erro = "A prova não foi encontrada ou está inativa.";
-          return;
-        }
+        const [template, banco, prova] = await Promise.all([obterTemplateProva(), listarQuestoes(), buscarProva(this.id)]);
+        if (!prova) throw new Error("A prova não foi encontrada ou está inativa.");
+        if (prova.professor.registro !== this.authStore.user.registro) throw new Error("Esta prova não está atribuída a você.");
+        this.template = template; this.bancoQuestoes = banco.questoes; this.prova = prova;
         this.draft.provaId = prova._id;
-        this.modoDisciplinaManual = !this.disciplinas.some((item) => item.codigo_disciplina === prova.disciplina.codigo_disciplina);
-        Object.assign(this.draft.metadados, {
+        Object.assign(this.metadados, {
           turmasTexto: (Array.isArray(prova.id_turma) ? prova.id_turma : [prova.id_turma]).join("\n"),
-          codigo_disciplina: prova.disciplina.codigo_disciplina,
-          nome_disciplina: prova.disciplina.nome_disciplina,
-          tipo: prova.tipo,
-          serie: prova.serie,
-          bimestre: prova.bimestre,
-          data_de_aplicacao: prova.data_de_aplicacao,
-          status: prova.status,
+          codigo_disciplina: prova.disciplina.codigo_disciplina, nome_disciplina: prova.disciplina.nome_disciplina,
+          tipo: prova.tipo, serie: prova.serie, bimestre: prova.bimestre,
+          data_de_aplicacao: prova.data_de_aplicacao, status: prova.status,
         });
         const porId = new Map(this.bancoQuestoes.map((questao) => [questao._id, questao]));
-        const ids = Array.isArray(prova.questoes) ? prova.questoes : [];
-        const encontradas = ids.filter((idQuestao) => porId.has(idQuestao));
-        this.draft.questoesEditor = encontradas.map((idQuestao) => this.comAssinatura(questaoDoBanco(porId.get(idQuestao))));
-        if (encontradas.length < ids.length) {
-          this.erro = `${ids.length - encontradas.length} questão(ões) desta prova não está(ão) mais disponível(is) e foi(ram) removida(s) da edição.`;
+        if (prova.questoes.some((id) => !porId.has(id))) throw new Error("Uma questão vinculada está indisponível. Confira o banco antes de continuar.");
+        this.draft.questoesEditor = prova.questoes.map((id) => questaoDoBanco(porId.get(id)));
+        if (this.editavel && this.draft.questoes.length) {
+          const compativeis = new Set(this.questoesBancoCompativeis.map((questao) => questao._id));
+          const fila = this.draft.questoes.filter((questao) => compativeis.has(questao._id));
+          if (this.questoes.length + fila.length > this.limiteQuestoes) {
+            this.aviso = `A seleção do banco excede o limite de ${this.limiteQuestoes} questões. Nenhuma questão dessa seleção foi adicionada; adicione individualmente as desejadas.`;
+          } else {
+            this.draft.questoesEditor.push(...fila.map((questao) => questaoDoBanco(porId.get(questao._id))));
+            this.draft.sujo = Boolean(fila.length);
+            this.aviso = fila.length ? "Questões selecionadas no banco adicionadas à prova." : "Nenhuma questão da seleção anterior pôde ser adicionada a esta prova.";
+          }
         }
-        if (!this.draft.questoesEditor.length) this.draft.questoesEditor = [novaQuestaoEditor()];
+        this.draft.limpar();
       } catch (error) {
-        this.erro = this.mensagemErro(error);
+        this.erroCarregamento = this.mensagemErro(error);
+      } finally {
+        this.carregando = false;
+        await this.$nextTick();
+        this.monitorandoAlteracoes = true;
       }
     },
-    selecionarDisciplina(codigo) {
-      const disciplina = this.disciplinas.find((item) => item.codigo_disciplina === codigo);
-      this.metadados.codigo_disciplina = disciplina?.codigo_disciplina || "";
-      this.metadados.nome_disciplina = disciplina?.nome_disciplina || "";
-    },
-    alternarModoDisciplina() {
-      this.modoDisciplinaManual = !this.modoDisciplinaManual;
-      this.metadados.codigo_disciplina = "";
-      this.metadados.nome_disciplina = "";
-    },
-    adicionarQuestao() {
-      this.draft.questoesEditor.push(novaQuestaoEditor());
-    },
     importarQuestao() {
-      const questao = this.bancoQuestoes.find((item) => item._id === this.questaoBancoSelecionada);
-      if (questao) this.draft.questoesEditor.push(this.comAssinatura(questaoDoBanco(questao)));
+      if (!this.editavel || this.salvando || this.erroCarregamento) return;
+      if (this.questoes.length >= this.limiteQuestoes) {
+        this.erro = `A prova permite no máximo ${this.limiteQuestoes} questões.`;
+        return;
+      }
+      this.erro = "";
+      const questao = this.questoesBancoCompativeis.find((item) => item._id === this.questaoBancoSelecionada);
+      if (questao) this.draft.questoesEditor.push(questaoDoBanco(questao));
       this.questaoBancoSelecionada = "";
     },
     moverQuestao(index, direcao) {
+      if (!this.editavel || this.salvando || this.erroCarregamento) return;
       const destino = index + direcao;
       if (destino < 0 || destino >= this.questoes.length) return;
       const lista = [...this.questoes];
@@ -353,149 +196,79 @@ export default {
       this.draft.questoesEditor = lista;
     },
     removerQuestao(index) {
-      window.$modal.abrir({
-        titulo: "Remover questão",
-        mensagem: "Deseja remover esta questão da prova? Questões já cadastradas continuam no banco.",
-        tipo: "confirmacao",
-        onConfirm: () => this.draft.questoesEditor.splice(index, 1),
-      });
-    },
-    turmas() {
-      return this.metadados.turmasTexto.split(/\r?\n/).map((turma) => turma.trim()).filter(Boolean);
-    },
-    payloadQuestao(questao) {
-      const disciplina = this.disciplinaAtual;
-      const nomeProfessor = questao.professor?.nome || this.authStore.user.nome;
-      const payload = {
-        professor: { nome: nomeProfessor },
-        autor: questao.autor || nomeProfessor,
-        assunto: questao.assunto.trim(),
-        disciplina: [...new Set([disciplina.codigo_disciplina, disciplina.nome_disciplina])],
-        tipo_questao: "Objetiva",
-        dificuldade: questao.dificuldade,
-        enunciado: sanitizar(questao.enunciado),
-      };
-      payload.alternativas = questao.alternativas.map((alternativa) => sanitizar(alternativa));
-      payload.alternativa_correta = payload.alternativas[questao.indiceCorreta];
-      return payload;
-    },
-    // Guarda a "foto" do que está no banco para só enviar PUT de questões realmente alteradas.
-    comAssinatura(questao) {
-      if (this.disciplinaAtual) questao.assinaturaSalva = JSON.stringify(this.payloadQuestao(questao));
-      return questao;
+      if (!this.editavel || this.salvando || this.erroCarregamento) return;
+      this.draft.questoesEditor.splice(index, 1);
     },
     validar() {
-      const turmas = this.turmas();
-      if (!turmas.length) return "Informe ao menos uma turma.";
-      if (!this.disciplinaAtual) return "Selecione uma disciplina ou informe seu código e nome.";
-      if (this.disciplinaAtual.nome_disciplina.length < 3) return "O nome da disciplina deve ter ao menos 3 caracteres.";
-      if (!Number.isInteger(this.metadados.serie) || this.metadados.serie <= 0) return "Informe uma série válida.";
-      if (!this.metadados.bimestre) return "Informe o bimestre.";
-      if (!this.metadados.data_de_aplicacao) return "Informe a data de aplicação.";
-      if (!this.questoes.length) return "Adicione ao menos uma questão.";
-      if (this.authStore.user?.registro === undefined || this.authStore.user?.registro === null) {
-        return "Não foi possível identificar o registro do professor. Faça login novamente.";
-      }
-
-      const enunciados = new Set();
+      if (!this.draft.provaId || !this.editavel) return "Esta prova não está disponível para preenchimento.";
+      if (!this.questoes.length) return "Selecione ao menos uma questão do banco.";
+      if (this.questoes.length > this.limiteQuestoes) return `A prova permite no máximo ${this.limiteQuestoes} questões. Remova as questões excedentes.`;
+      const ids = this.questoes.map((questao) => questao._idBanco);
+      if (ids.some((id) => !id) || new Set(ids).size !== ids.length) return "Selecione questões válidas, sem repetição.";
       for (const [index, questao] of this.questoes.entries()) {
-        const numero = index + 1;
-        if (questao.assunto.trim().length < 2) return `Questão ${numero}: informe o assunto.`;
-        if (htmlVazio(questao.enunciado)) return `Questão ${numero}: o enunciado está vazio.`;
-        const chave = sanitizar(questao.enunciado).toLowerCase();
-        if (enunciados.has(chave)) return `Questão ${numero}: existe outra questão com o mesmo enunciado.`;
-        enunciados.add(chave);
-
-        if (questao.alternativas.some(htmlVazio)) return `Questão ${numero}: preencha as cinco alternativas.`;
-        const distintas = new Set(questao.alternativas.map((alternativa) => sanitizar(alternativa).trim()));
-        if (distintas.size !== questao.alternativas.length) return `Questão ${numero}: as alternativas devem ser diferentes entre si.`;
+        if (htmlVazio(questao.enunciado) || questao.alternativas.length !== 5 || questao.alternativas.some(htmlVazio)
+            || new Set(questao.alternativas.map((alternativa) => alternativa.trim())).size !== 5
+            || !Number.isInteger(questao.indiceCorreta) || questao.indiceCorreta < 0 || questao.indiceCorreta > 4) {
+          return `Questão ${index + 1}: confira no banco o enunciado, cinco alternativas e a indicação da correta.`;
+        }
       }
       return "";
     },
     async salvar() {
-      if (this.salvando) return false;
+      if (this.salvando || this.carregando || this.erroCarregamento) return false;
       this.erro = this.validar();
       if (this.erro) return false;
-
-      this.salvando = true;
+      this.salvando = true; this.aviso = "";
       try {
-        // 1. Questões: cria as novas e atualiza as alteradas (o id é guardado a cada passo para não duplicar em nova tentativa).
-        for (const [index, questao] of this.questoes.entries()) {
-          const payload = this.payloadQuestao(questao);
-          const assinatura = JSON.stringify(payload);
-          try {
-            if (!questao._idBanco) {
-              const data = await criarQuestao(payload);
-              questao._idBanco = data.questao._id;
-            } else if (assinatura !== questao.assinaturaSalva) {
-              await atualizarQuestao(questao._idBanco, payload);
-            }
-            questao.assinaturaSalva = assinatura;
-          } catch (error) {
-            throw new Error(`Questão ${index + 1}: ${this.mensagemErro(error)}`);
-          }
-        }
-
-        // 2. Prova-base: criada apenas no primeiro salvamento.
-        const turmas = this.turmas();
-        const base = {
-          id_turma: turmas.length === 1 ? turmas[0] : turmas,
-          professor: { registro: this.authStore.user.registro, nome: this.authStore.user.nome },
-          disciplina: { ...this.disciplinaAtual },
-          tipo: "Objetiva",
-          serie: Number(this.metadados.serie),
-          bimestre: this.metadados.bimestre,
-          data_de_aplicacao: this.metadados.data_de_aplicacao,
-        };
-        const ids = this.questoes.map((questao) => questao._idBanco);
-        const primeiraVez = !this.draft.provaId;
-
-        if (primeiraVez) {
-          const data = await criarProva(base);
-          this.draft.provaId = data.prova._id;
-          this.metadados.status = data.prova.status;
-        } else {
-          await atualizarProva(this.draft.provaId, { ...base, status: this.metadados.status, questoes: ids });
-        }
-
-        // 3. Vincula as questões e (re)gera as versões individuais dos alunos.
-        await adicionarQuestoes(this.draft.provaId, ids);
-
+        // Apenas IDs, na ordem definida pelo professor. A API preserva versões sem mudanças.
+        const resposta = await adicionarQuestoes(this.draft.provaId, this.questoes.map((questao) => questao._idBanco));
+        this.prova = resposta.prova; this.metadados.status = resposta.prova.status;
+        this.versoes = resposta.provas_alunos_geradas;
+        this.aviso = this.versoes === 0
+          ? "Seleção salva, mas nenhuma versão foi criada. Confira os alunos ativos das turmas e salve novamente antes de enviar."
+          : `Seleção salva. ${this.versoes} versão(ões) individual(is) disponível(is).`;
         await this.$nextTick();
         this.draft.sujo = false;
-        if (primeiraVez) this.$router.replace(`/provas/${this.draft.provaId}/editar`);
         return true;
-      } catch (error) {
-        this.erro = this.mensagemErro(error);
-        return false;
-      } finally {
-        this.salvando = false;
-      }
+      } catch (error) { this.erro = this.mensagemErro(error); return false; }
+      finally { this.salvando = false; }
     },
-    voltar() {
-      this.$router.push("/provas");
+    confirmarEnvio() {
+      if (!this.editavel || this.salvando || this.carregando || this.erroCarregamento) return;
+      this.erro = this.validar();
+      if (this.erro) return;
+      window.$modal.abrir({
+        titulo: "Concluir e enviar prova",
+        mensagem: "Após enviar ao processo pedagógico, não será mais possível editar esta prova. Deseja continuar?",
+        tipo: "confirmacao", onConfirm: () => this.enviar(),
+      });
     },
-    cancelarSaida() {
-      if (this.salvando) return;
-      this.mostrarModalSair = false;
-      this.destinoPendente = null;
+    async enviar() {
+      if (!await this.salvar() || !this.versoes) return;
+      this.salvando = true;
+      try {
+        const resposta = await enviarProva(this.draft.provaId);
+        this.prova = resposta.prova; this.metadados.status = resposta.prova.status;
+        this.aviso = "Prova enviada ao processo pedagógico. Edição encerrada.";
+        this.draft.sujo = false;
+      } catch (error) { this.erro = this.mensagemErro(error); }
+      finally { this.salvando = false; }
     },
+    voltar() { this.$router.push("/provas"); },
+    cancelarSaida() { if (!this.salvando) { this.mostrarModalSair = false; this.destinoPendente = null; } },
     sairSemSalvar() {
-      this.mostrarModalSair = false;
-      this.liberarSaida = true;
+      if (this.salvando) return;
+      this.mostrarModalSair = false; this.liberarSaida = true;
       this.$router.push(this.destinoPendente || "/provas");
     },
     async salvarESair() {
-      const salvou = await this.salvar();
-      this.mostrarModalSair = false;
-      if (!salvou) return;
-      this.liberarSaida = true;
+      if (!await this.salvar()) return;
+      this.mostrarModalSair = false; this.liberarSaida = true;
       this.$router.push(this.destinoPendente || "/provas");
     },
     aoFecharJanela(evento) {
-      if (!this.draft.sujo) return;
-      evento.preventDefault();
-      evento.returnValue = "";
+      if (!this.draft.sujo && !this.salvando) return;
+      evento.preventDefault(); evento.returnValue = "";
     },
   },
 };
@@ -673,26 +446,6 @@ export default {
   gap: 0 12px;
 }
 
-.disciplina-manual {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 8px;
-}
-
-.btn-link {
-  margin-top: 6px;
-  padding: 0;
-  border: none;
-  background: none;
-  color: #00488b;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.tema-escuro .btn-link {
-  color: #0066cc;
-}
-
 .acoes-questoes {
   display: flex;
   flex-direction: column;
@@ -702,23 +455,6 @@ export default {
 .importar-banco {
   display: flex;
   gap: 8px;
-}
-
-.btn-primario {
-  padding: 10px 20px;
-  background: #00488b;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.btn-primario:hover {
-  background: #0066cc;
-  transform: scale(1.02);
 }
 
 .btn-secundario {
@@ -767,8 +503,7 @@ export default {
     border-bottom: 1px solid #e0e0e0;
   }
 
-  .grade-campos,
-  .disciplina-manual {
+  .grade-campos {
     grid-template-columns: 1fr;
   }
 

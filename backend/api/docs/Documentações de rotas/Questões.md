@@ -685,6 +685,9 @@ Código HTTP:
 
 # Atualizar questão objetiva
 
+Se a questão estiver vinculada a uma prova ativa concluída, retorna `409`.
+O conteúdo fica preservado para não alterar provas/gabaritos já enviados.
+
 ## Rota
 
 ```http
@@ -817,6 +820,8 @@ Um `_id` em formato MongoDB inválido também resulta nesse erro.
 ---
 
 # Excluir questão
+
+Questões vinculadas a provas ativas concluídas não podem ser excluídas: `409`.
 
 ## Rota
 
