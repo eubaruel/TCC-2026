@@ -16,11 +16,19 @@ const routes = [
   },
   {
     // Tela cheia (fora da TelaPrincipal): sem barra lateral e sem cabeçalho de boas-vindas.
-    path: "/provas/editor/:id?",
+    path: "/provas/editor/:id",
     name: "CriarProvaView",
     component: CriarProvaView,
     props: true,
     meta: { requiresAuth: true, requiresProfessor: true },
+  },
+  { path: "/provas/editor", redirect: "/provas" },
+  {
+    path: "/provas/imprimir/:id",
+    name: "ImprimirProvasView",
+    component: () => import("@/views/ImprimirProvasView.vue"),
+    props: true,
+    meta: { requiresAuth: true, requiresProcesso: true },
   },
   {
     path: "/",

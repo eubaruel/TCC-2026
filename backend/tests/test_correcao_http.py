@@ -11,6 +11,7 @@ from api.clientes.correcao_cliente import Correcao_cliente
 from api.DAOs.prova_x_aluno_dao import Prova_x_aluno_dao
 from api.DAOs.aluno_dao import Aluno_dao
 from api.controles.prova_controle import Prova_controle
+from api.services.correcao_service import Correcao_service
 from api.roteador.prova_rotas import Prova_rotas
 from api.utils.resposta_erro_http import resposta_erro_http
 
@@ -101,6 +102,32 @@ class RotaCorrecaoTest(unittest.TestCase):
         self.assertEqual([i["arquivo"] for i in imagens], ["a.png", "b.png"])
         self.assertEqual(imagens[1]["bytes"], b"segunda")
         self.assertTrue(resposta.json["sucesso"])
+
+    def test_lote_com_base_invalida_retorna_erro_individual_e_preserva_resultado_valido(self):
+        id_base, id_valida, id_orfa = (str(ObjectId()) for _ in range(3))
+        registro = {"_id": id_valida, "id_prova": id_base, "matricula_aluno": 123,
+                    "questoes": [{"posicao_alternativa_correta": 1}]}
+        registros = {id_valida: registro, id_orfa: {**registro, "_id": id_orfa, "id_prova": str(ObjectId())}}
+        cliente = SimpleNamespace(fechar=lambda: None, processar=lambda imagem: {
+            "qrcode": id_orfa if imagem["arquivo"] == "orfa.png" else id_valida, "respostas": {"1": "A"}
+        })
+        correcoes = Correcao_service(
+            cliente, SimpleNamespace(buscar_por_id=registros.get),
+            SimpleNamespace(buscar_por_matricula=lambda _: {"nome_aluno": "Carlos Silva"}),
+            SimpleNamespace(buscar_por_id=lambda id_: {"_id": id_base} if id_ == id_base else None)
+        )
+        self.addCleanup(correcoes.fechar)
+        self.service.corrigir = correcoes.corrigir
+        resposta = self.http.post("/api/v1/provas/corrigir-provas", data={
+            "imagens": [(BytesIO(b"orfa"), "orfa.png"), (BytesIO(b"valida"), "valida.png")]
+        })
+        self.assertEqual(resposta.status_code, 200)
+        dados = resposta.get_json()["data"]
+        self.assertEqual([item["indice"] for item in dados["resultados"]], [1])
+        self.assertEqual(dados["resultados"][0]["nota_prova"], 10)
+        self.assertEqual(dados["erros"][0]["indice"], 0)
+        self.assertEqual(dados["erros"][0]["codigo"], 404)
+        self.assertEqual(dados["erros"][0]["mensagem"], "Prova-base não encontrada ou inativa")
 
     def test_ausente_vazia_e_excesso_de_arquivos(self):
         for data in ({}, {"imagens": (BytesIO(b""), "vazia.png")},

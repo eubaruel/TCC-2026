@@ -68,6 +68,12 @@ class Prova_controle:
             },
             codigo = 200
         )
+
+    def enviar(self, _id):
+        return Resposta_json.sucesso(
+            mensagem="Prova enviada ao processo pedagógico",
+            data=self.__prova_service.enviar(_id), codigo=200
+        )
     
     
     def ler(self):
@@ -179,7 +185,8 @@ class Prova_controle:
             "_id":id_hash,
             "id_turma":prova.get("id_turma"),
             "professor":{
-                "nome":professor.get("nome")
+                "nome":professor.get("nome"),
+                "registro":professor.get("registro")
             },
             "disciplina":{
                 "codigo_disciplina":disciplina.get("codigo_disciplina"),

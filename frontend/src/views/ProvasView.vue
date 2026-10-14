@@ -12,7 +12,7 @@
         class="tab-btn"
         :class="{ ativo: abaAtiva === 'minhas' }"
       >
-        {{ authStore.isProfessor ? "Minhas Provas" : "Todas as Provas" }} ({{ minhasProvas.length }})
+        {{ authStore.isProfessor ? "Minhas Provas" : "Provas Recebidas" }} ({{ minhasProvas.length }})
       </button>
       <button
         @click="abaAtiva = 'naoCorrigidas'"
@@ -52,13 +52,14 @@
         <button class="btn-criar-prova" @click="carregarTudo">Tentar novamente</button>
       </div>
     </div>
+    <p v-if="aviso" role="status">{{ aviso }}</p>
 
-    <div v-else-if="carregando" class="sem-provas">
+    <div v-if="!erro && carregando" class="sem-provas">
       <div class="empty-state"><p>Carregando provas...</p></div>
     </div>
 
     <!-- Lista de Provas -->
-    <div v-else class="lista-provas">
+    <div v-if="!erro && !carregando" class="lista-provas">
       <div v-if="provasExibidas.length === 0" class="sem-provas">
         <div class="empty-state">
           <svg
@@ -78,7 +79,7 @@
           </svg>
           <p>Nenhuma prova encontrada nesta categoria.</p>
           <p v-if="abaAtiva === 'minhas'" class="sub">
-            {{ authStore.isProfessor ? "As provas atribuídas a você aparecerão aqui." : 'Clique em "Criar Prova-base" para começar.' }}
+            {{ authStore.isProfessor ? "As provas atribuídas a você aparecerão aqui." : "As provas concluídas e enviadas pelos professores aparecerão aqui." }}
           </p>
         </div>
       </div>
@@ -123,18 +124,20 @@
               v-if="authStore.isProfessor"
               @click="editarProva(prova)"
               class="btn-editar"
-              title="Editar"
+              :title="provaEditavel(prova) ? 'Selecionar questões' : 'Visualizar prova'"
             >
-              ✏️
+              {{ provaEditavel(prova) ? "✏️" : "👁️" }}
             </button>
             <button
-              @click="baixarProva(prova)"
+              v-if="authStore.isProcessoPedagogico"
+              @click="visualizarImpressao(prova)"
               class="btn-baixar"
-              title="Baixar"
+              title="Visualizar e imprimir versões individuais"
             >
-              📥
+              🖨️
             </button>
             <button
+              v-if="provaEditavel(prova)"
               @click="excluirProva(prova.id)"
               class="btn-excluir-prova"
               title="Excluir"
@@ -152,9 +155,7 @@
 
 <script>
 import { useAuthStore } from "@/stores/auth";
-import { listarQuestoes } from "@/services/questoes";
-import { excluirProva as excluirProvaApi, listarProvas } from "@/services/provas";
-import { sanitizar } from "@/utils/html";
+import { excluirProva as excluirProvaApi, listarProvas, provaEditavel } from "@/services/provas";
 import CriarProvaBase from "@/components/CriarProvaBase.vue";
 
 export default {
@@ -166,15 +167,15 @@ export default {
   data: () => ({
     abaAtiva: "minhas",
     minhasProvas: [],
-    todasQuestoes: [],
     erro: "",
+    aviso: "",
     carregando: true,
     excluindoId: null,
     mostrarCriacaoBase: false,
   }),
   computed: {
     provasNaoCorrigidas() {
-      return this.minhasProvas.filter((prova) => prova.status === "Não Corrigida");
+      return this.minhasProvas.filter((prova) => ["Enviada ao pedagógico", "Não Corrigida"].includes(prova.status));
     },
     provasCorrigidas() {
       return this.minhasProvas.filter((prova) => prova.status === "Corrigida");
@@ -189,30 +190,24 @@ export default {
     await this.carregarTudo();
   },
   methods: {
+    provaEditavel,
     mensagemErro(error) {
       return error?.details || error?.message || "Não foi possível carregar os dados.";
     },
     async carregarTudo() {
       this.carregando = true;
       this.erro = "";
-      await Promise.all([this.carregarQuestoes(), this.carregarProvas()]);
+      await this.carregarProvas();
       this.carregando = false;
-    },
-    async carregarQuestoes() {
-      try {
-        const resposta = await listarQuestoes();
-        this.todasQuestoes = Array.isArray(resposta?.questoes) ? resposta.questoes : [];
-      } catch (error) {
-        this.todasQuestoes = [];
-        this.erro = this.mensagemErro(error);
-      }
     },
     async carregarProvas() {
       try {
         const filtro = this.authStore.isProfessor ? { registro: this.authStore.user.registro } : {};
         const provas = (await listarProvas(filtro)).provas;
         if (!Array.isArray(provas)) throw new Error("O servidor retornou uma lista de provas inválida.");
-        this.minhasProvas = provas.map(this.adaptarProva);
+        this.minhasProvas = provas
+          .filter((prova) => this.authStore.isProfessor || ["Enviada ao pedagógico", "Não Corrigida", "Corrigida"].includes(prova.status))
+          .map(this.adaptarProva);
       } catch (error) {
         this.minhasProvas = [];
         this.erro = this.mensagemErro(error);
@@ -227,15 +222,11 @@ export default {
       };
     },
     provaBaseCriada(prova) {
-      this.minhasProvas.unshift(this.adaptarProva(prova));
-      this.abaAtiva = "minhas";
+      this.aviso = `Prova-base criada e atribuída a ${prova.professor.nome}. Ela aparecerá nesta lista quando o professor concluir e enviar.`;
       this.mostrarCriacaoBase = false;
     },
-    abrirEditor(prova = null) {
-      this.$router.push(prova?.id ? `/provas/editor/${prova.id}` : "/provas/editor");
-    },
     editarProva(prova) {
-      this.abrirEditor(prova);
+      this.$router.push(`/provas/editor/${prova.id}`);
     },
     formatarData(data) {
       return data ? new Date(`${data}T00:00:00`).toLocaleDateString("pt-BR") : "Data desconhecida";
@@ -243,16 +234,8 @@ export default {
     classeStatus(status) {
       return status === "Corrigida" ? "corrigido" : "rascunho";
     },
-    async baixarProva(prova) {
-      const questoes = this.todasQuestoes.filter((questao) => prova.questoes.includes(questao._id));
-      const corpo = questoes.map((questao, index) => `<section><div><strong>${index + 1}.</strong> ${sanitizar(questao.enunciado)}</div><ol>${questao.alternativas.map((alternativa) => `<li>${sanitizar(alternativa.texto)}</li>`).join("")}</ol></section>`).join("");
-      const blob = new Blob([`<html><meta charset="UTF-8"><body><h1>${prova.titulo}</h1>${corpo}</body></html>`], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${prova.titulo}.html`;
-      link.click();
-      URL.revokeObjectURL(url);
+    visualizarImpressao(prova) {
+      this.$router.push(`/provas/imprimir/${prova.id}`);
     },
     excluirProva(id) {
       window.$modal.abrir({ titulo: "Excluir prova", mensagem: "Deseja excluir esta prova?", tipo: "confirmacao", onConfirm: async () => { try { this.excluindoId = id; await excluirProvaApi(id); await this.carregarProvas(); } catch (error) { this.erro = this.mensagemErro(error); } finally { this.excluindoId = null; } } });

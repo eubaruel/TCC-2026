@@ -1,6 +1,9 @@
 import unittest
 from copy import deepcopy
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
+from unittest.mock import patch
 
 import pandas as pd
 from flask import Flask
@@ -358,7 +361,7 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
         )
         self.assertEqual(
             prova_dao.documentos[prova["_id"]]["status"],
-            "Aguardando questões"
+            "Em elaboração"
         )
 
     def test_prova_objetiva_gera_uma_versao_embaralhada_por_aluno(self):
@@ -469,6 +472,7 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
             "questoes": []
         }
 
+        self.assertEqual(client.patch(f"/api/v1/provas/{prova['_id']}/enviar").status_code, 200)
         impressao = client.get(
             f"/api/v1/provas/imprimir-provas/{prova['_id']}"
         )
@@ -524,6 +528,11 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
             "/api/v1/provas"
         ).test_client()
 
+        # Uma base válida sem versões continua retornando uma lista vazia.
+        prova_dao.documentos["000000000000000000000099"] = {
+            "_id": "000000000000000000000099", "ativo": True, "tipo": "Objetiva", "questoes": [],
+            "status": "Enviada ao pedagógico"
+        }
         resposta = client.get(
             "/api/v1/provas/imprimir-provas/000000000000000000000099"
         )
@@ -546,6 +555,10 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
         }
 
         prova_dao = FakeProvaDao()
+        prova_dao.documentos[id_prova] = {
+            "_id": id_prova, "ativo": True, "tipo": "Objetiva", "questoes": ["000000000000000000000099"],
+            "status": "Enviada ao pedagógico"
+        }
         service = Prova_service(
             prova_dao,
             self.questao_dao,
@@ -636,6 +649,289 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
         self.assertEqual(incompativel.status_code, 400)
         self.assertIn("Tipo", incompativel.get_json()["mensagem"])
         self.assertEqual(prova_dao.documentos[prova["_id"]]["questoes"], [])
+
+
+class FluxoSelecaoEEnvioTest(unittest.TestCase):
+    def setUp(self):
+        FluxoQuestaoEProvaTest.setUp(self)
+        self.prova_dao = FakeProvaDao()
+        self.questao_dao.provas = self.prova_dao.documentos
+        self.service = Prova_service(self.prova_dao, self.questao_dao, self.prova_x_aluno_service)
+        self.client = criar_app(
+            Prova_rotas(Prova_middleware(), Prova_controle(self.service)).criar_rotas(), "/api/v1/provas"
+        ).test_client()
+        self.metadados = {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"},
+                          "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"},
+                          "tipo": "Objetiva", "serie": 3, "bimestre": "1° bimestre", "data_de_aplicacao": "2026-08-20"}
+        self.prova = self.client.post("/api/v1/provas/criar-prova", json={"prova": self.metadados}).get_json()["data"]["prova"]
+        self.id = self.prova["_id"]
+        self.ids = [self.questao_client.post("/api/v1/questoes/", json=payload_questao(numero)).get_json()["data"]["questao"]["_id"]
+                    for numero in range(200, 203)]
+        self.aluno_dao.documentos = {numero: {"matricula_aluno": numero, "turma": "Turma 2026 A", "ativo": True}
+                                     for numero in (20260001, 20260002)}
+
+    def salvar(self, ids=None):
+        return self.client.patch(f"/api/v1/provas/{self.id}/adicionar-questoes",
+                                 json={"prova": {"questoes": self.ids if ids is None else ids}})
+
+    def enviar(self):
+        return self.client.patch(f"/api/v1/provas/{self.id}/enviar")
+
+    def test_impressao_rejeita_base_excluida_ou_inexistente_sem_apagar_versoes(self):
+        self.salvar()
+        versoes = deepcopy(self.prova_x_aluno_dao.documentos)
+        self.assertEqual(self.client.get(f"/api/v1/provas/imprimir-provas/{self.id}").status_code, 409)
+        self.assertEqual(self.client.delete(f"/api/v1/provas/{self.id}").status_code, 200)
+        for id_prova in (self.id, "invalido"):
+            resposta = self.client.get(f"/api/v1/provas/imprimir-provas/{id_prova}")
+            self.assertEqual(resposta.status_code, 404)
+            self.assertEqual(resposta.get_json()["mensagem"], "Prova não encontrada")
+        self.prova_dao.documentos.pop(self.id)
+        with patch.object(self.prova_x_aluno_service, "montar_para_impressao") as montar:
+            self.assertEqual(self.client.get(f"/api/v1/provas/imprimir-provas/{self.id}").status_code, 404)
+            montar.assert_not_called()
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+
+    def test_impressao_concluida_e_estavel_e_nao_reabre_edicao(self):
+        self.salvar()
+        self.enviar()
+        versoes = deepcopy(self.prova_x_aluno_dao.documentos)
+        rota = f"/api/v1/provas/imprimir-provas/{self.id}"
+        primeira = self.client.get(rota)
+        segunda = self.client.get(rota)
+        self.assertEqual(primeira.status_code, 200)
+        self.assertEqual(primeira.get_json()["data"], segunda.get_json()["data"])
+        self.assertEqual(len(primeira.get_json()["data"]["provas_alunos"]), 2)
+        self.assertEqual(self.salvar(self.ids[::-1]).status_code, 409)
+        self.assertEqual(self.client.delete(f"/api/v1/provas/{self.id}").status_code, 409)
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+
+    def test_geracao_bloqueia_conclusao_e_outras_escritas_da_mesma_prova(self):
+        self.salvar()
+        versoes_anteriores = deepcopy(self.prova_x_aluno_dao.documentos)
+        iniciada, liberar = Event(), Event()
+        gerar = self.prova_x_aluno_service.gerar
+        outro_service = Prova_service(self.prova_dao, self.questao_dao, self.prova_x_aluno_service)
+
+        def gerar_pausado(id_prova, turmas, ids):
+            if id_prova == self.id:
+                iniciada.set()
+                if not liberar.wait(5):
+                    raise RuntimeError("Teste de geração excedeu o tempo")
+            return gerar(id_prova, turmas, ids)
+
+        with patch.object(self.prova_x_aluno_service, "gerar", side_effect=gerar_pausado):
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                futuro = executor.submit(self.service.adicionar_questoes, self.id, self.ids[::-1])
+                try:
+                    self.assertTrue(iniciada.wait(3))
+                    self.assertEqual(self.enviar().status_code, 409)
+                    with self.assertRaises(resposta_erro_http) as erro:
+                        outro_service.adicionar_questoes(self.id, self.ids)
+                    self.assertEqual(erro.exception.httpCode, 409)
+                    self.assertEqual(self.client.delete(f"/api/v1/provas/{self.id}").status_code, 409)
+                    dados = {**self.metadados, "questoes": self.ids[::-1], "status": "Em elaboração"}
+                    self.assertEqual(self.client.put(f"/api/v1/provas/{self.id}", json={"prova": dados}).status_code, 409)
+                    self.assertEqual(self.prova_x_aluno_dao.documentos, versoes_anteriores)
+                    consulta = self.client.get("/api/v1/provas/").get_json()["data"]["provas"][0]
+                    self.assertNotIn("operacao_em_andamento", consulta)
+                    self.assertNotIn("geracao_pendente", consulta)
+                    # A reserva é por prova, não um bloqueio global do servidor.
+                    outra = self.client.post("/api/v1/provas/criar-prova", json={"prova": self.metadados}) \
+                        .get_json()["data"]["prova"]
+                    resultado = outro_service.adicionar_questoes(outra["_id"], self.ids)
+                    self.assertEqual(resultado["provas_alunos_geradas"], 2)
+                finally:
+                    liberar.set()
+                resultado = futuro.result(timeout=5)
+        self.assertEqual(resultado["prova"]["status"], "Em elaboração")
+        self.assertNotIn("operacao_em_andamento", self.prova_dao.documentos[self.id])
+        self.assertNotIn("geracao_pendente", self.prova_dao.documentos[self.id])
+        versoes_prontas = deepcopy(self.prova_x_aluno_dao.documentos)
+        self.assertEqual(self.enviar().status_code, 200)
+        self.assertEqual(self.salvar().status_code, 409)
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes_prontas)
+
+    def test_conclusao_bloqueia_nova_geracao_em_outro_service(self):
+        self.salvar()
+        versoes = deepcopy(self.prova_x_aluno_dao.documentos)
+        iniciada, liberar = Event(), Event()
+        enviar = self.prova_dao.enviar
+        outro_service = Prova_service(self.prova_dao, self.questao_dao, self.prova_x_aluno_service)
+
+        def enviar_pausado(id_prova, ids, token=None):
+            iniciada.set()
+            if not liberar.wait(5):
+                raise RuntimeError("Teste de envio excedeu o tempo")
+            return enviar(id_prova, ids, token=token)
+
+        with patch.object(self.prova_dao, "enviar", side_effect=enviar_pausado):
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                futuro = executor.submit(self.service.enviar, self.id)
+                try:
+                    self.assertTrue(iniciada.wait(3))
+                    with self.assertRaises(resposta_erro_http) as erro:
+                        outro_service.adicionar_questoes(self.id, self.ids[::-1])
+                    self.assertEqual(erro.exception.httpCode, 409)
+                finally:
+                    liberar.set()
+                self.assertEqual(futuro.result(timeout=5)["prova"]["status"], "Enviada ao pedagógico")
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+        self.assertEqual(self.enviar().status_code, 200)
+        self.assertEqual(self.salvar().status_code, 409)
+
+    def test_falha_na_geracao_libera_reserva_mas_exige_recuperacao_antes_de_enviar(self):
+        self.salvar()
+        gerar = self.prova_x_aluno_service.gerar
+        invertidas = self.ids[::-1]
+
+        def gerar_e_falhar(*args):
+            gerar(*args)
+            raise RuntimeError("Falha ao finalizar a sincronização")
+
+        with patch.object(self.prova_x_aluno_service, "gerar", side_effect=gerar_e_falhar):
+            with self.assertRaises(RuntimeError):
+                self.salvar(invertidas)
+        doc = self.prova_dao.documentos[self.id]
+        self.assertNotIn("operacao_em_andamento", doc)
+        self.assertTrue(doc["geracao_pendente"])
+        self.assertEqual(self.prova_x_aluno_service.quantidade_versoes(self.id, invertidas, doc["id_turma"]), 2)
+        self.assertEqual(self.enviar().status_code, 409)
+        self.assertEqual(doc["status"], "Em elaboração")
+        with patch.object(self.prova_x_aluno_service, "gerar", wraps=gerar) as recuperacao:
+            resposta = self.salvar(invertidas)
+            recuperacao.assert_called_once()
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(resposta.get_json()["data"]["versoes_regeneradas"])
+        self.assertNotIn("geracao_pendente", doc)
+        self.assertNotIn("operacao_em_andamento", resposta.get_json()["data"]["prova"])
+        self.assertEqual(self.enviar().status_code, 200)
+
+    def ids_para_limite(self):
+        return self.ids + [self.questao_client.post("/api/v1/questoes/", json=payload_questao(numero))
+                           .get_json()["data"]["questao"]["_id"] for numero in range(300, 308)]
+
+    def test_aceita_uma_e_dez_questoes_na_selecao_e_no_envio(self):
+        ids = self.ids_para_limite()
+        for quantidade in (1, 10):
+            with self.subTest(quantidade=quantidade):
+                self.id = self.client.post("/api/v1/provas/criar-prova", json={"prova": self.metadados}) \
+                    .get_json()["data"]["prova"]["_id"]
+                resposta = self.salvar(ids[:quantidade])
+                self.assertEqual(resposta.status_code, 200)
+                self.assertEqual(resposta.get_json()["data"]["provas_alunos_geradas"], 2)
+                self.assertEqual(self.enviar().status_code, 200)
+                self.assertEqual(self.prova_dao.documentos[self.id]["questoes"], ids[:quantidade])
+
+    def test_onze_questoes_nao_alteram_base_nem_versoes(self):
+        ids = self.ids_para_limite()
+        self.salvar()
+        base = deepcopy(self.prova_dao.documentos[self.id])
+        versoes = deepcopy(self.prova_x_aluno_dao.documentos)
+        resposta = self.salvar(ids)
+        self.assertEqual(resposta.status_code, 400)
+        self.assertEqual(resposta.get_json()["mensagem"], "Limite de questões excedido")
+        self.assertEqual(self.prova_dao.documentos[self.id], base)
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+
+    def test_prova_antiga_acima_do_limite_nao_pode_ser_enviada(self):
+        ids = self.ids_para_limite()
+        self.salvar()
+        self.prova_dao.documentos[self.id]["questoes"] = ids
+        base = deepcopy(self.prova_dao.documentos[self.id])
+        versoes = deepcopy(self.prova_x_aluno_dao.documentos)
+        resposta = self.enviar()
+        self.assertEqual(resposta.status_code, 400)
+        self.assertEqual(resposta.get_json()["mensagem"], "Limite de questões excedido")
+        self.assertEqual(self.prova_dao.documentos[self.id], base)
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+
+    def test_lista_vazia_nao_pode_ser_salva(self):
+        self.assertEqual(self.salvar([]).status_code, 400)
+        self.assertEqual(self.prova_dao.documentos[self.id]["questoes"], [])
+        self.assertEqual(self.prova_x_aluno_dao.documentos, {})
+
+    def test_salvar_sem_mudanca_preserva_gabaritos_e_id_da_base(self):
+        primeira = self.salvar()
+        versoes = deepcopy(self.prova_x_aluno_dao.documentos)
+        segunda = self.salvar()
+        self.assertEqual(primeira.status_code, 200)
+        self.assertEqual(segunda.status_code, 200)
+        self.assertEqual(segunda.get_json()["data"]["provas_alunos_geradas"], 2)
+        self.assertFalse(segunda.get_json()["data"]["versoes_regeneradas"])
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+        self.assertEqual(len(self.prova_dao.documentos), 1)
+        self.assertEqual(segunda.get_json()["data"]["prova"]["_id"], self.id)
+        self.assertEqual(self.prova_dao.documentos[self.id]["questoes"], self.ids)
+        self.assertEqual(self.prova_dao.documentos[self.id]["status"], "Em elaboração")
+
+    def test_zero_alunos_impede_envio_e_permite_recuperacao(self):
+        alunos = self.aluno_dao.documentos
+        self.aluno_dao.documentos = {}
+        self.assertEqual(self.salvar().get_json()["data"]["provas_alunos_geradas"], 0)
+        self.assertEqual(self.enviar().status_code, 409)
+        self.assertEqual(self.prova_dao.documentos[self.id]["status"], "Em elaboração")
+        self.aluno_dao.documentos = alunos
+        self.assertEqual(self.salvar().get_json()["data"]["provas_alunos_geradas"], 2)
+        self.assertEqual(self.enviar().status_code, 200)
+
+    def test_reordenar_salva_a_ordem_e_atualiza_versoes_antes_da_conclusao(self):
+        self.salvar()
+        invertidas = self.ids[::-1]
+        resposta = self.salvar(invertidas)
+        self.assertTrue(resposta.get_json()["data"]["versoes_regeneradas"])
+        self.assertEqual(self.prova_dao.documentos[self.id]["questoes"], invertidas)
+
+    def test_rejeita_objetos_e_metadados_na_selecao(self):
+        self.assertEqual(self.salvar([{"_id": self.ids[0]}]).status_code, 400)
+        resposta = self.client.patch(f"/api/v1/provas/{self.id}/adicionar-questoes",
+                                    json={"prova": {"questoes": self.ids, "professor": self.metadados["professor"]}})
+        self.assertEqual(resposta.status_code, 400)
+        self.assertEqual(self.prova_dao.documentos[self.id]["questoes"], [])
+
+    def test_envio_e_reenvio_nao_regeneram_e_bloqueiam_edicao(self):
+        self.salvar()
+        versoes = deepcopy(self.prova_x_aluno_dao.documentos)
+        for _ in range(2):
+            resposta = self.enviar()
+            self.assertEqual(resposta.status_code, 200)
+            self.assertEqual(resposta.get_json()["data"]["prova"]["status"], "Enviada ao pedagógico")
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+        self.assertEqual(self.salvar().status_code, 409)
+        self.assertEqual(self.salvar(self.ids[::-1]).status_code, 409)
+        dados = {**self.metadados, "questoes": self.ids, "status": "Aguardando questões"}
+        self.assertEqual(self.client.put(f"/api/v1/provas/{self.id}", json={"prova": dados}).status_code, 409)
+        self.assertEqual(self.client.delete(f"/api/v1/provas/{self.id}").status_code, 409)
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+
+    def test_bloqueia_alteracao_e_exclusao_de_questao_em_prova_concluida(self):
+        self.salvar()
+        self.enviar()
+        questao = deepcopy(self.questao_dao.documentos[self.ids[0]])
+        rota = f"/api/v1/questoes/{self.ids[0]}"
+        self.assertEqual(self.questao_client.put(rota, json=payload_questao(200)).status_code, 409)
+        self.assertEqual(self.questao_client.delete(rota).status_code, 409)
+        self.assertEqual(self.questao_dao.documentos[self.ids[0]], questao)
+
+    def test_sem_questoes_ou_questao_incompleta_nao_conclui(self):
+        self.assertEqual(self.enviar().status_code, 400)
+        original = deepcopy(self.questao_dao.documentos[self.ids[0]])
+        for campo, valor in [("enunciado", "<p><br></p>"), ("alternativa_correta", "inexistente"), ("alternativas", [])]:
+            with self.subTest(campo=campo):
+                self.questao_dao.documentos[self.ids[0]] = {**original, campo: valor}
+                self.assertEqual(self.salvar().status_code, 400)
+                self.assertEqual(self.prova_dao.documentos[self.id]["questoes"], [])
+        self.questao_dao.documentos[self.ids[0]] = original
+        self.salvar()
+        self.questao_dao.documentos[self.ids[0]]["alternativa_correta"] = "inexistente"
+        self.assertEqual(self.enviar().status_code, 400)
+
+    def test_put_nao_contorna_rotas_de_selecao_e_envio(self):
+        dados = {**self.metadados, "questoes": self.ids, "status": "Enviada ao pedagógico"}
+        self.assertEqual(self.client.put(f"/api/v1/provas/{self.id}", json={"prova": dados}).status_code, 400)
+        self.salvar()
+        dados.update(questoes=self.ids, status="Em elaboração", id_turma="Turma 2026 B")
+        self.assertEqual(self.client.put(f"/api/v1/provas/{self.id}", json={"prova": dados}).status_code, 409)
 
 
 if __name__ == "__main__":

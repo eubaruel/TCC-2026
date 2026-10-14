@@ -406,7 +406,7 @@ export default {
     },
     usarQuestao(questao) {
       this.draftStore.adicionar(questao);
-      this.router.push("/provas/editor");
+      this.router.push("/provas");
     },
   },
 };

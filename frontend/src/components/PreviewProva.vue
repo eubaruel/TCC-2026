@@ -20,6 +20,7 @@ export default {
     metadados: { type: Object, required: true },
     questoes: { type: Array, default: () => [] },
     professor: { type: String, default: "" },
+    matricula: { type: [String, Number], default: "" },
   },
   computed: {
     htmlQuestoes() {
@@ -43,6 +44,7 @@ export default {
         BIMESTRE: valor(m.bimestre),
         DATA_APLICACAO: valor(data),
         PROFESSOR: valor(this.professor),
+        MATRICULA: this.matricula === "" ? "______" : valor(this.matricula),
         TIPO: valor(m.tipo),
         QUESTOES: this.htmlQuestoes,
       };
@@ -163,5 +165,10 @@ export default {
     padding: 24px 20px;
     min-height: auto;
   }
+}
+
+@media print {
+  .folha { width: 100%; max-width: none; min-height: 0; padding: 0; box-shadow: none; border-radius: 0; }
+  .folha :deep(.preview-questao) { break-inside: avoid; }
 }
 </style>

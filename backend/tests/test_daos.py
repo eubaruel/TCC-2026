@@ -26,6 +26,11 @@ class ColecaoFake:
         self.projecao = projecao
         return [dict(doc) for doc in self.documentos]
 
+    def find_one(self, filtro, projecao=None):
+        self.filtro = filtro
+        self.projecao = projecao
+        return dict(self.documentos[0]) if self.documentos else None
+
     def update_one(self, filtro, atualizacao):
         self.filtro = filtro
         self.atualizacao = atualizacao
@@ -47,6 +52,80 @@ class BancoFake:
 
 
 class DaoTest(unittest.TestCase):
+    def test_busca_da_base_exige_prova_ativa_e_objetiva(self):
+        colecao = ColecaoFake()
+        dao = Prova_dao(BancoFake("provas", colecao))
+        id_prova = str(ObjectId())
+        self.assertIsNone(dao.buscar_por_id(id_prova))
+        self.assertEqual(colecao.filtro, {"_id": ObjectId(id_prova), "ativo": {"$ne": False}, "tipo": "Objetiva"})
+        colecao.filtro = None
+        self.assertIsNone(dao.buscar_por_id("invalido"))
+        self.assertIsNone(colecao.filtro)
+
+    def test_reserva_e_liberacao_condicionam_ausencia_e_dono_da_operacao(self):
+        colecao = ColecaoFake()
+        dao = Prova_dao(BancoFake("provas", colecao))
+        id_prova = str(ObjectId())
+        self.assertTrue(dao.reservar_operacao(id_prova, "token-1"))
+        self.assertEqual(colecao.filtro["operacao_em_andamento"], {"$exists": False})
+        self.assertEqual(colecao.filtro["ativo"], {"$ne": False})
+        self.assertEqual(colecao.atualizacao, {"$set": {"operacao_em_andamento": "token-1"}})
+        dao.liberar_operacao(id_prova, "token-1")
+        self.assertEqual(colecao.filtro["operacao_em_andamento"], "token-1")
+        self.assertEqual(colecao.atualizacao, {"$unset": {"operacao_em_andamento": ""}})
+        colecao.update_one = lambda *args: SimpleNamespace(matched_count=0)
+        self.assertFalse(dao.reservar_operacao(id_prova, "token-2"))
+
+    def test_geracao_pendente_so_e_finalizada_pelo_dono_da_reserva(self):
+        colecao = ColecaoFake()
+        dao = Prova_dao(BancoFake("provas", colecao))
+        id_prova = str(ObjectId())
+        self.assertTrue(dao.atualizar_questoes(id_prova, ["q1"], token="token-1", geracao_pendente=True))
+        self.assertEqual(colecao.filtro["operacao_em_andamento"], "token-1")
+        self.assertTrue(colecao.atualizacao["$set"]["geracao_pendente"])
+        self.assertTrue(dao.concluir_geracao(id_prova, "token-1"))
+        self.assertEqual(colecao.filtro["operacao_em_andamento"], "token-1")
+        self.assertEqual(colecao.atualizacao, {"$unset": {"geracao_pendente": ""}})
+        self.assertTrue(dao.enviar(id_prova, ["q1"], token="token-1"))
+        self.assertEqual(colecao.filtro["geracao_pendente"], {"$ne": True})
+        self.assertEqual(colecao.filtro["operacao_em_andamento"], "token-1")
+
+    def test_escritas_sem_token_nao_alteram_uma_prova_reservada(self):
+        colecao = ColecaoFake()
+        dao = Prova_dao(BancoFake("provas", colecao))
+        id_prova = str(ObjectId())
+        for operacao in (lambda: dao.enviar(id_prova, ["q1"]),
+                         lambda: dao.atualizar_questoes(id_prova, ["q1"]),
+                         lambda: dao.excluir(id_prova)):
+            operacao()
+            self.assertEqual(colecao.filtro["operacao_em_andamento"], {"$exists": False})
+
+    def test_envio_prova_condiciona_status_e_selecao_antes_de_bloquear(self):
+        colecao = ColecaoFake()
+        dao = Prova_dao(BancoFake("provas", colecao))
+        ids = ["64b000000000000000000001"]
+        self.assertTrue(dao.enviar(str(ObjectId()), ids))
+        self.assertEqual(colecao.filtro["status"], {"$in": ["Aguardando questões", "Em elaboração"]})
+        self.assertEqual(colecao.filtro["questoes"], ids)
+        self.assertEqual(colecao.atualizacao, {"$set": {"status": "Enviada ao pedagógico"}})
+
+    def test_selecao_prova_so_atualiza_status_editaveis(self):
+        colecao = ColecaoFake()
+        dao = Prova_dao(BancoFake("provas", colecao))
+        ids = ["64b000000000000000000001"]
+        self.assertTrue(dao.atualizar_questoes(str(ObjectId()), ids))
+        self.assertEqual(colecao.filtro["status"], {"$in": ["Aguardando questões", "Em elaboração"]})
+        self.assertEqual(colecao.atualizacao, {"$set": {"questoes": ids, "status": "Em elaboração"}})
+
+    def test_questao_verifica_referencias_em_provas_concluidas(self):
+        provas = ColecaoFake([{"_id": ObjectId()}])
+        banco = SimpleNamespace(get_banco_de_dados=lambda: {"questoes": ColecaoFake(), "provas": provas})
+        dao = Questao_dao(banco)
+        id_questao = str(ObjectId())
+        self.assertTrue(dao.usada_em_prova_concluida(id_questao))
+        self.assertEqual(provas.filtro["questoes"], id_questao)
+        self.assertEqual(provas.filtro["status"], {"$nin": ["Aguardando questões", "Em elaboração"]})
+
     def test_aluno_set_doc_inclui_matricula(self):
         aluno = Aluno()
         aluno.matricula_aluno = 12345678
@@ -81,6 +160,8 @@ class DaoTest(unittest.TestCase):
         )
         self.assertEqual(colecao.projecao["ativo"], 0)
         self.assertEqual(colecao.filtro["tipo"], "Objetiva")
+        self.assertEqual(colecao.projecao["operacao_em_andamento"], 0)
+        self.assertEqual(colecao.projecao["geracao_pendente"], 0)
 
     def test_consultas_nao_retornam_tipos_nao_objetivos(self):
         for classe, nome, campo in [

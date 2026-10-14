@@ -136,6 +136,9 @@ class Prova_middleware:
                     {"mensagem": "O campo 'questoes' é obrigatório!"}
                 )
 
+            if set(prova) != {"questoes"}:
+                raise resposta_erro_http(400, "Envie somente o campo 'questoes' com a lista de IDs")
+
             if not isinstance(prova["questoes"], list):
                 raise resposta_erro_http(
                     400,
