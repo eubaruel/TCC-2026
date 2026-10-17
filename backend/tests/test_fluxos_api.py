@@ -841,6 +841,9 @@ class FluxoSelecaoEEnvioTest(unittest.TestCase):
         self.assertEqual(consulta.call_count, 1)
         self.assertEqual({item["matricula_aluno"]: item["nome_aluno"]
                           for item in resposta.get_json()["data"]["provas_alunos"]}, nomes)
+        self.assertEqual({item["matricula_aluno"]: item["turma_aluno"]
+                          for item in resposta.get_json()["data"]["provas_alunos"]},
+                         {matricula: self.aluno_dao.documentos[matricula]["turma"] for matricula in nomes})
         self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
 
     def test_impressao_sem_cadastro_do_aluno_nao_inventa_nome(self):
@@ -850,6 +853,7 @@ class FluxoSelecaoEEnvioTest(unittest.TestCase):
         resposta = self.client.get(f"/api/v1/provas/imprimir-provas/{self.id}")
         self.assertEqual(resposta.status_code, 200)
         self.assertTrue(all(item["nome_aluno"] == "" for item in resposta.get_json()["data"]["provas_alunos"]))
+        self.assertTrue(all(item["turma_aluno"] == "" for item in resposta.get_json()["data"]["provas_alunos"]))
 
     def test_geracao_bloqueia_conclusao_e_outras_escritas_da_mesma_prova(self):
         self.salvar()

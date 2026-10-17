@@ -45,7 +45,7 @@ class Aluno_dao:
     def buscar_por_matricula(self, matricula):
         return self.__colecao.find_one(
             {"matricula_aluno": matricula},
-            {"_id": 0, "matricula_aluno": 1, "nome_aluno": 1}
+            {"_id": 0, "matricula_aluno": 1, "nome_aluno": 1, "turma": 1}
         )
 
     def buscar_matriculas_por_turmas(self, turmas: list[str]) -> list[int]:

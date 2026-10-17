@@ -15,6 +15,14 @@ class Prova_rotas:
 
     
     def criar_rotas(self):
+        @self.__blueprint.route('/lotes-correcao', methods=['POST'])
+        def criar_lote_correcao():
+            return self.__prova_controle.criar_lote_correcao()
+
+        @self.__blueprint.route('/lotes-correcao/<string:_id>', methods=['GET'])
+        def buscar_lote_correcao(_id):
+            return self.__prova_controle.buscar_lote_correcao(_id)
+
         @self.__blueprint.route('/corrigir-provas', methods=['POST'])
         def corrigir_provas():
             return self.__prova_controle.corrigir_provas()

@@ -1,3 +1,5 @@
+import json
+from bson import ObjectId
 from flask import request,jsonify
 from api.services.prova_service import Prova_service
 from api.utils.resposta_json import Resposta_json
@@ -13,8 +15,16 @@ class Prova_controle:
         arquivos = request.files.getlist("imagens")
         if not arquivos or len(arquivos) > 50:
             raise resposta_erro_http(400, "Envie de 1 a 50 arquivos no campo 'imagens'")
+        try:
+            ids = json.loads(request.form["ids_provas_alunos"]) if "ids_provas_alunos" in request.form else [None] * len(arquivos)
+        except ValueError:
+            raise resposta_erro_http(400, "ids_provas_alunos deve ser uma lista JSON")
+        if not isinstance(ids, list) or len(ids) != len(arquivos) or any(
+            id_ is not None and (not isinstance(id_, str) or not ObjectId.is_valid(id_)) for id_ in ids
+        ):
+            raise resposta_erro_http(400, "Informe um identificador válido ou null para cada imagem")
         imagens = []
-        for arquivo in arquivos:
+        for arquivo, id_prova_aluno in zip(arquivos, ids):
             conteudo = arquivo.read(5 * 1024 * 1024 + 1)
             if not conteudo:
                 raise resposta_erro_http(400, "Uma das imagens está vazia")
@@ -23,7 +33,8 @@ class Prova_controle:
             imagens.append({
                 "arquivo": arquivo.filename or "cartao-resposta",
                 "bytes": conteudo,
-                "content_type": arquivo.mimetype or "application/octet-stream"
+                "content_type": arquivo.mimetype or "application/octet-stream",
+                "id_prova_aluno": id_prova_aluno
             })
         resultado = self.__correcao_service.corrigir(imagens)
         return Resposta_json.sucesso(
@@ -40,6 +51,17 @@ class Prova_controle:
             data = {"prova": prova_criada},
             codigo = 201
         )
+
+    def criar_lote_correcao(self):
+        corpo = request.get_json(silent=True)
+        if not isinstance(corpo, dict) or set(corpo) != {"entradas"}:
+            raise resposta_erro_http(400, "Informe somente o campo entradas")
+        return Resposta_json.sucesso(mensagem="Lote de correção salvo",
+            data={"lote": self.__correcao_service.criar_lote(corpo["entradas"])}, codigo=201)
+
+    def buscar_lote_correcao(self, _id):
+        return Resposta_json.sucesso(mensagem="Lote de correção encontrado",
+            data={"lote": self.__correcao_service.buscar_lote(_id)}, codigo=200)
 
     def adicionar_questoes(self, _id):
         print("🔵 prova_controle.adicionar_questoes()")

@@ -52,6 +52,17 @@ class BancoFake:
 
 
 class DaoTest(unittest.TestCase):
+    def test_marcar_corrigida_atualiza_so_o_status_da_base_impressa(self):
+        colecao = ColecaoFake()
+        dao = Prova_dao(BancoFake("provas", colecao))
+        id_prova = str(ObjectId())
+        self.assertTrue(dao.marcar_corrigida(id_prova))
+        self.assertEqual(colecao.filtro, {"_id": ObjectId(id_prova), "ativo": {"$ne": False},
+                                         "tipo": "Objetiva", "status": "Impressa"})
+        self.assertEqual(colecao.atualizacao, {"$set": {"status": "Corrigida"}})
+        colecao.update_one = lambda *args: SimpleNamespace(matched_count=0)
+        self.assertFalse(dao.marcar_corrigida(id_prova))
+
     def test_confirmar_impressao_condiciona_status_e_reserva(self):
         colecao = ColecaoFake()
         dao = Prova_dao(BancoFake("provas", colecao))

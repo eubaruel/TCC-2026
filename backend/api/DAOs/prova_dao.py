@@ -120,6 +120,14 @@ class Prova_dao:
         )
         return resultado.matched_count > 0
 
+    def marcar_corrigida(self, _id) -> bool:
+        resultado = self.__colecao.update_one(
+            {"_id": ObjectId(_id), "ativo": {"$ne": False}, "tipo": "Objetiva",
+             "status": Prova.STATUS_IMPRESSA},
+            {"$set": {"status": Prova.STATUS_CORRIGIDA}}
+        )
+        return resultado.matched_count > 0
+
     def atualizar(self, obj_prova: Prova, token=None) -> bool:
         print("✅ prova_dao.atualizar()")
 

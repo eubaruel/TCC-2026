@@ -45,6 +45,7 @@ from api.DAOs.prova_x_aluno_dao import Prova_x_aluno_dao
 from api.roteador.prova_rotas import Prova_rotas
 from api.clientes.correcao_cliente import Correcao_cliente
 from api.services.correcao_service import Correcao_service
+from api.DAOs.lote_correcao_dao import Lote_correcao_dao
 
 import traceback
 
@@ -232,7 +233,8 @@ class Servidor:
             self.__prova_x_aluno_dao,
             self.__aluno_dao,
             self.__prova_dao,
-            concorrencia=int(os.getenv("CORRECAO_CONCORRENCIA", "8"))
+            concorrencia=int(os.getenv("CORRECAO_CONCORRENCIA", "8")),
+            lote_dao=Lote_correcao_dao(self.__conexao_db)
         )
         self.__prova_controle = Prova_controle(self.__prova_service, self.__correcao_service)
 

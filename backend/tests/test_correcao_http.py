@@ -1,4 +1,5 @@
 import unittest
+import json
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -10,6 +11,7 @@ from flask import Flask
 from api.clientes.correcao_cliente import Correcao_cliente
 from api.DAOs.prova_x_aluno_dao import Prova_x_aluno_dao
 from api.DAOs.aluno_dao import Aluno_dao
+from api.DAOs.prova_dao import Prova_dao
 from api.controles.prova_controle import Prova_controle
 from api.services.correcao_service import Correcao_service
 from api.roteador.prova_rotas import Prova_rotas
@@ -35,7 +37,7 @@ class ConsultaCorrecaoTest(unittest.TestCase):
         dao = Aluno_dao(banco)
         dao.buscar_por_matricula(123)
         colecao.find_one.assert_called_once_with(
-            {"matricula_aluno": 123}, {"_id": 0, "matricula_aluno": 1, "nome_aluno": 1}
+            {"matricula_aluno": 123}, {"_id": 0, "matricula_aluno": 1, "nome_aluno": 1, "turma": 1}
         )
 
 
@@ -112,7 +114,7 @@ class RotaCorrecaoTest(unittest.TestCase):
             "qrcode": id_orfa if imagem["arquivo"] == "orfa.png" else id_valida, "respostas": {"1": "A"}
         })
         correcoes = Correcao_service(
-            cliente, SimpleNamespace(buscar_por_id=registros.get),
+            cliente, SimpleNamespace(buscar_por_id=registros.get, salvar_correcao=lambda *_: True),
             SimpleNamespace(buscar_por_matricula=lambda _: {"nome_aluno": "Carlos Silva"}),
             SimpleNamespace(buscar_por_id=lambda id_: {"_id": id_base} if id_ == id_base else None)
         )
@@ -136,9 +138,61 @@ class RotaCorrecaoTest(unittest.TestCase):
             self.assertEqual(resposta.status_code, 400)
         self.service.corrigir.assert_not_called()
 
+    def test_correcao_muda_status_da_base_impressa_sem_regenerar_versoes(self):
+        id_base, id_aluno = ObjectId(), str(ObjectId())
+        base = {"_id": id_base, "tipo": "Objetiva", "status": "Impressa", "ativo": True}
+        colecao = MagicMock()
+        colecao.find_one.side_effect = lambda filtro, projecao=None: dict(base) if filtro["_id"] == id_base else None
+
+        def atualizar(filtro, alteracao):
+            confere = all(base.get(campo) == valor for campo, valor in filtro.items() if not isinstance(valor, dict))
+            if confere:
+                base.update(alteracao["$set"])
+            return SimpleNamespace(matched_count=int(confere))
+
+        colecao.update_one.side_effect = atualizar
+        registro = {"_id": id_aluno, "id_prova": str(id_base), "matricula_aluno": 123,
+                    "questoes": [{"posicao_alternativa_correta": 1}]}
+        versoes = SimpleNamespace(buscar_por_id=lambda id_: dict(registro) if id_ == id_aluno else None,
+                                  salvar_correcao=lambda *_: True)
+        correcoes = Correcao_service(
+            SimpleNamespace(fechar=lambda: None, processar=lambda _: {"qrcode": id_aluno, "respostas": {"1": "A"}}),
+            versoes, SimpleNamespace(buscar_por_matricula=lambda _: {"nome_aluno": "Carlos Silva"}),
+            Prova_dao(SimpleNamespace(get_banco_de_dados=lambda: {"provas": colecao}))
+        )
+        self.addCleanup(correcoes.fechar)
+        self.service.corrigir = correcoes.corrigir
+        for _ in range(2):
+            resposta = self.http.post("/api/v1/provas/corrigir-provas", data={"imagens": (BytesIO(b"cartao"), "cartao.png")})
+            self.assertEqual(resposta.status_code, 200)
+            self.assertEqual(resposta.json["data"]["erros"], [])
+            self.assertEqual(resposta.json["data"]["resultados"][0]["nota_prova"], 10)
+            self.assertEqual(base["status"], "Corrigida")
+        colecao.update_one.assert_called_once()
+        self.assertEqual(registro["questoes"], [{"posicao_alternativa_correta": 1}])
+
     def test_imagem_acima_do_limite(self):
         resposta = self.http.post("/api/v1/provas/corrigir-provas", data={
             "imagens": (BytesIO(b"x" * (5 * 1024 * 1024 + 1)), "grande.png")
         })
         self.assertEqual(resposta.status_code, 413)
+        self.service.corrigir.assert_not_called()
+
+    def test_ids_opcionais_correspondem_a_ordem_das_imagens(self):
+        id_ = str(ObjectId())
+        resposta = self.http.post("/api/v1/provas/corrigir-provas", data={
+            "imagens": [(BytesIO(b"a"), "a.png"), (BytesIO(b"b"), "b.png")],
+            "ids_provas_alunos": json.dumps([id_, None]),
+        })
+        self.assertEqual(resposta.status_code, 200)
+        imagens = self.service.corrigir.call_args.args[0]
+        self.assertEqual([i["id_prova_aluno"] for i in imagens], [id_, None])
+
+    def test_ids_invalidos_ou_quantidade_incompativel_nao_corrigem_o_lote(self):
+        for valor in ("nao-json", "null", "{}", "[]", '[123]', '["invalido"]', '[null, null]'):
+            with self.subTest(valor=valor):
+                resposta = self.http.post("/api/v1/provas/corrigir-provas", data={
+                    "imagens": (BytesIO(b"x"), "a.png"), "ids_provas_alunos": valor,
+                })
+                self.assertEqual(resposta.status_code, 400)
         self.service.corrigir.assert_not_called()

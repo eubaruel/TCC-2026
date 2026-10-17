@@ -46,7 +46,7 @@ class Prova_x_aluno_service:
             return []
 
         alunos_por_matricula = {
-            aluno["matricula_aluno"]: aluno.get("nome_aluno", "")
+            aluno["matricula_aluno"]: aluno
             for aluno in self.__aluno_dao.consulta({
                 "matricula_aluno": {"$in": list(dict.fromkeys(
                     registro["matricula_aluno"] for registro in registros
@@ -82,6 +82,7 @@ class Prova_x_aluno_service:
 
         provas_alunos = []
         for registro in registros:
+            aluno = alunos_por_matricula.get(registro["matricula_aluno"], {})
             questoes_aluno = []
             for configuracao in registro.get("questoes", []):
                 questao = deepcopy(
@@ -97,7 +98,8 @@ class Prova_x_aluno_service:
             provas_alunos.append({
                 "id_prova_aluno": registro["_id"],
                 "matricula_aluno": registro["matricula_aluno"],
-                "nome_aluno": alunos_por_matricula.get(registro["matricula_aluno"], ""),
+                "nome_aluno": aluno.get("nome_aluno", ""),
+                "turma_aluno": aluno.get("turma", ""),
                 "questoes": questoes_aluno
             })
 

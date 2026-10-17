@@ -23,6 +23,8 @@ Atualmente, as rotas de provas não exigem token JWT.
 | `PATCH` | `/api/v1/provas/{_id}/enviar` | Concluir a prova, enviar ao pedagógico e encerrar a edição |
 | `GET` | `/api/v1/provas/imprimir-provas/{_id}` | Montar as versões completas para impressão |
 | `PATCH` | `/api/v1/provas/{_id}/confirmar-impressao` | Registrar a confirmação de impressão e definir o status Impressa |
+| `POST` | `/api/v1/provas/lotes-correcao` | Salvar a ordem e a cópia das notas confirmadas para sobreposição |
+| `GET` | `/api/v1/provas/lotes-correcao/{_id}` | Reabrir o lote sem recalcular suas notas |
 | `POST` | `/api/v1/provas/corrigir-provas` | Corrigir cartões-resposta em lote |
 | `GET` | `/api/v1/provas/` | Consultar provas ativas |
 | `PUT` | `/api/v1/provas/{_id}` | Atualizar metadados antes de vincular questões; não altera status ou seleção |
@@ -245,6 +247,8 @@ Aguardando questões
 O fluxo usa `Aguardando questões` na criação, `Em elaboração` após salvar a
 seleção e `Enviada ao pedagógico` ao concluir. Apenas os dois primeiros permitem
 edição. Após a confirmação de impressão, o status passa para `Impressa`.
+Após corrigir um cartão com sucesso, a respectiva base passa de `Impressa`
+para `Corrigida`. Não é necessário corrigir todas as versões para essa transição.
 Status posteriores, como `Impressa` e `Corrigida`, também são
 somente leitura para a montagem. O modelo continua aceitando strings, sem enum.
 `PUT` deve preservar o status; somente a rota dedicada realiza o envio.
@@ -671,8 +675,11 @@ pelo fluxo do banco, impedindo que o conteúdo e o gabarito mudem indiretamente.
 PATCH /api/v1/provas/{_id}/confirmar-impressao
 ```
 
-Sem corpo. O processo pedagógico usa o botão `Confirmar impressão realizada`
-depois de efetivamente imprimir. Abrir a prévia, consultar o GET ou fechar o
+Sem corpo. O processo pedagógico usa o botão `Confirmar impressão realizada`,
+ao lado do ícone de impressora no card da prova recebida, depois de efetivamente
+imprimir. O botão abre o modal `Confirmar impressão da prova?`; somente confirmar
+esse modal envia o PATCH. Ele não aparece na tela de visualização da impressão.
+Cancelar o modal, abrir a prévia, consultar o GET ou fechar o
 diálogo do navegador não confirma a impressão, pois o diálogo também pode ser
 cancelado. O status só muda no frontend após sucesso da gravação no backend.
 
@@ -684,7 +691,7 @@ retorna `409`. Usa a mesma reserva exclusiva das demais alterações da prova.
 
 Não altera questões, IDs, QR Codes nem gabaritos. Reimprimir continua permitido,
 e uma prova `Corrigida` não volta para `Impressa`. O status impresso não reabre
-a edição. A correção ainda não persiste notas nem define `Corrigida` automaticamente.
+a edição. A correção salva os resultados individuais e atualiza o status de bases impressas.
 
 No frontend pedagógico, as abas são exclusivas: `Provas Recebidas` mostra
 `Enviada ao pedagógico`, `Provas Impressas` mostra `Impressa` e `Provas Corrigidas`
@@ -746,10 +753,15 @@ Cada versão também retorna `id_prova_aluno`, o `_id` de `provas_x_alunos`.
 O frontend deve inserir exatamente esse identificador textual no QR Code do
 cartão-resposta; ele não deve conter apenas a matrícula ou o ID da prova-base.
 
-O campo `nome_aluno` vem do cadastro associado à matrícula e preenche o campo
-`Nome` do cartão. A linha inferior `Nome do Aluno por Extenso` permanece vazia
-para preenchimento manual. Os nomes são consultados em lote, sem alterar as
-versões individuais; se o cadastro não existir, o campo retorna uma string vazia.
+Os campos `nome_aluno` e `turma_aluno` vêm do cadastro associado à matrícula,
+consultado em lote, sem alterar as versões individuais ou realizar uma consulta
+por aluno. `turma_aluno` contém a identificação completa cadastrada em `turma`
+(série, letra e curso, por exemplo `1ºI - INFORMÁTICA`), não um novo identificador.
+Se o cadastro não existir, ambos retornam uma string vazia.
+
+O nome preenche o campo `Nome` do cartão. A linha inferior `Nome do Aluno por
+Extenso` permanece vazia para preenchimento manual. A turma permite ao frontend
+separar as versões e as listas de controle por sala.
 
 ## Resposta de sucesso
 
@@ -766,6 +778,7 @@ Código: `200 OK`.
         "id_prova_aluno": "66c4a6c22ce79c0f588b1699",
         "matricula_aluno": 50280715,
         "nome_aluno": "José da Silva",
+        "turma_aluno": "1ºI - INFORMÁTICA",
         "questoes": [
           {
             "_id": "66c49f5a2ce79c0f588b1602",
@@ -831,13 +844,24 @@ retorna `200 OK`. Base inexistente ou ID inválido retorna `404`, não lista vaz
 O processo pedagógico usa o botão de impressão no card recebido para abrir
 `/provas/imprimir/{id}`. A tela consulta os metadados da base e esta rota de
 impressão; não monta versões a partir da listagem genérica de questões.
-Ela exibe todas as versões, com matrícula, questões e alternativas na ordem
-retornada. A renderização reutiliza `PreviewProva.vue` e o template local.
+Ela agrupa as versões por `turma_aluno` e ordena os alunos alfabeticamente.
+Para cada turma, inclui a **Planilha de notas**, o **Relatório de entrega** e,
+depois, as provas individuais. A numeração de chamada começa em 1 por turma.
+Questões e alternativas preservam a ordem retornada; a renderização das provas
+reutiliza `PreviewProva.vue` e o template local.
+
+`ListaTurma.vue` reutiliza os logotipos existentes e os metadados da base.
+Assinaturas, notas e datas de controle ficam vazias para preenchimento manual.
+As listas têm até 28 alunos por página, repetindo cabeçalho e rodapé sem reiniciar
+a chamada. Não há nova coleção, gravação de notas ou nova rota para as listas.
+O frontend interrompe a montagem caso falte nome/turma, a turma não pertença à
+prova ou existam matrículas repetidas, evitando listas incompletas ou ambíguas.
 
 `CartaoResposta.vue` utiliza o desenho do modelo anexado, armazenado no frontend
 em `src/assets/templates/cartao-resposta.png`, e sobrepõe metadados e o QR Code
 gerado localmente pela biblioteca `qrcode`. O conteúdo do QR é exclusivamente
-`id_prova_aluno`. A área de nome do aluno permanece em branco para preenchimento.
+`id_prova_aluno`. Nome e turma do cadastro são preenchidos automaticamente;
+somente a linha inferior do nome por extenso fica em branco.
 
 O cartão possui proporção `1200 × 286`, a mesma da normalização do leitor.
 A grade permanece com **dez colunas por cinco linhas**, independentemente da
@@ -851,10 +875,11 @@ nativa do navegador. Usar papel A4, escala 100% e desativar os cabeçalhos e rod
 do navegador. Cada aluno começa em uma página nova; questões longas podem
 continuar em páginas adicionais.
 
-No MVP não foi criado um novo status de impressão: a conclusão já bloqueia
-alteração/exclusão da prova, regeneração de versões e alteração/exclusão das
-questões vinculadas. Exigir conclusão antes de imprimir reaproveita essa
-proteção, inclusive se o usuário cancelar o diálogo de impressão.
+A conclusão já bloqueia alteração/exclusão da prova, regeneração de versões e
+alteração/exclusão das questões vinculadas, inclusive se o usuário cancelar o
+diálogo de impressão. O status só passa para `Impressa` após a ação separada
+`Confirmar impressão realizada` no card da listagem, após confirmar o modal,
+pela rota de confirmação descrita acima.
 
 Se uma questão estiver ausente, a rota interrompe toda a montagem para não
 entregar provas incompletas.
@@ -869,6 +894,13 @@ Recebe `multipart/form-data` com o campo repetido `imagens`. Cada arquivo deve
 conter um único cartão-resposta já recortado, incluindo o QR Code. São aceitos
 de 1 a 50 arquivos, até 5 MiB por imagem. O servidor limita o corpo total das
 requisições a 50 MiB, incluindo o multipart.
+
+O campo opcional `ids_provas_alunos` contém uma lista JSON na mesma ordem das
+imagens, com um ObjectId textual válido ou `null` por posição. Exemplo:
+`["66c4a6c22ce79c0f588b1699", null]`. Se omitido, todos os IDs auxiliares são
+considerados desconhecidos. JSON inválido, tipo diferente de lista, tamanho
+incompatível ou ID inválido retornam `400` antes de iniciar as correções.
+O frontend preenche esse campo com o QR que já leu antes do recorte.
 
 ```sh
 curl -X POST http://localhost:8080/api/v1/provas/corrigir-provas \
@@ -896,6 +928,23 @@ No Windows, utilize `curl.exe` para evitar o alias do PowerShell.
 4. Todas as questões têm o mesmo peso: `nota_prova = acertos / total * 10`,
    arredondada para duas casas. `null` conta como erro. Uma resposta omitida
    pelo microserviço é falha de integração, não uma questão em branco.
+5. Salva o objeto `correcao` na versão individual de `provas_x_alunos`, com
+   `id_correcao` único por tentativa, data UTC, identificação do aluno e prova,
+   turma, nota e ambos os gabaritos. O update exige que a versão ainda contenha
+   as mesmas questões. Falha de gravação não retorna o cartão como sucesso.
+6. Depois de salvar o resultado, se a base estava
+   `Impressa`, atualiza somente seu status para `Corrigida`. O filtro do update
+   usa o `id_prova` da versão individual e exige uma base ativa, objetiva e ainda
+   `Impressa`. Não usa o ID individual como ID da prova-base nem altera outras
+   provas. Bases em outros status são preservadas; repetir correções não regride
+   uma base já corrigida. Falha de banco gera erro individual, sem anunciar
+   sucesso para esse cartão.
+
+A regra é por correção bem-sucedida: ao menos um cartão válido já pode mover a
+base para `Corrigida`, mesmo havendo outros cartões pendentes ou com falha. Um
+lote composto somente por falhas não altera o status. A seção de não corrigidas
+continua sendo exibida normalmente; o status da base não comprova que todos os
+alunos foram corrigidos.
 
 O leitor atual possui dez posições. A correção aceita provas de 1 a 10 questões,
 ignora posições excedentes em provas menores e rejeita provas maiores. As rotas
@@ -916,9 +965,13 @@ o arquivo na ordem enviada; cada lista mantém essa ordem.
     "resultados": [{
       "indice": 0,
       "arquivo": "cartao-aluno-1.png",
+      "id_correcao": "ff2e3a48221b42878dc4366e79d91cbe",
+      "corrigida_em": "2026-10-17T21:00:00+00:00",
       "id_prova_aluno": "66c4a6c22ce79c0f588b1699",
+      "id_prova": "66c4a6c22ce79c0f588b1621",
       "matricula": 50280715,
       "nome": "Carlos Silva",
+      "turma": "1ºI - INFORMÁTICA",
       "nota_prova": 6.67,
       "gabarito_aluno": {"1": "A", "2": "D", "3": null},
       "gabarito_correto": {"1": "A", "2": "D", "3": "E"}
@@ -927,7 +980,10 @@ o arquivo na ordem enviada; cada lista mantém essa ordem.
       "indice": 1,
       "arquivo": "cartao-aluno-2.png",
       "codigo": 422,
-      "mensagem": "QR Code não encontrado ou inválido"
+      "mensagem": "QR Code não encontrado ou inválido",
+      "matricula": 50280716,
+      "nome": "Ana Silva",
+      "turma": "3A"
     }]
   }
 }
@@ -938,11 +994,68 @@ indisponível (incluindo versões órfãs de provas desativadas), `422` para car
 gabarito incompatível, `502` para falha de comunicação/resposta inválida,
 `504` para timeout, `503` para fila ocupada e `500` para falha interna.
 O campo `codigo` não altera o status HTTP do lote.
+Cada falha inclui `matricula`, `nome` e `turma`, obtidos pela versão individual
+e pelo cadastro do aluno. Campos indisponíveis são `null`; os dados não são
+inferidos pelo nome do arquivo. A API usa primeiro o QR devolvido pelo leitor;
+quando a leitura falha ou o leitor está indisponível, pode usar o ID auxiliar
+recebido do frontend **somente para identificar a pendência**. Isso não substitui
+a leitura do QR/respostas pelo microserviço nem autoriza atribuir uma nota.
+Uma falha na consulta desses dados não interrompe o restante do lote.
+O frontend exibe esses dados do aluno nas provas não corrigidas, sem mostrar
+o nome do arquivo ou os motivos técnicos; sem identificação, informa isso
+explicitamente. O índice original continua disponível para localizar a imagem.
 Uma base inválida não interrompe a correção das imagens válidas do mesmo lote.
 Ausência de arquivos, arquivos vazios ou mais de 50 arquivos geram HTTP `400`;
 imagem ou corpo acima do limite gera HTTP `413`.
 
-Nenhuma nota, imagem, resposta ou alteração de status é persistida nesta etapa.
+Notas e respostas confirmadas são persistidas na versão individual, além da
+transição de status descrita acima. Imagens não são armazenadas no banco.
+Repetir a correção substitui o resultado atual da versão por uma nova tentativa;
+lotes já salvos preservam sua própria cópia dos valores anteriores.
+
+## Lote ordenado para impressão de notas
+
+Após terminar o envio de todas as imagens (inclusive quando o frontend dividir
+o conjunto em requisições de até 50 arquivos), o frontend cria um único lote:
+
+```http
+POST /api/v1/provas/lotes-correcao
+Content-Type: application/json
+```
+
+```json
+{
+  "entradas": [
+    {"arquivo": "pagina-1.png", "id_prova_aluno": "66c4a6c22ce79c0f588b1699", "id_correcao": "identificador-retornado-na-correcao"},
+    {"arquivo": "pagina-2.png", "erro": true}
+  ]
+}
+```
+
+Não enviar notas, nomes ou gabaritos neste POST. O backend busca as versões em
+lote e exige que o identificador da tentativa corresponda ao resultado salvo.
+Ele copia do banco a nota e a identificação, na ordem das entradas, sem ordenar
+por matrícula, turma ou nome. Notas enviadas pelo navegador, entradas inválidas e
+cartões duplicados retornam `400`; resultado substituído/ausente ou nome/turma
+incompletos retornam `409`. Falhas não recebem nota zero nem são removidas.
+
+Retorna `201`, com `data.lote` contendo `_id`, `criado_em`, `imprimivel` e `itens`.
+Cada item tem `posicao` sequencial a partir de 1, `arquivo` e `corrigida`. Itens
+válidos também têm `id_correcao`, `id_prova_aluno`, `id_prova`, `matricula`, `nome`,
+`turma` e `nota_prova`. Havendo qualquer falha, `imprimivel` é `false` para o lote
+inteiro. Os documentos ficam na nova coleção `lotes_correcao`, sem imagens.
+
+`GET /api/v1/provas/lotes-correcao/{_id}` retorna `200` com o mesmo `data.lote`;
+ID inválido ou lote inexistente retorna `404`. Consultar não recalcula notas nem
+altera a sequência. Não há rota de edição do lote: outra correção gera outro
+registro, preservando a sequência e as notas usadas em reimpressões anteriores.
+
+O frontend pedagógico abre `/provas/notas/{id}`: mostra nomes, matrículas e turmas
+na sequência esperada das folhas com gabarito. Só libera a sobreposição para
+lotes sem pendências, após a conferência explícita da pilha. A4 em escala 100%,
+uma nota por folha, sem reimprimir provas, listas, cabeçalho, QR ou gabarito. Há
+teste de uma folha e ajustes horizontal/vertical em mm; a calibração física da
+impressora não é automática. Cancelar o diálogo não confirma impressão física.
 
 ## Configuração e concorrência
 
