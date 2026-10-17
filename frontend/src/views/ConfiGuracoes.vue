@@ -104,142 +104,29 @@
 
 <script>
 export default {
-  name: 'ConfiGuracoes',
-  data() {
-    return {
-      temaAtual: 'tema-claro',
-      notificacoesEmail: true,
-      notificacoesSistema: true,
-      temaSelecionado: 'tema-claro',
-      notificacoesEmailSelecionado: true,
-      notificacoesSistemaSelecionado: true,
-      temAlteracoes: false,
-      navegacaoPendente: null,
-      mostrarModal: false
-    }
-  },
-  watch: {
-    temaSelecionado() { this.verificarAlteracoes() },
-    notificacoesEmailSelecionado() { this.verificarAlteracoes() },
-    notificacoesSistemaSelecionado() { this.verificarAlteracoes() }
-  },
-  mounted() {
-    this.carregarConfiguracoes()
-    window.addEventListener('beforeunload', this.handleBeforeUnload)
-  },
-  beforeUnmount() {
-    window.removeEventListener('beforeunload', this.handleBeforeUnload)
-  },
+  name: "ConfiGuracoes",
+  data: () => ({
+    temaAtual: "tema-claro",
+    temaSelecionado: "tema-claro",
+    notificacoesEmail: true,
+    notificacoesEmailSelecionado: true,
+    notificacoesSistema: true,
+    notificacoesSistemaSelecionado: true,
+  }),
   methods: {
-    carregarConfiguracoes() {
-      const temaSalvo = localStorage.getItem('tema')
-      if (temaSalvo) {
-        this.temaAtual = temaSalvo
-        this.temaSelecionado = temaSalvo
-      }
-      
-      const notificacoesEmailSalvas = localStorage.getItem('notificacoesEmail')
-      if (notificacoesEmailSalvas !== null) {
-        this.notificacoesEmail = JSON.parse(notificacoesEmailSalvas)
-        this.notificacoesEmailSelecionado = JSON.parse(notificacoesEmailSalvas)
-      }
-      
-      const notificacoesSistemaSalvas = localStorage.getItem('notificacoesSistema')
-      if (notificacoesSistemaSalvas !== null) {
-        this.notificacoesSistema = JSON.parse(notificacoesSistemaSalvas)
-        this.notificacoesSistemaSelecionado = JSON.parse(notificacoesSistemaSalvas)
-      }
-    },
-    
-    verificarAlteracoes() {
-      this.temAlteracoes = 
-        this.temaSelecionado !== this.temaAtual ||
-        this.notificacoesEmailSelecionado !== this.notificacoesEmail ||
-        this.notificacoesSistemaSelecionado !== this.notificacoesSistema
-      
-      this.$emit('configuracao-alterada', this.temAlteracoes)
-    },
-    
     selecionarTema(tema) {
-      this.temaSelecionado = tema
+      this.temaSelecionado = tema;
     },
-    
     salvarConfiguracoes() {
-      this.temaAtual = this.temaSelecionado
-      this.notificacoesEmail = this.notificacoesEmailSelecionado
-      this.notificacoesSistema = this.notificacoesSistemaSelecionado
-      
-      localStorage.setItem('tema', this.temaAtual)
-      localStorage.setItem('notificacoesEmail', JSON.stringify(this.notificacoesEmail))
-      localStorage.setItem('notificacoesSistema', JSON.stringify(this.notificacoesSistema))
-      
-      window.dispatchEvent(new CustomEvent('tema-mudou', { detail: { tema: this.temaAtual } }))
-      
-      this.temAlteracoes = false
-      this.$emit('configuracao-alterada', false)
-      
-      window.$modal.abrir({
-        titulo: "Configurações",
-        mensagem: "Configurações salvas com sucesso!",
-        tipo: "pequeno"
-      });
-      setTimeout(() => {
-        const modal = document.querySelector('.modal-overlay');
-        if (modal) modal.click();
-      }, 1500);
+      // A API não disponibiliza endpoint para persistência de configurações.
     },
-    
     cancelarAlteracoes() {
-      this.temaSelecionado = this.temaAtual
-      this.notificacoesEmailSelecionado = this.notificacoesEmail
-      this.notificacoesSistemaSelecionado = this.notificacoesSistema
-      this.temAlteracoes = false
-      this.$emit('configuracao-alterada', false)
+      this.temaSelecionado = this.temaAtual;
+      this.notificacoesEmailSelecionado = this.notificacoesEmail;
+      this.notificacoesSistemaSelecionado = this.notificacoesSistema;
     },
-    
-    handleBeforeUnload(event) {
-      if (this.temAlteracoes) {
-        event.preventDefault()
-        event.returnValue = 'Há configurações que não foram salvas.'
-      }
-    },
-    
-    salvarESair() {
-      this.salvarConfiguracoes()
-      this.mostrarModal = false
-      if (this.navegacaoPendente) {
-        this.navegacaoPendente.next()
-        this.navegacaoPendente = null
-      }
-    },
-    
-    descartarESair() {
-      this.mostrarModal = false
-      if (this.navegacaoPendente) {
-        this.navegacaoPendente.next()
-        this.navegacaoPendente = null
-      }
-    }
   },
-  beforeRouteLeave(to, from, next) {
-    if (this.temAlteracoes) {
-      window.$modal.abrir({
-        titulo: "Configurações não salvas",
-        mensagem: "Há configurações que não foram salvas. O que você deseja fazer?",
-        tipo: "confirmacao",
-        onConfirm: () => {
-          this.salvarConfiguracoes()
-          next()
-        },
-        onCancel: () => {
-          next()
-        }
-      });
-    } else {
-      next()
-    }
-  }
-}
+};
 </script>
 
 <style scoped>

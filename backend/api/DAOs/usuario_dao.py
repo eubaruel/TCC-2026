@@ -6,6 +6,7 @@ class Usuario_dao:
         self.__banco_de_dados = banco_de_dados_dependency.get_banco_de_dados()
         self.__colecao = self.__banco_de_dados["usuarios"]
 
+
     def login(self,obj_usuario :Usuario):
         print("✅ usuario_dao.login()")
 
@@ -28,6 +29,8 @@ class Usuario_dao:
         print("✅ aluno_dao.criar()")
         doc = self.set_doc(obj_usuario)
         doc['senha'] = obj_usuario.senha
+        doc['registro'] = obj_usuario.registro
+        doc['deve_alterar_senha'] = True
 
         resultado = self.__colecao.insert_one(doc)
 
@@ -36,6 +39,19 @@ class Usuario_dao:
         
         return True
     
+    
+    def importar_excel(self, docs: list) -> bool:
+        print("✅ usuario_dao.importar_excel()")
+        self.__colecao.insert_many(docs)
+
+    def criar_se_ausente(self, obj_usuario: Usuario) -> bool:
+        doc = self.set_doc(obj_usuario)
+        doc.update(registro=obj_usuario.registro, senha=obj_usuario.senha, deve_alterar_senha=True)
+        resultado = self.__colecao.update_one(
+            {"registro": obj_usuario.registro}, {"$setOnInsert": doc}, upsert=True
+        )
+        return resultado.upserted_id is not None
+
 
     def consulta(self, filtro=None):
         print("✅ usuario_dao.consulta()")
@@ -43,24 +59,17 @@ class Usuario_dao:
         resultado = list(self.__colecao.find(filtro, {"_id":0, "senha":0}))
         return resultado
     
-    def atualizar(self, obj_usuario: Usuario, filtro=None) -> bool:
+    
+    def atualizar(self, obj_usuario: Usuario) -> bool:
         print("✅ usuario_dao.atualizar()")
+
+        filtro = {"registro":obj_usuario.registro}
         doc = {
             "$set": self.set_doc(obj_usuario)
         }
-
         resultado = self.__colecao.update_one(filtro,doc)
-
-        if resultado.matched_count == 0:
-            print("❌ Nenhum usuário encontrado")
-            return False
-
-        if resultado.modified_count == 0:
-            print("⚠️ Usuário encontrado, mas nenhum dado foi alterado")
-            return False
-
-        print("✅ Usuário atualizado com sucesso")
-        return True
+        return resultado.matched_count > 0
+    
 
     def excluir(self, registro) -> bool:
         print("✅ usuario_dao.excluir()")
@@ -88,9 +97,15 @@ class Usuario_dao:
 
         return resultado is not None
 
+    def alterar_senha(self, registro, senha_hash, deve_alterar_senha, senha_anterior):
+        resultado = self.__colecao.update_one(
+            {"registro": registro, "ativo": True, "senha": senha_anterior},
+            {"$set": {"senha": senha_hash, "deve_alterar_senha": deve_alterar_senha}}
+        )
+        return resultado.matched_count > 0
+
     def set_doc(self, obj_usuario):
         return {
-            "registro": obj_usuario.registro,
             "nome":obj_usuario.nome,
             "email":obj_usuario.email,
             "role":obj_usuario.role,
