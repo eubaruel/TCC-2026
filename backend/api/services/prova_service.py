@@ -28,7 +28,7 @@ class Prova_service:
         "id_turma",
         "tipo",
         "serie",
-        "bimestre",
+        "periodo_letivo",
         "data_de_aplicacao"
     ]
 
@@ -38,6 +38,7 @@ class Prova_service:
 
         obj_prova = Prova()
         self._setar_dados_base(obj_prova, json_prova, exigir_registro=True)
+        obj_prova.quantidade_questoes = json_prova.get("quantidade_questoes")
         obj_prova.status = "Aguardando questões"
         obj_prova.questoes = []
 
@@ -53,6 +54,7 @@ class Prova_service:
             ids_normalizados = self._validar_ids_questoes(
                 ids_questoes, prova.get("tipo"), prova.get("disciplina")
             )
+            self._validar_quantidade_questoes(prova, ids_normalizados)
             quantidade = self.__prova_x_aluno_service.quantidade_versoes(id_hash, ids_normalizados, prova["id_turma"])
             mesmas_questoes = prova.get("questoes") == ids_normalizados
             if mesmas_questoes and quantidade and not geracao_pendente:
@@ -84,6 +86,7 @@ class Prova_service:
                 raise resposta_erro_http(409, "Geração de versões pendente",
                                         {"mensagem": "Salve a seleção novamente para completar a geração antes de enviar"})
             ids = self._validar_ids_questoes(prova.get("questoes"), prova["tipo"], prova["disciplina"])
+            self._validar_quantidade_questoes(prova, ids, completa=True)
             quantidade = self.__prova_x_aluno_service.quantidade_versoes(
                 id_hash, ids, prova["id_turma"] if prova["status"] != Prova.STATUS_ENVIADA else None
             )
@@ -95,6 +98,23 @@ class Prova_service:
                     raise resposta_erro_http(409, "A prova mudou durante o envio. Atualize a tela e tente novamente")
                 prova["status"] = Prova.STATUS_ENVIADA
             return {"prova": prova, "provas_alunos_geradas": quantidade}
+
+    def confirmar_impressao(self, id_hash: str) -> dict:
+        with self._operacao_exclusiva(id_hash) as token:
+            prova = self._buscar_prova(id_hash)
+            if prova["status"] not in (Prova.STATUS_ENVIADA, Prova.STATUS_IMPRESSA):
+                raise resposta_erro_http(409, "Apenas provas enviadas podem ter a impressão confirmada")
+            if prova.get("geracao_pendente"):
+                raise resposta_erro_http(409, "Geração de versões pendente")
+            ids = self._validar_ids_questoes(prova.get("questoes"), prova["tipo"], prova["disciplina"])
+            self._validar_quantidade_questoes(prova, ids, completa=True)
+            if not self.__prova_x_aluno_service.quantidade_versoes(id_hash, ids):
+                raise resposta_erro_http(409, "Nenhuma versão individual disponível")
+            if prova["status"] != Prova.STATUS_IMPRESSA:
+                if not self.__prova_dao.confirmar_impressao(id_hash, token):
+                    raise resposta_erro_http(409, "A prova mudou durante a confirmação. Atualize a tela e tente novamente")
+                prova["status"] = Prova.STATUS_IMPRESSA
+            return {"prova": prova}
 
     @contextmanager
     def _operacao_exclusiva(self, id_hash):
@@ -128,7 +148,11 @@ class Prova_service:
         prova = self._buscar_prova(id_hash)
         if prova.get("status") in Prova.STATUS_EDITAVEIS:
             raise resposta_erro_http(409, "Conclua e envie a prova antes de imprimir")
-        return self.__prova_x_aluno_service.montar_para_impressao(id_hash)
+        self._validar_quantidade_questoes(prova, prova.get("questoes", []), completa=True)
+        versoes = self.__prova_x_aluno_service.montar_para_impressao(id_hash)
+        for versao in versoes:
+            self._validar_quantidade_questoes(prova, versao["questoes"], completa=True)
+        return versoes
 
     def atualizar(self, json_prova: dict, id_hash: str) -> bool:
         print("🟣 prova_service.atualizar()")
@@ -136,10 +160,14 @@ class Prova_service:
             prova = self._buscar_prova(id_hash)
             self._exigir_edicao(prova)
             # PUT não deve contornar a seleção de questões ou a conclusão dedicada.
+            if prova.get("quantidade_questoes") is not None:
+                json_prova.setdefault("quantidade_questoes", prova["quantidade_questoes"])
+                if json_prova["quantidade_questoes"] is None:
+                    raise resposta_erro_http(400, "Quantidade de questões deve ser um inteiro de 2 a 10")
             if json_prova.get("status") != prova["status"] or json_prova.get("questoes") != prova["questoes"]:
                 raise resposta_erro_http(400, "Use as rotas adicionar-questoes e enviar para alterar o fluxo da prova")
             if prova["questoes"] and any(json_prova.get(campo) != prova.get(campo)
-                                         for campo in self._CAMPOS_PROVA_BASE + ["professor", "disciplina"]):
+                                         for campo in self._CAMPOS_PROVA_BASE + ["professor", "disciplina", "quantidade_questoes"]):
                 raise resposta_erro_http(409, "Os metadados não podem mudar após vincular questões à prova")
 
             obj_prova = Prova()
@@ -164,6 +192,8 @@ class Prova_service:
 
     def _setar_modelo_prova(self, obj_prova, json_prova):
         self._setar_dados_base(obj_prova, json_prova, exigir_registro=True)
+        if json_prova.get("quantidade_questoes") is not None:
+            obj_prova.quantidade_questoes = json_prova["quantidade_questoes"]
         obj_prova.status = json_prova.get("status")
 
         obj_prova.questoes = json_prova.get("questoes")
@@ -171,7 +201,6 @@ class Prova_service:
     def _setar_dados_base(self, obj_prova, json_prova, exigir_registro=False):
         for campo in self._CAMPOS_PROVA_BASE:
             setattr(obj_prova, campo, json_prova.get(campo))
-
         dados_professor = json_prova.get("professor")
         professor = Usuario()
         if exigir_registro or "registro" in dados_professor:
@@ -203,10 +232,21 @@ class Prova_service:
             "status": obj_prova.status,
             "tipo": obj_prova.tipo,
             "serie": obj_prova.serie,
-            "bimestre": obj_prova.bimestre,
+            "periodo_letivo": obj_prova.periodo_letivo,
             "data_de_aplicacao": obj_prova.data_de_aplicacao,
-            "questoes": obj_prova.questoes
+            "questoes": obj_prova.questoes,
+            "quantidade_questoes": obj_prova.quantidade_questoes
         }
+
+    @staticmethod
+    def _validar_quantidade_questoes(prova, ids_questoes, completa=False):
+        quantidade = prova.get("quantidade_questoes")
+        # Bases antigas não possuem quantidade definida pelo pedagógico.
+        if quantidade is not None and (len(ids_questoes) > quantidade or completa and len(ids_questoes) != quantidade):
+            raise resposta_erro_http(
+                400, "Quantidade de questões incompatível",
+                {"mensagem": f"A prova exige {quantidade} questões para concluir; não selecione mais que esse total"}
+            )
 
     def _validar_ids_questoes(
         self,
@@ -228,18 +268,18 @@ class Prova_service:
                 {"mensagem": "O campo 'questoes' deve ser uma lista de ids"}
             )
 
-        if not ids_questoes:
+        if len(ids_questoes) < 2:
             raise resposta_erro_http(
                 400,
                 "Número de questões insuficiente",
-                {"mensagem": "Informe ao menos uma questão"}
+                {"mensagem": "Informe ao menos duas questões"}
             )
 
         if len(ids_questoes) > Prova.MAX_QUESTOES:
             raise resposta_erro_http(
                 400,
                 "Limite de questões excedido",
-                {"mensagem": f"O leitor suporta provas de 1 a {Prova.MAX_QUESTOES} questões"}
+                {"mensagem": f"A prova deve ter de 2 a {Prova.MAX_QUESTOES} questões"}
             )
 
         ids_normalizados = []

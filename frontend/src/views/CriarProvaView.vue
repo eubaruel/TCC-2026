@@ -23,38 +23,50 @@
             <button type="button" class="btn-secundario" @click="carregar">Tentar novamente</button>
           </p>
           <template v-if="prova">
-            <p class="mensagem-info">{{ editavel ? "Selecione as questões do banco. Os dados da prova e o conteúdo das questões são mantidos como cadastrados." : "Prova concluída: somente visualização. A edição não é mais permitida." }}</p>
+            <p v-if="!editavel" class="mensagem-info">Prova concluída: somente visualização. A edição não é mais permitida.</p>
             <div class="bloco">
-              <h3>Dados da prova</h3>
-              <div class="campo"><label for="professor">Professor responsável</label><input id="professor" :value="prova.professor.nome" readonly /></div>
-              <div class="campo"><label for="turmas">Turma(s)</label><textarea id="turmas" :value="metadados.turmasTexto" rows="2" readonly></textarea></div>
-              <div class="campo"><label for="disciplina">Disciplina</label><input id="disciplina" :value="metadados.nome_disciplina" readonly /></div>
-              <div class="grade-campos">
-                <div class="campo"><label for="tipo">Tipo</label><input id="tipo" value="Objetiva" readonly /></div>
-                <div class="campo"><label for="serie">Série</label><input id="serie" :value="metadados.serie" readonly /></div>
-                <div class="campo"><label for="bimestre">Bimestre</label><input id="bimestre" :value="metadados.bimestre" readonly /></div>
-                <div class="campo"><label for="dataAplicacao">Data de aplicação</label><input id="dataAplicacao" :value="metadados.data_de_aplicacao" type="date" readonly /></div>
-                <div class="campo"><label for="status">Status</label><input id="status" :value="metadados.status" readonly /></div>
-              </div>
-            </div>
-            <div class="bloco">
-              <h3>Questões ({{ questoes.length }}/{{ limiteQuestoes }})</h3>
-              <p class="mensagem-info">O leitor de correção suporta provas de 1 a {{ limiteQuestoes }} questões.</p>
+              <h3>Questões ({{ questoes.length }})</h3>
+              <p v-if="prova.quantidade_questoes" class="mensagem-info">Quantidade definida pelo processo pedagógico: {{ prova.quantidade_questoes }} questões.</p>
               <p v-if="editavel && questoes.length > limiteQuestoes" class="mensagem-erro" role="alert">Remova as questões excedentes antes de salvar ou enviar.</p>
+              <div v-if="editavel" class="banco-questoes">
+                <h4>Banco de questões</h4>
+                <FiltrosQuestoes v-model="filtrosQuestoes" :disciplinas="disciplinasFiltro" :desabilitado="salvando || Boolean(erroCarregamento)" />
+                <div v-if="questoesBancoFiltradas.length" class="lista-banco">
+                  <article v-for="questao in questoesBancoFiltradas" :key="questao._id" class="questao-card">
+                    <div class="questao-header">
+                      <span class="disciplina">{{ metadados.nome_disciplina }}</span>
+                      <span class="tipo-questao">Objetiva</span>
+                      <span class="dificuldade">{{ questao.dificuldade || 'Médio' }}</span>
+                    </div>
+                    <div v-if="questao.assunto || questao.professor?.nome" class="questao-metadata">
+                      <span v-if="questao.assunto">{{ questao.assunto }}</span>
+                      <span v-if="questao.professor?.nome">Autor: {{ questao.professor.nome }}</span>
+                    </div>
+                    <details>
+                      <summary><p class="questao-resumo">{{ resumo(questao.enunciado) }}</p><span class="ver-questao">Ver questão completa</span></summary>
+                      <!-- eslint-disable-next-line vue/no-v-html -->
+                      <div class="questao-texto" v-html="sanitizar(questao.enunciado)"></div>
+                      <ol class="alternativas">
+                        <li v-for="(alternativa, index) in questao.alternativas" :key="alternativa.id" :class="{ correta: alternativa.id === questao.alternativa_correta }">
+                          <strong>{{ letras[index] }})</strong>
+                          <!-- eslint-disable-next-line vue/no-v-html -->
+                          <div v-html="sanitizar(alternativa.texto)"></div>
+                        </li>
+                      </ol>
+                    </details>
+                    <div class="questao-footer">
+                      <button type="button" class="btn-adicionar" :disabled="salvando || Boolean(erroCarregamento) || questoes.length >= limiteQuestoes" @click="importarQuestao(questao._id)">Adicionar à prova</button>
+                    </div>
+                  </article>
+                </div>
+                <p v-else class="mensagem-info">{{ questoesBancoCompativeis.length ? 'Nenhuma questão encontrada para esta busca.' : 'Nenhuma questão compatível disponível para adicionar.' }}</p>
+              </div>
+              <h4 v-if="editavel && questoes.length">Questões selecionadas</h4>
               <p v-if="!questoes.length" class="mensagem-info">Nenhuma questão selecionada.</p>
               <QuestaoEditor v-for="(questao, index) in questoes" :key="questao._idBanco"
                 :questao="questao" :numero="index + 1" :primeira="index === 0" :ultima="index === questoes.length - 1"
                 :bloqueada="!editavel || salvando || Boolean(erroCarregamento)"
                 @mover="moverQuestao(index, $event)" @remover="removerQuestao(index)" />
-              <div v-if="editavel" class="acoes-questoes">
-                <div class="importar-banco">
-                  <select v-model="questaoBancoSelecionada" :disabled="salvando || Boolean(erroCarregamento) || questoes.length >= limiteQuestoes || !questoesBancoCompativeis.length" aria-label="Questão do banco">
-                    <option value="">{{ questoesBancoCompativeis.length ? "Selecionar questão do banco..." : "Nenhuma questão compatível disponível" }}</option>
-                    <option v-for="questao in questoesBancoCompativeis" :key="questao._id" :value="questao._id">{{ resumo(questao.enunciado) }}</option>
-                  </select>
-                  <button type="button" class="btn-secundario" :disabled="salvando || questoes.length >= limiteQuestoes || !questaoBancoSelecionada" @click="importarQuestao">Adicionar</button>
-                </div>
-              </div>
             </div>
           </template>
           <p v-if="aviso" class="mensagem-info" role="status">{{ aviso }}</p>
@@ -74,30 +86,32 @@
 import QuestaoEditor from "@/components/QuestaoEditor.vue";
 import PreviewProva from "@/components/PreviewProva.vue";
 import ModalSairEdicao from "@/components/ModalSairEdicao.vue";
+import FiltrosQuestoes from "@/components/FiltrosQuestoes.vue";
 import { useAuthStore } from "@/stores/auth";
-import { questaoDoBanco, useProvaDraftStore } from "@/stores/provaDraft";
+import { LETRAS, questaoDoBanco, useProvaDraftStore } from "@/stores/provaDraft";
 import { listarQuestoes } from "@/services/questoes";
 import { adicionarQuestoes, buscarProva, enviarProva, provaEditavel } from "@/services/provas";
 import { obterTemplateProva } from "@/services/templates";
-import { htmlVazio, textoPuro } from "@/utils/html";
+import { htmlVazio, sanitizar, textoPuro } from "@/utils/html";
+import { filtrarQuestoes, novosFiltrosQuestoes } from "@/utils/filtrosQuestoes";
 
 export default {
   name: "CriarProvaView",
-  components: { QuestaoEditor, PreviewProva, ModalSairEdicao },
+  components: { QuestaoEditor, PreviewProva, ModalSairEdicao, FiltrosQuestoes },
   props: { id: { type: String, required: true } },
   setup() {
     return { authStore: useAuthStore(), draft: useProvaDraftStore() };
   },
   data: () => ({
-    limiteQuestoes: 10,
     temaAtual: "tema-claro", template: "", prova: null, bancoQuestoes: [],
-    questaoBancoSelecionada: "", carregando: true, salvando: false,
+    filtrosQuestoes: novosFiltrosQuestoes(), letras: LETRAS, carregando: true, salvando: false,
     erro: "", erroCarregamento: "", aviso: "", versoes: null,
     mostrarModalSair: false, destinoPendente: null, liberarSaida: false, monitorandoAlteracoes: false,
   }),
   computed: {
     metadados() { return this.draft.metadados; },
     questoes() { return this.draft.questoesEditor; },
+    limiteQuestoes() { return this.prova?.quantidade_questoes ?? 10; },
     editavel() { return Boolean(this.prova && provaEditavel(this.prova)); },
     tituloTela() { return `${this.editavel ? "Selecionar questões" : "Visualizar prova"} · ${this.metadados.nome_disciplina || "Prova"}`; },
     questoesBancoCompativeis() {
@@ -107,6 +121,12 @@ export default {
       return this.bancoQuestoes.filter((questao) => !selecionadas.has(questao._id)
         && questao.tipo_questao === "Objetiva"
         && questao.disciplina?.some((valor) => referencias.includes(String(valor).trim().toLowerCase())));
+    },
+    questoesBancoFiltradas() {
+      return filtrarQuestoes(this.questoesBancoCompativeis, this.filtrosQuestoes, this.disciplinasFiltro);
+    },
+    disciplinasFiltro() {
+      return [{ codigo_disciplina: this.metadados.codigo_disciplina, nome_disciplina: this.metadados.nome_disciplina }];
     },
   },
   watch: {
@@ -130,6 +150,7 @@ export default {
     return false;
   },
   methods: {
+    sanitizar,
     mensagemErro(error) { return error?.details || error?.message || "Não foi possível concluir a operação."; },
     resumo(html) {
       const texto = textoPuro(html) || "[questão com imagem]";
@@ -139,7 +160,7 @@ export default {
       this.monitorandoAlteracoes = false;
       this.carregando = true;
       this.erro = ""; this.erroCarregamento = ""; this.aviso = ""; this.prova = null;
-      this.versoes = null; this.questaoBancoSelecionada = "";
+      this.versoes = null; this.filtrosQuestoes = novosFiltrosQuestoes();
       this.draft.iniciarNova();
       try {
         const [template, banco, prova] = await Promise.all([obterTemplateProva(), listarQuestoes(), buscarProva(this.id)]);
@@ -150,9 +171,10 @@ export default {
         Object.assign(this.metadados, {
           turmasTexto: (Array.isArray(prova.id_turma) ? prova.id_turma : [prova.id_turma]).join("\n"),
           codigo_disciplina: prova.disciplina.codigo_disciplina, nome_disciplina: prova.disciplina.nome_disciplina,
-          tipo: prova.tipo, serie: prova.serie, bimestre: prova.bimestre,
+          tipo: prova.tipo, serie: prova.serie, periodo_letivo: prova.periodo_letivo,
           data_de_aplicacao: prova.data_de_aplicacao, status: prova.status,
         });
+        this.filtrosQuestoes.disciplina = prova.disciplina.codigo_disciplina;
         const porId = new Map(this.bancoQuestoes.map((questao) => [questao._id, questao]));
         if (prova.questoes.some((id) => !porId.has(id))) throw new Error("Uma questão vinculada está indisponível. Confira o banco antes de continuar.");
         this.draft.questoesEditor = prova.questoes.map((id) => questaoDoBanco(porId.get(id)));
@@ -176,16 +198,15 @@ export default {
         this.monitorandoAlteracoes = true;
       }
     },
-    importarQuestao() {
+    importarQuestao(id) {
       if (!this.editavel || this.salvando || this.erroCarregamento) return;
       if (this.questoes.length >= this.limiteQuestoes) {
         this.erro = `A prova permite no máximo ${this.limiteQuestoes} questões.`;
         return;
       }
       this.erro = "";
-      const questao = this.questoesBancoCompativeis.find((item) => item._id === this.questaoBancoSelecionada);
+      const questao = this.questoesBancoCompativeis.find((item) => item._id === id);
       if (questao) this.draft.questoesEditor.push(questaoDoBanco(questao));
-      this.questaoBancoSelecionada = "";
     },
     moverQuestao(index, direcao) {
       if (!this.editavel || this.salvando || this.erroCarregamento) return;
@@ -199,10 +220,13 @@ export default {
       if (!this.editavel || this.salvando || this.erroCarregamento) return;
       this.draft.questoesEditor.splice(index, 1);
     },
-    validar() {
+    validar(concluir = false) {
       if (!this.draft.provaId || !this.editavel) return "Esta prova não está disponível para preenchimento.";
-      if (!this.questoes.length) return "Selecione ao menos uma questão do banco.";
+      if (this.questoes.length < 2) return "Selecione ao menos duas questões do banco.";
       if (this.questoes.length > this.limiteQuestoes) return `A prova permite no máximo ${this.limiteQuestoes} questões. Remova as questões excedentes.`;
+      if (concluir && this.prova.quantidade_questoes && this.questoes.length !== this.prova.quantidade_questoes) {
+        return `Selecione exatamente ${this.prova.quantidade_questoes} questões para concluir a prova.`;
+      }
       const ids = this.questoes.map((questao) => questao._idBanco);
       if (ids.some((id) => !id) || new Set(ids).size !== ids.length) return "Selecione questões válidas, sem repetição.";
       for (const [index, questao] of this.questoes.entries()) {
@@ -235,7 +259,7 @@ export default {
     },
     confirmarEnvio() {
       if (!this.editavel || this.salvando || this.carregando || this.erroCarregamento) return;
-      this.erro = this.validar();
+      this.erro = this.validar(true);
       if (this.erro) return;
       window.$modal.abrir({
         titulo: "Concluir e enviar prova",
@@ -244,6 +268,9 @@ export default {
       });
     },
     async enviar() {
+      if (this.salvando || this.carregando || this.erroCarregamento) return;
+      this.erro = this.validar(true);
+      if (this.erro) return;
       if (!await this.salvar() || !this.versoes) return;
       this.salvando = true;
       try {
@@ -371,6 +398,7 @@ export default {
 }
 
 .painel {
+  min-width: 0;
   overflow-y: auto;
   padding: 24px;
 }
@@ -403,59 +431,38 @@ export default {
   border-bottom: 2px solid #00488b;
 }
 
-.campo {
-  margin-bottom: 12px;
-}
-
-.campo label {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 6px;
-  color: #666;
-}
-
-.tema-escuro .campo label {
-  color: #aaa;
-}
-
-.campo input,
-.campo select,
-.campo textarea,
-.importar-banco select {
-  width: 100%;
-  padding: 9px 10px;
-  border: 1px solid #d8d8d8;
-  border-radius: 6px;
-  font: inherit;
-  background: white;
-  color: inherit;
-}
-
-.tema-escuro .campo input,
-.tema-escuro .campo select,
-.tema-escuro .campo textarea,
-.tema-escuro .importar-banco select {
-  background: #2a2a2a;
-  border-color: #404040;
-}
-
-.grade-campos {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0 12px;
-}
-
-.acoes-questoes {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.importar-banco {
-  display: flex;
-  gap: 8px;
-}
+.banco-questoes { margin-bottom: 24px; }
+.bloco h4 { font-size: 15px; margin: 0 0 12px; }
+.lista-banco { display: grid; gap: 12px; max-height: 420px; overflow-y: auto; margin-top: 12px; padding: 2px 6px 2px 0; }
+.questao-card { min-width: 0; background: white; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; overflow-wrap: anywhere; transition: box-shadow .3s ease; }
+.questao-card:hover { box-shadow: 0 4px 12px #0001; }
+.questao-header, .questao-metadata { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.questao-header span { padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+.disciplina { background: #00488b20; color: #00488b; }
+.tipo-questao { background: #17a2b820; color: #117786; }
+.dificuldade { background: #ffc10720; color: #856404; }
+.questao-metadata { font-size: 12px; color: #777; }
+summary { cursor: pointer; }
+.questao-resumo { display: inline; font-size: 14px; line-height: 1.5; }
+.ver-questao { display: block; color: #00488b; font-size: 12px; margin-top: 8px; }
+details[open] .ver-questao { display: none; }
+.questao-texto { margin-top: 12px; font-size: 14px; line-height: 1.5; overflow-x: auto; }
+.alternativas { list-style: none; padding: 0; margin: 12px 0; }
+.alternativas li { display: flex; gap: 8px; font-size: 13px; margin: 8px 0; }
+.alternativas li > div { min-width: 0; }
+.alternativas .correta { color: #218838; font-weight: 500; }
+.questao-texto :deep(img), .alternativas :deep(img) { max-width: 100%; height: auto; }
+.questao-footer { display: flex; justify-content: flex-end; margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; }
+.btn-adicionar { padding: 8px 12px; background: #00488b; color: white; border: 0; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.btn-adicionar:hover:not(:disabled) { background: #0066cc; }
+.btn-adicionar:disabled { opacity: .5; cursor: not-allowed; }
+.tema-escuro .questao-card { background: #2a2a2a; border-color: #404040; }
+.tema-escuro .questao-metadata { color: #aaa; }
+.tema-escuro .disciplina, .tema-escuro .ver-questao { color: #8ac4ff; }
+.tema-escuro .tipo-questao { color: #66d9e8; }
+.tema-escuro .dificuldade { color: #ffe08a; }
+.tema-escuro .correta { color: #75d98c; }
+.tema-escuro .questao-footer { border-color: #404040; }
 
 .btn-secundario {
   padding: 8px 14px;
@@ -501,10 +508,6 @@ export default {
   .painel-campos {
     border-right: none;
     border-bottom: 1px solid #e0e0e0;
-  }
-
-  .grade-campos {
-    grid-template-columns: 1fr;
   }
 
   .indicador-alteracoes {

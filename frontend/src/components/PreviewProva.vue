@@ -41,7 +41,7 @@ export default {
         CODIGO_DISCIPLINA: valor(m.codigo_disciplina),
         TURMAS: valor(turmas),
         SERIE: valor(m.serie ? `${m.serie}ª` : ""),
-        BIMESTRE: valor(m.bimestre),
+        PERIODO_LETIVO: valor(m.periodo_letivo),
         DATA_APLICACAO: valor(data),
         PROFESSOR: valor(this.professor),
         MATRICULA: this.matricula === "" ? "______" : valor(this.matricula),
@@ -82,37 +82,6 @@ export default {
   font-size: 14px;
   line-height: 1.5;
   word-wrap: break-word;
-}
-
-.folha :deep(h1) {
-  font-size: 20px;
-  text-align: center;
-  margin-bottom: 12px;
-  color: #00488b;
-}
-
-.folha :deep(.prova-dados) {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 8px;
-}
-
-.folha :deep(.prova-dados td) {
-  border: 1px solid #ccc;
-  padding: 6px 8px;
-  font-size: 13px;
-}
-
-.folha :deep(.prova-tipo) {
-  text-align: right;
-  font-size: 12px;
-  color: #666;
-}
-
-.folha :deep(hr) {
-  border: none;
-  border-top: 2px solid #00488b;
-  margin: 12px 0 20px;
 }
 
 .folha :deep(img) {

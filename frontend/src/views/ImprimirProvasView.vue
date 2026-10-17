@@ -1,22 +1,26 @@
 <template>
   <div class="impressao-container">
     <header class="impressao-acoes">
-      <button class="btn-secundario" @click="$router.push('/provas')">← Voltar</button>
+      <button class="btn-secundario" :disabled="imprimindo || confirmando" @click="$router.push('/provas')">← Voltar</button>
       <h2>Impressão individualizada</h2>
-      <button class="btn-primario" :disabled="carregando || imprimindo || Boolean(erro) || !versoes.length" @click="imprimir">
+      <button class="btn-primario" :disabled="carregando || imprimindo || confirmando || Boolean(erro) || !versoes.length" @click="imprimir">
         {{ imprimindo ? 'Preparando...' : 'Imprimir provas' }}
+      </button>
+      <button v-if="prova?.status === 'Enviada ao pedagógico' && versoes.length" class="btn-primario" :disabled="carregando || imprimindo || confirmando || Boolean(erro)" @click="confirmarImpressao">
+        {{ confirmando ? 'Confirmando...' : 'Confirmar impressão realizada' }}
       </button>
     </header>
     <p v-if="carregando" class="mensagem">Carregando versões individuais...</p>
     <p v-if="erro" class="mensagem mensagem-erro" role="alert">{{ erro }}</p>
+    <p v-if="aviso" class="mensagem" role="status">{{ aviso }}</p>
     <p v-if="!carregando && !erro && !versoes.length" class="mensagem">Nenhuma versão individual disponível. Confira os alunos vinculados à prova.</p>
     <p v-if="versoes.length" class="mensagem instrucoes">
-      {{ versoes.length }} versão(ões). Imprima em A4, escala 100%, sem cabeçalhos e rodapés do navegador.
-      Para corrigir, recorte o cartão inteiro, preservando sua borda e o QR Code.
+      Imprima em A4, escala 100%, sem cabeçalhos e rodapés do navegador.
+      Para corrigir, digitalize a página inteira com o cartão e o QR Code legíveis. O frontend fará o recorte automático antes do envio.
     </p>
     <main class="versoes">
       <section v-for="versao in versoes" :key="versao.id_prova_aluno" class="versao-aluno">
-        <CartaoResposta :prova="prova" :matricula="versao.matricula_aluno" :qrCode="versao.qrCode" />
+        <CartaoResposta :prova="prova" :matricula="versao.matricula_aluno" :nomeAluno="versao.nome_aluno" :qrCode="versao.qrCode" />
         <p class="orientacao-cartao">Preencha todo o retângulo de uma alternativa em cada questão de 1 a {{ versao.questoes.length }}. Deixe as demais colunas em branco.</p>
         <PreviewProva :template="template" :metadados="metadados" :professor="prova.professor.nome"
           :matricula="versao.matricula_aluno" :questoes="versao.questoes" />
@@ -29,15 +33,16 @@
 import QRCode from "qrcode";
 import CartaoResposta from "@/components/CartaoResposta.vue";
 import PreviewProva from "@/components/PreviewProva.vue";
-import { buscarProva, imprimirProvas, provaEditavel } from "@/services/provas";
+import { buscarProva, imprimirProvas, confirmarImpressao, provaEditavel } from "@/services/provas";
 import { obterTemplateProva } from "@/services/templates";
 import { questaoDoBanco } from "@/stores/provaDraft";
+import { CARTAO_RESPOSTA } from "@/utils/cartaoResposta";
 
 export default {
   name: "ImprimirProvasView",
   components: { CartaoResposta, PreviewProva },
   props: { id: { type: String, required: true } },
-  data: () => ({ prova: null, template: "", versoes: [], carregando: true, imprimindo: false, erro: "" }),
+  data: () => ({ prova: null, template: "", versoes: [], carregando: true, imprimindo: false, confirmando: false, erro: "", aviso: "" }),
   computed: {
     metadados() {
       if (!this.prova) return {};
@@ -58,14 +63,30 @@ export default {
           if (!versao.id_prova_aluno || !versao.questoes?.length || versao.questoes.length > 10) {
             throw new Error("Uma versão está sem identificador ou fora do limite de 1 a 10 questões.");
           }
+          if (prova.quantidade_questoes && versao.questoes.length !== prova.quantidade_questoes) {
+            throw new Error("Uma versão não possui a quantidade de questões definida pelo processo pedagógico.");
+          }
           return { ...versao, questoes: versao.questoes.map(questaoDoBanco),
-            qrCode: await QRCode.toDataURL(versao.id_prova_aluno, { errorCorrectionLevel: "M", margin: 4, width: 256 }) };
+            qrCode: await QRCode.toDataURL(versao.id_prova_aluno, { errorCorrectionLevel: "M", margin: CARTAO_RESPOSTA.qr.margem, width: 256 }) };
         }));
       } catch (error) { this.erro = error?.details || error?.message || "Não foi possível montar a impressão."; }
       finally { this.carregando = false; }
     },
+    async confirmarImpressao() {
+      if (this.carregando || this.imprimindo || this.confirmando || this.erro || !this.versoes.length || this.prova?.status !== "Enviada ao pedagógico") return;
+      this.confirmando = true;
+      this.aviso = "";
+      try {
+        const resposta = await confirmarImpressao(this.id);
+        if (resposta.prova?.status !== "Impressa") throw new Error("O servidor não confirmou o status da impressão. Tente novamente.");
+        this.prova = resposta.prova;
+        this.aviso = "Impressão confirmada. A prova está na categoria Provas Impressas.";
+      } catch (error) {
+        this.aviso = error?.details || error?.message || "Não foi possível confirmar a impressão. Tente novamente.";
+      } finally { this.confirmando = false; }
+    },
     async imprimir() {
-      if (this.carregando || this.imprimindo || this.erro || !this.versoes.length) return;
+      if (this.carregando || this.imprimindo || this.confirmando || this.erro || !this.versoes.length) return;
       this.imprimindo = true;
       try {
         await this.$nextTick();
@@ -86,7 +107,7 @@ export default {
 
 <style scoped>
 .impressao-container { padding: 20px; }
-.impressao-acoes { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 2px solid #00488b; padding-bottom: 15px; }
+.impressao-acoes { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 2px solid #00488b; padding-bottom: 15px; }
 .impressao-acoes h2 { font-size: 22px; }
 .btn-primario, .btn-secundario { border: 0; border-radius: 6px; padding: 10px 16px; cursor: pointer; font-weight: 600; }
 .btn-primario { background: #00488b; color: white; }
@@ -100,11 +121,17 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 <style>
 @media print {
-  @page { size: A4; margin: 12mm; }
-  html, body { background: white !important; color: black !important; }
+  /* Sem margens de página, o navegador não reserva espaço para URL e paginação. */
+  @page { size: A4; margin: 0; }
+  html, body { margin: 0 !important; padding: 0 !important; background: white !important; color: black !important; }
+  .app-container { display: block !important; min-height: 0 !important; }
+  .sidebar, .conteudo-principal > .header, .modal-overlay { display: none !important; }
+  .conteudo-principal { margin: 0 !important; min-height: 0 !important; }
+  .conteudo { padding: 0 !important; }
   .impressao-container { padding: 0 !important; }
   .impressao-acoes, .impressao-container > .mensagem { display: none !important; }
-  .versao-aluno { width: 100% !important; max-width: none !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; break-after: page; }
+  /* O respiro fica no conteúdo, preservando os 186 mm úteis e cada página da prova. */
+  .versao-aluno { box-sizing: border-box; width: 100% !important; max-width: none !important; padding: 12mm !important; margin: 0 !important; box-shadow: none !important; -webkit-box-decoration-break: clone; box-decoration-break: clone; break-after: page; }
   .versao-aluno:last-child { break-after: auto; }
 }
 </style>

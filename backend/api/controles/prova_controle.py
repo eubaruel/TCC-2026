@@ -76,6 +76,12 @@ class Prova_controle:
         )
     
     
+    def confirmar_impressao(self, _id):
+        return Resposta_json.sucesso(
+            mensagem="Impressão confirmada",
+            data=self.__prova_service.confirmar_impressao(_id), codigo=200
+        )
+
     def ler(self):
         print("🔵 prova_controle.ler()")
 
@@ -86,7 +92,7 @@ class Prova_controle:
 
         campos_permitidos = ["id","id_turma","codigo_disciplina",
                             "nome_disciplina","nome","registro",
-                            "status","tipo","serie","bimestre",
+                            "status","tipo","serie","periodo_letivo",
                             "data_de_aplicacao"
                             ]
         
@@ -195,9 +201,10 @@ class Prova_controle:
             "status":prova.get("status"),
             "tipo":prova.get("tipo"),
             "serie":prova.get("serie"),
-            "bimestre":prova.get("bimestre"),
+            "periodo_letivo":prova.get("periodo_letivo"),
             "data_de_aplicacao":prova.get("data_de_aplicacao"),
-            "questoes":prova.get("questoes")
+            "questoes":prova.get("questoes"),
+            "quantidade_questoes": prova.get("quantidade_questoes")
         }
 
         return formatado

@@ -111,6 +111,15 @@ class Prova_dao:
         return resultado.matched_count > 0
 
 
+    def confirmar_impressao(self, _id, token) -> bool:
+        resultado = self.__colecao.update_one(
+            {"_id": ObjectId(_id), "ativo": {"$ne": False}, "tipo": "Objetiva",
+             "status": Prova.STATUS_ENVIADA, "operacao_em_andamento": token,
+             "geracao_pendente": {"$ne": True}},
+            {"$set": {"status": Prova.STATUS_IMPRESSA}}
+        )
+        return resultado.matched_count > 0
+
     def atualizar(self, obj_prova: Prova, token=None) -> bool:
         print("✅ prova_dao.atualizar()")
 
@@ -189,9 +198,10 @@ class Prova_dao:
             "status":obj_prova.status,
             "tipo":obj_prova.tipo,
             "serie":obj_prova.serie,
-            "bimestre":obj_prova.bimestre,
+            "periodo_letivo":obj_prova.periodo_letivo,
             "data_de_aplicacao":obj_prova.data_de_aplicacao,
-            "questoes":obj_prova.questoes
+            "questoes":obj_prova.questoes,
+            "quantidade_questoes": obj_prova.quantidade_questoes
         }
 
         return doc

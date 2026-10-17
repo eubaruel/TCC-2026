@@ -24,7 +24,7 @@
           <span>📅 Data de entrega: {{ dataEntrega }}</span>
           <span>📚 Disciplina: {{ disciplina }}</span>
           <span>🏫 Turma: {{ turma }}</span>
-          <span>📆 Bimestre: {{ bimestre }}</span>
+          <span>📆 Período letivo: {{ periodoLetivo }}</span>
           <span>📋 Semana: {{ semana }}</span>
         </div>
       </div>
@@ -58,7 +58,7 @@ export default {
     dataEntrega: { type: String, required: true },
     disciplina: { type: String, default: "Não especificada" },
     turma: { type: String, default: "Não especificada" },
-    bimestre: { type: String, default: "Não especificado" },
+    periodoLetivo: { type: String, default: "Não especificado" },
     semana: { type: String, default: "Não especificada" },
     tipoUsuario: { type: String, required: true },
     entregueInicial: { type: Boolean, default: false },

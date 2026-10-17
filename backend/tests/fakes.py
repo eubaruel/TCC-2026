@@ -48,7 +48,8 @@ class FakeAlunoDao:
         filtro = filtro or {}
         resultado = []
         for doc in self.documentos.values():
-            if all(doc.get(chave) == valor for chave, valor in filtro.items()):
+            if all(doc.get(chave) in valor["$in"] if isinstance(valor, dict) and "$in" in valor
+                   else doc.get(chave) == valor for chave, valor in filtro.items()):
                 seguro = deepcopy(doc)
                 seguro.pop("email_aluno", None)
                 resultado.append(seguro)
@@ -331,6 +332,13 @@ class FakeProvaDao:
     def campo_existe(self, campo, valor):
         return valor in self.documentos and self.documentos[valor]["ativo"]
 
+    def confirmar_impressao(self, id_prova, token):
+        doc = self.documentos.get(id_prova)
+        if not doc or not doc["ativo"] or doc["status"] != Prova.STATUS_ENVIADA or doc.get("operacao_em_andamento") != token or doc.get("geracao_pendente"):
+            return False
+        doc["status"] = Prova.STATUS_IMPRESSA
+        return True
+
     def atualizar(self, prova, token=None):
         doc = self.documentos.get(prova.id_hash)
         if not self._pode_alterar(doc, token):
@@ -359,8 +367,9 @@ class FakeProvaDao:
             "status": prova.status,
             "tipo": prova.tipo,
             "serie": prova.serie,
-            "bimestre": prova.bimestre,
+            "periodo_letivo": prova.periodo_letivo,
             "data_de_aplicacao": prova.data_de_aplicacao,
+            "quantidade_questoes": prova.quantidade_questoes,
             "questoes": deepcopy(prova.questoes),
             "ativo": True,
         }

@@ -8,7 +8,7 @@ export const novosMetadados = () => ({
   nome_disciplina: "",
   tipo: "Objetiva",
   serie: 3,
-  bimestre: "",
+  periodo_letivo: "",
   data_de_aplicacao: "",
   status: "Aguardando questões",
 });
