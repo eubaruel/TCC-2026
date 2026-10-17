@@ -36,6 +36,12 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       {
+        path: "provas/corrigir",
+        name: "CorrigirProvasView",
+        component: () => import("@/views/CorrigirProvasView.vue"),
+        meta: { requiresProcesso: true },
+      },
+      {
         path: "provas",
         name: "ProvasView",
         component: ProvasView,

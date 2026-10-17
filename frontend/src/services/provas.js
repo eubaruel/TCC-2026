@@ -22,4 +22,6 @@ export const enviarProva = (id) => api(`/provas/${id}/enviar`, { method: "PATCH"
 
 export const imprimirProvas = (id) => api(`/provas/imprimir-provas/${id}`);
 
+export const confirmarImpressao = (id) => api(`/provas/${id}/confirmar-impressao`, { method: "PATCH" });
+
 export const provaEditavel = (prova) => ["Aguardando questões", "Em elaboração"].includes(prova.status);

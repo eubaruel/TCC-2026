@@ -12,6 +12,7 @@
     "@babel/runtime": "^7.29.0",
     "core-js": "^3.8.3",
     "dompurify": "^3.4.16",
+    "jsqr": "^1.4.0",
     "pinia": "^3.0.4",
     "qrcode": "^1.5.4",
     "quill": "^2.0.3",

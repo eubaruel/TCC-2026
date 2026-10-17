@@ -5,6 +5,7 @@ class Prova:
     MAX_QUESTOES = 10
     STATUS_EDITAVEIS = ("Aguardando questões", "Em elaboração")
     STATUS_ENVIADA = "Enviada ao pedagógico"
+    STATUS_IMPRESSA = "Impressa"
 
     def __init__(self):
         self.__id_hash = None   
@@ -14,9 +15,10 @@ class Prova:
         self.__status = None       #se a prova foi corrigida ou não
         self.__tipo = None         #provas objetivas
         self.__serie = None        #para qual série essa prova foi feita 
-        self.__bimestre = None    
+        self.__periodo_letivo = None
         self.__data_de_aplicacao = None 
         self.__questoes = None
+        self.__quantidade_questoes = None
     
     @property
     def id_hash(self):
@@ -122,17 +124,17 @@ class Prova:
 
 
     @property
-    def bimestre(self):
-        return self.__bimestre
+    def periodo_letivo(self):
+        return self.__periodo_letivo
 
-    @bimestre.setter
-    def bimestre(self, value):
+    @periodo_letivo.setter
+    def periodo_letivo(self, value):
         if value is None:
-            raise ValueError("Bimestre nulo")
+            raise ValueError("Período letivo nulo")
         if not isinstance(value, str):
-            raise TypeError("Bimestre deve ser string")
+            raise TypeError("Período letivo deve ser string")
         value = value.strip()
-        self.__bimestre = value
+        self.__periodo_letivo = value
 
 
     @property
@@ -148,6 +150,18 @@ class Prova:
         value = value.strip()
         self.__data_de_aplicacao = value
 
+
+    @property
+    def quantidade_questoes(self):
+        return self.__quantidade_questoes
+
+    @quantidade_questoes.setter
+    def quantidade_questoes(self, value):
+        if type(value) is not int:
+            raise TypeError("Quantidade de questões deve ser um inteiro")
+        if not 2 <= value <= self.MAX_QUESTOES:
+            raise ValueError(f"Quantidade de questões deve ser de 2 a {self.MAX_QUESTOES}")
+        self.__quantidade_questoes = value
 
     @property
     def questoes(self):

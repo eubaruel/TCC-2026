@@ -69,12 +69,16 @@ class Correcao_service:
             raise resposta_erro_http(404, "ProvaXAluno não encontrada")
 
         id_prova = registro.get("id_prova")
-        if not isinstance(id_prova, str) or not id_prova.strip() or not self.prova_dao.buscar_por_id(id_prova.strip()):
+        prova = self.prova_dao.buscar_por_id(id_prova.strip()) if isinstance(id_prova, str) and id_prova.strip() else None
+        if not prova:
             raise resposta_erro_http(404, "Prova-base não encontrada ou inativa")
 
         questoes = registro.get("questoes", [])
         if not 1 <= len(questoes) <= Prova.MAX_QUESTOES:
             raise resposta_erro_http(422, f"O leitor suporta provas de 1 a {Prova.MAX_QUESTOES} questões")
+        quantidade = prova.get("quantidade_questoes")
+        if quantidade is not None and (len(questoes) != quantidade or len(prova.get("questoes", [])) != quantidade):
+            raise resposta_erro_http(422, "Quantidade de questões incompatível com a prova-base")
         aluno = self.aluno_dao.buscar_por_matricula(registro["matricula_aluno"])
         if not aluno:
             raise resposta_erro_http(404, "Aluno não encontrado")

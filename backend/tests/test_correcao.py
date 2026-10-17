@@ -30,6 +30,17 @@ class CorrecaoTest(unittest.TestCase):
     def imagem(nome="cartao.png"):
         return {"arquivo": nome, "bytes": b"imagem", "content_type": "image/png"}
 
+    def test_quantidade_da_base_deve_corresponder_a_versao_do_aluno(self):
+        self.prova.update(quantidade_questoes=3, questoes=["q1", "q2", "q3"])
+        self.assertEqual(len(self.service.corrigir([self.imagem()])["resultados"]), 1)
+        self.prova["quantidade_questoes"] = 4
+        retorno = self.service.corrigir([self.imagem()])
+        self.assertEqual(retorno["resultados"], [])
+        self.assertEqual(retorno["erros"][0]["codigo"], 422)
+        self.prova["quantidade_questoes"] = 3
+        self.prova["questoes"].pop()
+        self.assertEqual(self.service.corrigir([self.imagem()])["erros"][0]["codigo"], 422)
+
     def test_nota_ordem_individual_null_e_posicoes_extras(self):
         retorno = self.service.corrigir([self.imagem()])
         resultado = retorno["resultados"][0]

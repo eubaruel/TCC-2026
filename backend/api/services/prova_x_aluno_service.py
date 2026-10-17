@@ -45,6 +45,15 @@ class Prova_x_aluno_service:
         if not registros:
             return []
 
+        alunos_por_matricula = {
+            aluno["matricula_aluno"]: aluno.get("nome_aluno", "")
+            for aluno in self.__aluno_dao.consulta({
+                "matricula_aluno": {"$in": list(dict.fromkeys(
+                    registro["matricula_aluno"] for registro in registros
+                ))}
+            })
+        }
+
         ids_questoes = list(dict.fromkeys(
             questao["id_questao"]
             for registro in registros
@@ -88,6 +97,7 @@ class Prova_x_aluno_service:
             provas_alunos.append({
                 "id_prova_aluno": registro["_id"],
                 "matricula_aluno": registro["matricula_aluno"],
+                "nome_aluno": alunos_por_matricula.get(registro["matricula_aluno"], ""),
                 "questoes": questoes_aluno
             })
 

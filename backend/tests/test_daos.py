@@ -52,6 +52,15 @@ class BancoFake:
 
 
 class DaoTest(unittest.TestCase):
+    def test_confirmar_impressao_condiciona_status_e_reserva(self):
+        colecao = ColecaoFake()
+        dao = Prova_dao(BancoFake("provas", colecao))
+        id_prova = str(ObjectId())
+        self.assertTrue(dao.confirmar_impressao(id_prova, "reserva"))
+        self.assertEqual(colecao.filtro["status"], "Enviada ao pedagógico")
+        self.assertEqual(colecao.filtro["operacao_em_andamento"], "reserva")
+        self.assertEqual(colecao.atualizacao, {"$set": {"status": "Impressa"}})
+
     def test_busca_da_base_exige_prova_ativa_e_objetiva(self):
         colecao = ColecaoFake()
         dao = Prova_dao(BancoFake("provas", colecao))

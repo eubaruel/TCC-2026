@@ -11,14 +11,12 @@
           <p class="info-text">Defina os dados da prova. O professor responsável adicionará as questões depois.</p>
           <p v-if="carregando" class="info-text">Carregando professores e disciplinas...</p>
           <div v-else class="form-grid">
-            <div class="form-group-modal">
+            <div class="form-group-modal campo-largo">
               <label for="base-professor">Professor responsável *</label>
-              <select id="base-professor" v-model.number="formulario.registroProfessor" required :disabled="salvando">
-                <option value="">Selecione</option>
-                <option v-for="professor in professores" :key="professor.registro" :value="professor.registro">
-                  {{ professor.nome }} ({{ professor.registro }})
-                </option>
-              </select>
+              <input id="base-professor" v-model="buscaProfessor" list="base-professores" autocomplete="off" required :disabled="salvando" placeholder="Digite ou selecione o professor" @input="selecionarProfessor" />
+              <datalist id="base-professores">
+                <option v-for="professor in professores" :key="professor.registro" :value="rotuloProfessor(professor)" />
+              </datalist>
               <small v-if="!professores.length" class="info-text">Nenhum professor ativo cadastrado.</small>
             </div>
 
@@ -35,19 +33,38 @@
 
             <div class="form-group-modal">
               <label for="base-turmas">Turma(s) *</label>
-              <textarea id="base-turmas" v-model="formulario.turmasTexto" rows="2" required :disabled="salvando" placeholder="Uma turma por linha"></textarea>
+              <input id="base-turmas" v-model="buscaTurma" list="base-turmas-opcoes" autocomplete="off" :required="!turmasSelecionadas.length" :disabled="salvando" placeholder="Digite ou selecione uma turma" @change="adicionarTurma" @keydown.enter.prevent="adicionarTurma" />
+              <datalist id="base-turmas-opcoes">
+                <option v-for="turma in turmasDisponiveis" :key="turma" :value="turma" />
+              </datalist>
+              <div v-if="turmasSelecionadas.length" class="turmas-selecionadas">
+                <span v-for="turma in turmasSelecionadas" :key="turma" class="turma-selecionada">
+                  {{ turma }}
+                  <button type="button" :disabled="salvando" :aria-label="`Remover turma ${turma}`" @click="removerTurma(turma)">&times;</button>
+                </span>
+              </div>
             </div>
             <div class="form-group-modal">
               <label for="base-serie">Série *</label>
-              <input id="base-serie" v-model.number="formulario.serie" type="number" min="1" step="1" required :disabled="salvando" />
+              <select id="base-serie" v-model.number="formulario.serie" required :disabled="salvando">
+                <option v-for="serie in 3" :key="serie" :value="serie">{{ serie }}ª série</option>
+              </select>
             </div>
             <div class="form-group-modal">
-              <label for="base-bimestre">Bimestre *</label>
-              <input id="base-bimestre" v-model.trim="formulario.bimestre" required :disabled="salvando" placeholder="Ex.: 3º bimestre" />
+              <label for="base-periodo-letivo">Período letivo *</label>
+              <select id="base-periodo-letivo" v-model="formulario.periodo_letivo" required :disabled="salvando">
+                <option value="">Selecione</option>
+                <option v-for="periodo in 4" :key="periodo" :value="`${periodo}º período letivo`">{{ periodo }}º período letivo</option>
+              </select>
             </div>
             <div class="form-group-modal">
               <label for="base-data">Data de aplicação *</label>
               <input id="base-data" v-model="formulario.data" type="date" required :disabled="salvando" />
+            </div>
+            <div class="form-group-modal">
+              <label for="base-quantidade">Quantidade de questões *</label>
+              <input id="base-quantidade" v-model.number="formulario.quantidade_questoes" type="number" min="2" max="10" step="1" inputmode="numeric" required :disabled="salvando" placeholder="Ex.: 5" aria-describedby="base-quantidade-ajuda" />
+              <small id="base-quantidade-ajuda" class="info-text">De 2 a 10 questões.</small>
             </div>
           </div>
           <p v-if="erro" class="mensagem-erro" role="alert">{{ erro }}</p>
@@ -73,13 +90,26 @@ export default {
   name: "CriarProvaBase",
   emits: ["fechar", "criada"],
   data: () => ({
-    formulario: { registroProfessor: "", codigoDisciplina: "", turmasTexto: "", serie: 3, bimestre: "", data: "" },
+    formulario: { registroProfessor: "", codigoDisciplina: "", turmasTexto: "", serie: 3, periodo_letivo: "", data: "", quantidade_questoes: "" },
     professores: [],
     disciplinas: [],
+    buscaProfessor: "",
+    buscaTurma: "",
     carregando: true,
     salvando: false,
     erro: "",
   }),
+  computed: {
+    turmasSelecionadas() {
+      return [...new Set(this.formulario.turmasTexto.split(/\r?\n/).map((turma) => turma.trim()).filter(Boolean))];
+    },
+    turmasCadastradas() {
+      return [...new Set(this.disciplinas.map((disciplina) => disciplina.turma?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    },
+    turmasDisponiveis() {
+      return this.turmasCadastradas.filter((turma) => !this.turmasSelecionadas.includes(turma));
+    },
+  },
   mounted() {
     this.carregar();
   },
@@ -100,11 +130,35 @@ export default {
         this.carregando = false;
       }
     },
+    rotuloProfessor(professor) { return `${professor.nome} (${professor.registro})`; },
+    selecionarProfessor() {
+      if (this.salvando) return;
+      const professor = this.professores.find((item) => this.rotuloProfessor(item) === this.buscaProfessor.trim());
+      this.formulario.registroProfessor = professor?.registro ?? "";
+    },
+    adicionarTurma() {
+      if (this.salvando || !this.buscaTurma.trim()) return;
+      const turma = this.buscaTurma.trim();
+      if (!this.turmasCadastradas.includes(turma)) {
+        this.erro = "Selecione uma turma cadastrada na lista de sugestões.";
+        return;
+      }
+      this.formulario.turmasTexto = [...new Set([...this.turmasSelecionadas, turma])].join("\n");
+      this.buscaTurma = "";
+      this.erro = "";
+    },
+    removerTurma(turma) {
+      if (!this.salvando) this.formulario.turmasTexto = this.turmasSelecionadas.filter((item) => item !== turma).join("\n");
+    },
     selecionarDisciplina() {
       const disciplina = this.disciplinas.find((item) => item.codigo_disciplina === this.formulario.codigoDisciplina);
       this.formulario.turmasTexto = disciplina?.turma || "";
+      this.buscaTurma = "";
       const professor = this.professores.find((item) => item.registro === disciplina?.professor?.registro);
-      if (professor) this.formulario.registroProfessor = professor.registro;
+      if (professor) {
+        this.formulario.registroProfessor = professor.registro;
+        this.buscaProfessor = this.rotuloProfessor(professor);
+      }
     },
     fechar() {
       if (!this.salvando) this.$emit("fechar");
@@ -112,11 +166,17 @@ export default {
     async salvar() {
       if (this.carregando || this.salvando) return;
       this.erro = "";
+      this.selecionarProfessor();
+      if (this.buscaTurma.trim()) {
+        this.adicionarTurma();
+        if (this.buscaTurma.trim()) return;
+      }
       const professor = this.professores.find((item) => item.registro === this.formulario.registroProfessor);
       const disciplina = this.disciplinas.find((item) => item.codigo_disciplina === this.formulario.codigoDisciplina);
-      const turmas = [...new Set(this.formulario.turmasTexto.split(/\r?\n/).map((turma) => turma.trim()).filter(Boolean))];
-      if (!professor || !disciplina || !turmas.length || !this.formulario.bimestre || !this.formulario.data
-          || !Number.isInteger(this.formulario.serie) || this.formulario.serie < 1) {
+      const turmas = this.turmasSelecionadas;
+      if (!professor || !disciplina || !turmas.length || !this.formulario.periodo_letivo || !this.formulario.data
+          || !Number.isInteger(this.formulario.quantidade_questoes) || this.formulario.quantidade_questoes < 2 || this.formulario.quantidade_questoes > 10
+          || ![1, 2, 3].includes(this.formulario.serie) || ![1, 2, 3, 4].some((numero) => this.formulario.periodo_letivo === `${numero}º período letivo`)) {
         this.erro = "Preencha todos os dados da prova corretamente.";
         return;
       }
@@ -129,8 +189,9 @@ export default {
           id_turma: turmas.length === 1 ? turmas[0] : turmas,
           tipo: "Objetiva",
           serie: this.formulario.serie,
-          bimestre: this.formulario.bimestre,
+          periodo_letivo: this.formulario.periodo_letivo,
           data_de_aplicacao: this.formulario.data,
+          quantidade_questoes: this.formulario.quantidade_questoes,
         });
         this.$emit("criada", resposta.prova);
       } catch (error) {
@@ -174,8 +235,11 @@ export default {
 .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
 .modal-body { padding: 24px; }
 .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.form-group-modal { min-width: 0; }
+.campo-largo { grid-column: 1 / -1; }
 .form-group-modal label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px; }
-.form-group-modal input, .form-group-modal select, .form-group-modal textarea {
+.form-group-modal input, .form-group-modal select {
+  box-sizing: border-box;
   width: 100%;
   padding: 10px;
   border: 1px solid #ddd;
@@ -183,6 +247,9 @@ export default {
   font: inherit;
   font-size: 14px;
 }
+.turmas-selecionadas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.turma-selecionada { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; overflow-wrap: anywhere; padding: 4px 8px; background: #eef5fc; color: #00488b; border: 1px solid #c9ddf0; border-radius: 6px; font-size: 12px; }
+.turma-selecionada button { flex-shrink: 0; padding: 0 2px; border: 0; background: transparent; color: inherit; font-size: 18px; cursor: pointer; }
 .info-text { font-size: 12px; color: #888; margin-bottom: 16px; }
 .mensagem-erro { color: #dc3545; font-size: 13px; margin-top: 16px; }
 .modal-footer { display: flex; gap: 12px; padding: 20px 24px; border-top: 1px solid #e0e0e0; justify-content: flex-end; }

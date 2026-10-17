@@ -22,6 +22,7 @@ Atualmente, as rotas de provas não exigem token JWT.
 | `PATCH` | `/api/v1/provas/{_id}/adicionar-questoes` | Salvar os IDs selecionados e gerar/preservar as versões dos alunos |
 | `PATCH` | `/api/v1/provas/{_id}/enviar` | Concluir a prova, enviar ao pedagógico e encerrar a edição |
 | `GET` | `/api/v1/provas/imprimir-provas/{_id}` | Montar as versões completas para impressão |
+| `PATCH` | `/api/v1/provas/{_id}/confirmar-impressao` | Registrar a confirmação de impressão e definir o status Impressa |
 | `POST` | `/api/v1/provas/corrigir-provas` | Corrigir cartões-resposta em lote |
 | `GET` | `/api/v1/provas/` | Consultar provas ativas |
 | `PUT` | `/api/v1/provas/{_id}` | Atualizar metadados antes de vincular questões; não altera status ou seleção |
@@ -76,8 +77,9 @@ A coleção `provas` armazena somente os IDs das questões.
 "status": "Em elaboração",
   "tipo": "Objetiva",
   "serie": 3,
-  "bimestre": "1° bimestre",
+  "periodo_letivo": "1º período letivo",
   "data_de_aplicacao": "2026-08-20",
+  "quantidade_questoes": 3,
   "questoes": [
     "66c49f5a2ce79c0f588b1601",
     "66c49f5a2ce79c0f588b1602"
@@ -242,7 +244,8 @@ Aguardando questões
 
 O fluxo usa `Aguardando questões` na criação, `Em elaboração` após salvar a
 seleção e `Enviada ao pedagógico` ao concluir. Apenas os dois primeiros permitem
-edição. Status posteriores, como `Não Corrigida` e `Corrigida`, também são
+edição. Após a confirmação de impressão, o status passa para `Impressa`.
+Status posteriores, como `Impressa` e `Corrigida`, também são
 somente leitura para a montagem. O modelo continua aceitando strings, sem enum.
 `PUT` deve preservar o status; somente a rota dedicada realiza o envio.
 
@@ -250,10 +253,13 @@ somente leitura para a montagem. O modelo continua aceitando strings, sem enum.
 
 Deve ser um número inteiro maior que zero.
 
-## Bimestre
+## Período letivo
 
-Deve ser uma string. Os espaços externos são removidos, mas não existe uma
-lista fixa de bimestres permitidos.
+Deve ser uma string. Os espaços externos são removidos. O formulário apresenta
+do `1º período letivo` ao `4º período letivo`, mas o backend não impõe lista fixa.
+O campo é `periodo_letivo` tanto na API quanto no MongoDB. Ele é obrigatório na
+criação e está presente nas respostas e nos filtros de consulta. Não há conversão
+de nomenclaturas anteriores; novas provas devem usar diretamente esse campo.
 
 ## Data de aplicação
 
@@ -271,12 +277,33 @@ se ela está no passado ou no futuro.
 O campo `questoes` é uma lista de IDs em formato string.
 
 Na criação, ele é gerenciado pela API e começa vazio. Em
-`/adicionar-questoes`, deve conter de 1 a 10 IDs.
+`/adicionar-questoes`, deve conter de 2 a 10 IDs, sem ultrapassar a quantidade
+definida na prova-base.
+
+## Quantidade de questões
+
+`quantidade_questoes` é obrigatória na criação: um inteiro entre **2 e 10**.
+Strings, booleanos, decimais, valores nulos e números fora desse intervalo
+retornam `400`. O valor é armazenado na prova e devolvido nas respostas de
+criação, consulta e atualização; ele não altera o formato de envio dos IDs.
+
+O professor pode salvar seleções parciais de pelo menos duas questões. Para
+concluir e enviar, precisa selecionar **exatamente** a quantidade definida pelo
+processo pedagógico. Uma seleção acima desse total é rejeitada sem alterar o
+banco ou os gabaritos. Após vincular questões, a quantidade não pode ser alterada
+pelo PUT, assim como os demais metadados. Se omitida no PUT, o valor salvo é
+preservado, não apagado.
+
+Provas antigas sem esse campo (ou com valor `null`) mantêm a regra anterior de
+2 a 10 questões, sem exigir total exato e sem migração automática dos dados.
+Impressão, confirmação de impressão e correção também conferem a quantidade
+quando definida; registros incompatíveis não são impressos/corrigidos.
 
 Regras aplicadas na seleção e novamente antes de concluir:
 
 - a estrutura deve ser uma lista;
-- deve haver de 1 a 10 questões, conforme a capacidade do leitor de correção;
+- deve haver de 2 a 10 questões, sem ultrapassar `quantidade_questoes`;
+- para concluir, deve haver exatamente `quantidade_questoes`, quando definida;
 - cada ID deve ser uma string não vazia;
 - espaços externos são removidos;
 - IDs repetidos são rejeitados;
@@ -288,22 +315,24 @@ Regras aplicadas na seleção e novamente antes de concluir:
 
 A comparação da disciplina ignora maiúsculas, minúsculas e espaços externos.
 
-Exemplo válido com uma questão:
+Exemplo válido com duas questões (pode ser uma seleção parcial):
 
 ```json
 {
   "questoes": [
-    "66c49f5a2ce79c0f588b1601"
+    "66c49f5a2ce79c0f588b1601",
+    "66c49f5a2ce79c0f588b1602"
   ]
 }
 ```
 
-Não existe quantidade mínima de cinco questões: uma questão é suficiente.
+Não existe quantidade mínima de cinco questões: o mínimo é duas.
 Seleções acima de dez são rejeitadas com HTTP `400` antes de salvar a seleção
 ou gerar versões individuais. O envio também revalida esse limite, inclusive
 para provas antigas. Os registros existentes não são truncados nem apagados.
-No frontend, o contador mostra a quantidade selecionada e o máximo; ao atingir
-dez, a adição é bloqueada. Uma seleção em lote que excederia o máximo não é
+No frontend, o contador mostra a quantidade selecionada e uma mensagem informa
+o total definido pelo pedagógico. Ao atingir esse total (ou dez para bases
+antigas), a adição é bloqueada. Uma seleção em lote que excederia o máximo não é
 adicionada, e um aviso orienta a selecionar individualmente as questões desejadas.
 
 ---
@@ -341,8 +370,9 @@ Content-Type: application/json
     },
     "tipo": "Objetiva",
     "serie": 3,
-    "bimestre": "1° bimestre",
-    "data_de_aplicacao": "2026-08-20"
+    "periodo_letivo": "1º período letivo",
+    "data_de_aplicacao": "2026-08-20",
+    "quantidade_questoes": 3
   }
 }
 ```
@@ -399,8 +429,9 @@ Código: `201 Created`.
       "status": "Aguardando questões",
       "tipo": "Objetiva",
       "serie": 3,
-      "bimestre": "1° bimestre",
+      "periodo_letivo": "1º período letivo",
       "data_de_aplicacao": "2026-08-20",
+      "quantidade_questoes": 3,
       "questoes": []
     }
   }
@@ -615,6 +646,8 @@ objetos de questões e não gera novos gabaritos.
 O service verifica a existência da prova, a integridade das questões e versões
 individuais completas para os alunos ativos. Se não houver versões, retorna
 `409` e orienta conferir os alunos e salvar a seleção novamente.
+Se a seleção não tiver exatamente `quantidade_questoes`, quando definida,
+retorna `400`, preservando a seleção parcial e o status de elaboração.
 Se houver uma operação em andamento, retorna `409` sem concluir a prova.
 Uma geração anterior não finalizada também retorna `409` (`Geração de versões
 pendente`) e exige salvar novamente antes do envio. Essas verificações ocorrem
@@ -629,6 +662,33 @@ Após enviar, `PUT`, `PATCH /adicionar-questoes` e `DELETE` retornam `409`.
 O editor exibe apenas visualização, sem ações de seleção, reordenação ou edição.
 Questões vinculadas a provas concluídas também não podem ser alteradas/excluídas
 pelo fluxo do banco, impedindo que o conteúdo e o gabarito mudem indiretamente.
+
+---
+
+# Confirmar impressão
+
+```http
+PATCH /api/v1/provas/{_id}/confirmar-impressao
+```
+
+Sem corpo. O processo pedagógico usa o botão `Confirmar impressão realizada`
+depois de efetivamente imprimir. Abrir a prévia, consultar o GET ou fechar o
+diálogo do navegador não confirma a impressão, pois o diálogo também pode ser
+cancelado. O status só muda no frontend após sucesso da gravação no backend.
+
+Retorna `200 OK`, com `data.prova` contendo a prova e `status: "Impressa"`.
+Repetir a confirmação de uma prova já impressa é idempotente. A operação exige
+uma base ativa, enviada, sem geração pendente e com versões individuais válidas.
+Prova inexistente/inativa retorna `404`; estado incompatível ou versões ausentes
+retorna `409`. Usa a mesma reserva exclusiva das demais alterações da prova.
+
+Não altera questões, IDs, QR Codes nem gabaritos. Reimprimir continua permitido,
+e uma prova `Corrigida` não volta para `Impressa`. O status impresso não reabre
+a edição. A correção ainda não persiste notas nem define `Corrigida` automaticamente.
+
+No frontend pedagógico, as abas são exclusivas: `Provas Recebidas` mostra
+`Enviada ao pedagógico`, `Provas Impressas` mostra `Impressa` e `Provas Corrigidas`
+mostra `Corrigida`. Para o professor, provas impressas continuam na aba de enviadas.
 
 ---
 
@@ -686,6 +746,11 @@ Cada versão também retorna `id_prova_aluno`, o `_id` de `provas_x_alunos`.
 O frontend deve inserir exatamente esse identificador textual no QR Code do
 cartão-resposta; ele não deve conter apenas a matrícula ou o ID da prova-base.
 
+O campo `nome_aluno` vem do cadastro associado à matrícula e preenche o campo
+`Nome` do cartão. A linha inferior `Nome do Aluno por Extenso` permanece vazia
+para preenchimento manual. Os nomes são consultados em lote, sem alterar as
+versões individuais; se o cadastro não existir, o campo retorna uma string vazia.
+
 ## Resposta de sucesso
 
 Código: `200 OK`.
@@ -700,6 +765,7 @@ Código: `200 OK`.
       {
         "id_prova_aluno": "66c4a6c22ce79c0f588b1699",
         "matricula_aluno": 50280715,
+        "nome_aluno": "José da Silva",
         "questoes": [
           {
             "_id": "66c49f5a2ce79c0f588b1602",
@@ -937,7 +1003,7 @@ A rota não recebe corpo JSON e retorna somente provas cujo `ativo` não seja
 "status": "Em elaboração",
         "tipo": "Objetiva",
         "serie": 3,
-        "bimestre": "1° bimestre",
+        "periodo_letivo": "1º período letivo",
         "data_de_aplicacao": "2026-08-20",
         "questoes": [
           "66c49f5a2ce79c0f588b1601"
@@ -963,7 +1029,7 @@ Sem resultados, a API retorna `200 OK` e `provas: []`.
 | `status` | string | `status` |
 | `tipo` | string | `tipo` |
 | `serie` | inteiro | `serie` |
-| `bimestre` | string | `bimestre` |
+| `periodo_letivo` | string | `periodo_letivo` |
 | `data_de_aplicacao` | string | `data_de_aplicacao` |
 
 Exemplos:
@@ -1019,7 +1085,7 @@ Exemplo para uma base ainda sem questões:
     "disciplina": { "codigo_disciplina": "MAT", "nome_disciplina": "Matemática" },
     "tipo": "Objetiva",
     "serie": 3,
-    "bimestre": "1° bimestre",
+    "periodo_letivo": "1º período letivo",
     "data_de_aplicacao": "2026-08-22",
     "status": "Aguardando questões",
     "questoes": []

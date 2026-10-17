@@ -12,7 +12,8 @@ class Prova_middleware:
         "disciplina",
         "tipo",
         "serie",
-        "bimestre",
+        "periodo_letivo",
+        "quantidade_questoes",
         "data_de_aplicacao"
     ]
 

@@ -30,17 +30,10 @@
     </div>
     
     <div class="tab-content">
+      <FiltrosQuestoes v-if="abaAtiva !== 'cadastrar'" v-model="filtrosQuestoes" :disciplinas="disciplinas" :questoes="todasQuestoes" />
       <!-- Buscar Questões -->
       <div v-if="abaAtiva === 'buscar'" class="buscar-questoes">
-        <div class="search-box">
-          <input 
-            type="text" 
-            v-model="busca" 
-            placeholder="Buscar por disciplina, assunto, autor ou texto..."
-            class="search-input"
-          />
-          <button @click="buscarQuestoes" class="btn-buscar">Buscar</button>
-        </div>
+        <p v-if="carregandoQuestoes" class="sem-resultados">Carregando questões...</p>
         
         <div class="resultados" v-if="resultados.length > 0">
           <div v-for="questao in resultados" :key="questao.id" class="questao-card">
@@ -78,7 +71,7 @@
             </div>
           </div>
         </div>
-        <div v-else-if="buscou" class="sem-resultados">
+        <div v-else-if="!carregandoQuestoes" class="sem-resultados">
           Nenhuma questão encontrada.
         </div>
       </div>
@@ -207,7 +200,7 @@
       <!-- Minhas Questões -->
       <div v-if="abaAtiva === 'minhas'" class="minhas-questoes">
         <div v-if="minhasQuestoes.length === 0" class="sem-questoes">
-          Você ainda não cadastrou nenhuma questão.
+          Nenhuma questão sua encontrada com os filtros atuais.
         </div>
         <div v-else>
           <div v-for="questaoItem in minhasQuestoes" :key="questaoItem.id" class="questao-card minhas">
@@ -255,7 +248,9 @@ import { useAuthStore } from "@/stores/auth";
 import { useProvaDraftStore } from "@/stores/provaDraft";
 import { listarDisciplinas } from "@/services/disciplinas";
 import { atualizarQuestao, criarQuestao, excluirQuestao, listarQuestoes } from "@/services/questoes";
-import { sanitizar, textoPuro } from "@/utils/html";
+import { sanitizar } from "@/utils/html";
+import FiltrosQuestoes from "@/components/FiltrosQuestoes.vue";
+import { filtrarQuestoes, novosFiltrosQuestoes } from "@/utils/filtrosQuestoes";
 
 const letras = ["A", "B", "C", "D", "E"];
 const novaQuestao = () => ({
@@ -270,15 +265,14 @@ const novaQuestao = () => ({
 
 export default {
   name: "QuestoesView",
+  components: { FiltrosQuestoes },
   setup() {
     return { authStore: useAuthStore(), draftStore: useProvaDraftStore(), router: useRouter() };
   },
   data: () => ({
     abaAtiva: "buscar",
-    busca: "",
-    buscou: false,
-    resultados: [],
-    minhasQuestoes: [],
+    filtrosQuestoes: novosFiltrosQuestoes(),
+    carregandoQuestoes: true,
     todasQuestoes: [],
     disciplinas: [],
     carregandoDisciplinas: true,
@@ -290,6 +284,13 @@ export default {
   computed: {
     isProfessor() {
       return this.authStore.isProfessor;
+    },
+    resultados() {
+      return filtrarQuestoes(this.todasQuestoes, this.filtrosQuestoes, this.disciplinas);
+    },
+    minhasQuestoes() {
+      const minhas = this.todasQuestoes.filter((questao) => questao.professor?.nome === this.authStore.user?.nome);
+      return filtrarQuestoes(minhas, this.filtrosQuestoes, this.disciplinas);
     },
   },
   async mounted() {
@@ -332,19 +333,15 @@ export default {
       }
     },
     async carregarQuestoes() {
+      this.carregandoQuestoes = true;
       try {
         const questoes = (await listarQuestoes()).questoes;
         this.todasQuestoes = questoes.map(this.adaptarQuestao);
-        this.resultados = [...this.todasQuestoes];
-        this.minhasQuestoes = this.todasQuestoes.filter((questao) => questao.professor?.nome === this.authStore.user?.nome);
       } catch (error) {
         this.erro = error.details || error.message;
+      } finally {
+        this.carregandoQuestoes = false;
       }
-    },
-    buscarQuestoes() {
-      this.buscou = true;
-      const termo = this.busca.toLowerCase();
-      this.resultados = this.todasQuestoes.filter((questao) => [questao.disciplina, questao.assunto, questao.autor, textoPuro(questao.texto)].some((campo) => campo?.toLowerCase().includes(termo)));
     },
     payloadQuestao() {
       const disciplinaInformada = this.novaQuestao.disciplina.trim();
@@ -467,29 +464,6 @@ export default {
 .tema-escuro .tab-btn.ativo {
   color: #0066cc;
   border-bottom-color: #0066cc;
-}
-
-.search-box {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.search-input {
-  flex: 1;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 16px;
-}
-
-.btn-buscar {
-  padding: 12px 24px;
-  background: #00488b;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
 }
 
 .questao-card {
@@ -814,6 +788,14 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .questoes-tabs {
+    flex-wrap: wrap;
+  }
+
+  .tab-btn {
+    padding: 10px 12px;
+  }
+
   .questao-header {
     flex-direction: column;
     gap: 8px;

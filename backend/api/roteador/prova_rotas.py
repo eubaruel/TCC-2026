@@ -40,6 +40,11 @@ class Prova_rotas:
         def enviar(_id):
             return self.__prova_controle.enviar(_id)
 
+        @self.__blueprint.route('/<string:_id>/confirmar-impressao', methods=['PATCH'])
+        @self.__prova_middleware.validar_id_prova
+        def confirmar_impressao(_id):
+            return self.__prova_controle.confirmar_impressao(_id)
+
         @self.__blueprint.route('/',methods=['GET'])
         def ler():
             return self.__prova_controle.ler()

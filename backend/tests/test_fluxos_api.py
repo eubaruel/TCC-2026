@@ -223,7 +223,7 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
             Prova_rotas(Prova_middleware(), Prova_controle(service)).criar_rotas(),
             "/api/v1/provas"
         ).test_client()
-        dados = {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "bimestre": "1° bimestre", "data_de_aplicacao": "2026-08-20"}
+        dados = {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "periodo_letivo": "1º período letivo", "data_de_aplicacao": "2026-08-20", "quantidade_questoes": 3}
         prova = client.post("/api/v1/provas/criar-prova", json={"prova": dados}).get_json()["data"]["prova"]
         dados["tipo"] = "Outro"
         self.assertEqual(client.post("/api/v1/provas/criar-prova", json={"prova": dados}).status_code, 400)
@@ -248,11 +248,14 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
             "/api/v1/questoes/", json=payload_questao(91)
         ).get_json()["data"]["questao"]
         self.questao_dao.documentos[questao["_id"]]["tipo_questao"] = "Outro"
+        segunda_questao = self.questao_client.post(
+            "/api/v1/questoes/", json=payload_questao(92)
+        ).get_json()["data"]["questao"]
         prova_dao = FakeProvaDao()
         service = Prova_service(prova_dao, self.questao_dao, self.prova_x_aluno_service)
         with self.assertRaises(resposta_erro_http) as resultado:
             service._validar_ids_questoes(
-                [questao["_id"]], "Objetiva",
+                [questao["_id"], segunda_questao["_id"]], "Objetiva",
                 {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}
             )
         self.assertEqual(resultado.exception.httpCode, 400)
@@ -264,7 +267,7 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
         controle = Prova_controle(service)
         client = criar_app(Prova_rotas(Prova_middleware(), controle).criar_rotas(), "/api/v1/provas").test_client()
 
-        payload = {"prova": {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "bimestre": "1° bimestre", "data_de_aplicacao": "2026-08-20"}}
+        payload = {"prova": {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "periodo_letivo": "1º período letivo", "data_de_aplicacao": "2026-08-20", "quantidade_questoes": 3}}
         criacao = client.post("/api/v1/provas/criar-prova", json=payload)
 
         self.assertEqual(criacao.status_code, 201)
@@ -304,7 +307,7 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
         controle = Prova_controle(service)
         client = criar_app(Prova_rotas(Prova_middleware(), controle).criar_rotas(), "/api/v1/provas").test_client()
 
-        payload = {"prova": {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "bimestre": "1° bimestre", "data_de_aplicacao": "2026-08-20", "questoes": []}}
+        payload = {"prova": {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "periodo_letivo": "1º período letivo", "data_de_aplicacao": "2026-08-20", "quantidade_questoes": 3, "questoes": []}}
         resposta = client.post("/api/v1/provas/criar-prova", json=payload)
 
         self.assertEqual(resposta.status_code, 400)
@@ -317,16 +320,20 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
         controle = Prova_controle(service)
         client = criar_app(Prova_rotas(Prova_middleware(), controle).criar_rotas(), "/api/v1/provas").test_client()
 
-        payload = {"prova": {"id_turma": "Turma 2026 A", "professor": {"nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "bimestre": "1° bimestre", "data_de_aplicacao": "2026-08-20"}}
+        payload = {"prova": {"id_turma": "Turma 2026 A", "professor": {"nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "periodo_letivo": "1º período letivo", "data_de_aplicacao": "2026-08-20", "quantidade_questoes": 3}}
         resposta = client.post("/api/v1/provas/criar-prova", json=payload)
 
         self.assertEqual(resposta.status_code, 400)
         self.assertIn("registro", resposta.get_json()["erro"]["mensagem"])
 
-    def test_adiciona_uma_questao_e_substitui_o_vetor_sem_duplicar(self):
+    def test_adiciona_duas_questoes_e_substitui_o_vetor_sem_duplicar(self):
         questao = self.questao_client.post(
             "/api/v1/questoes/",
             json=payload_questao(30)
+        ).get_json()["data"]["questao"]
+
+        segunda_questao = self.questao_client.post(
+            "/api/v1/questoes/", json=payload_questao(31)
         ).get_json()["data"]["questao"]
 
         prova_dao = FakeProvaDao()
@@ -337,14 +344,14 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
             "/api/v1/provas"
         ).test_client()
 
-        payload_prova = {"prova": {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "bimestre": "1° bimestre", "data_de_aplicacao": "2026-08-20"}}
+        payload_prova = {"prova": {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "periodo_letivo": "1º período letivo", "data_de_aplicacao": "2026-08-20", "quantidade_questoes": 3}}
         prova = client.post(
             "/api/v1/provas/criar-prova",
             json=payload_prova
         ).get_json()["data"]["prova"]
 
         rota = f"/api/v1/provas/{prova['_id']}/adicionar-questoes"
-        payload = {"prova": {"questoes": [questao["_id"]]}}
+        payload = {"prova": {"questoes": [questao["_id"], segunda_questao["_id"]]}}
 
         primeira_resposta = client.patch(rota, json=payload)
         segunda_resposta = client.patch(rota, json=payload)
@@ -353,11 +360,11 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
         self.assertEqual(segunda_resposta.status_code, 200)
         self.assertEqual(
             primeira_resposta.get_json()["data"]["prova"]["questoes"],
-            [questao["_id"]]
+            [questao["_id"], segunda_questao["_id"]]
         )
         self.assertEqual(
             prova_dao.documentos[prova["_id"]]["questoes"],
-            [questao["_id"]]
+            [questao["_id"], segunda_questao["_id"]]
         )
         self.assertEqual(
             prova_dao.documentos[prova["_id"]]["status"],
@@ -418,8 +425,9 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
                 },
                 "tipo": "Objetiva",
                 "serie": 3,
-                "bimestre": "1° bimestre",
-                "data_de_aplicacao": "2026-08-20"
+                "periodo_letivo": "1º período letivo",
+                "data_de_aplicacao": "2026-08-20",
+                "quantidade_questoes": 3
             }
         }
         prova = client.post(
@@ -594,7 +602,7 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
             "/api/v1/provas"
         ).test_client()
 
-        payload_prova = {"prova": {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "bimestre": "1° bimestre", "data_de_aplicacao": "2026-08-20"}}
+        payload_prova = {"prova": {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "periodo_letivo": "1º período letivo", "data_de_aplicacao": "2026-08-20", "quantidade_questoes": 3}}
         prova = client.post(
             "/api/v1/provas/criar-prova",
             json=payload_prova
@@ -633,7 +641,7 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
             json={"prova": {"questoes": [questao["_id"]]}}
         )
 
-        payload_prova = {"prova": {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "bimestre": "1° bimestre", "data_de_aplicacao": "2026-08-20"}}
+        payload_prova = {"prova": {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"}, "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}, "tipo": "Objetiva", "serie": 3, "periodo_letivo": "1º período letivo", "data_de_aplicacao": "2026-08-20", "quantidade_questoes": 3}}
         prova = client.post(
             "/api/v1/provas/criar-prova",
             json=payload_prova
@@ -662,7 +670,7 @@ class FluxoSelecaoEEnvioTest(unittest.TestCase):
         ).test_client()
         self.metadados = {"id_turma": "Turma 2026 A", "professor": {"registro": 101, "nome": "Carlos Silva"},
                           "disciplina": {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"},
-                          "tipo": "Objetiva", "serie": 3, "bimestre": "1° bimestre", "data_de_aplicacao": "2026-08-20"}
+                          "tipo": "Objetiva", "serie": 3, "periodo_letivo": "1º período letivo", "data_de_aplicacao": "2026-08-20", "quantidade_questoes": 3}
         self.prova = self.client.post("/api/v1/provas/criar-prova", json={"prova": self.metadados}).get_json()["data"]["prova"]
         self.id = self.prova["_id"]
         self.ids = [self.questao_client.post("/api/v1/questoes/", json=payload_questao(numero)).get_json()["data"]["questao"]["_id"]
@@ -705,6 +713,143 @@ class FluxoSelecaoEEnvioTest(unittest.TestCase):
         self.assertEqual(self.salvar(self.ids[::-1]).status_code, 409)
         self.assertEqual(self.client.delete(f"/api/v1/provas/{self.id}").status_code, 409)
         self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+
+    def test_confirmacao_de_impressao_e_idempotente_sem_regenerar_versoes(self):
+        rota = f"/api/v1/provas/{self.id}/confirmar-impressao"
+        self.assertEqual(self.client.patch(rota).status_code, 409)
+        self.salvar()
+        self.assertEqual(self.client.patch(rota).status_code, 409)
+        self.enviar()
+        versoes = deepcopy(self.prova_x_aluno_dao.documentos)
+        self.assertEqual(self.client.get(f"/api/v1/provas/imprimir-provas/{self.id}").status_code, 200)
+        self.assertEqual(self.prova_dao.documentos[self.id]["status"], "Enviada ao pedagógico")
+        for _ in range(2):
+            resposta = self.client.patch(rota)
+            self.assertEqual(resposta.status_code, 200)
+            self.assertEqual(resposta.get_json()["data"]["prova"]["status"], "Impressa")
+        self.assertEqual(self.prova_dao.documentos[self.id]["status"], "Impressa")
+        self.assertEqual(self.client.get(f"/api/v1/provas/imprimir-provas/{self.id}").status_code, 200)
+        self.assertEqual(self.salvar().status_code, 409)
+        self.assertEqual(self.enviar().status_code, 409)
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+
+    def test_periodo_letivo_e_obrigatorio_na_criacao_e_persistido(self):
+        self.assertEqual(self.prova["periodo_letivo"], "1º período letivo")
+        self.assertEqual(self.prova_dao.documentos[self.id]["periodo_letivo"], "1º período letivo")
+        dados = {chave: valor for chave, valor in self.metadados.items() if chave != "periodo_letivo"}
+        resposta = self.client.post("/api/v1/provas/criar-prova", json={"prova": dados})
+        self.assertEqual(resposta.status_code, 400)
+        self.assertIn("periodo_letivo", resposta.get_json()["erro"]["mensagem"])
+        for valor in (None, 3):
+            self.assertEqual(self.client.post("/api/v1/provas/criar-prova", json={"prova": {**self.metadados, "periodo_letivo": valor}}).status_code, 400)
+
+    def test_periodo_letivo_na_consulta_no_put_e_na_imutabilidade(self):
+        dados = {**self.metadados, "periodo_letivo": " 2º período letivo "}
+        criada = self.client.post("/api/v1/provas/criar-prova", json={"prova": dados})
+        self.assertEqual(criada.get_json()["data"]["prova"]["periodo_letivo"], "2º período letivo")
+        consulta = self.client.get("/api/v1/provas/", query_string={"periodo_letivo": "1º período letivo"})
+        self.assertEqual([item["_id"] for item in consulta.get_json()["data"]["provas"]], [self.id])
+        dados.update(status="Aguardando questões", questoes=[])
+        resposta = self.client.put(f"/api/v1/provas/{self.id}", json={"prova": dados})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.get_json()["data"]["prova"]["periodo_letivo"].strip(), "2º período letivo")
+        self.assertEqual(self.prova_dao.documentos[self.id]["periodo_letivo"], "2º período letivo")
+        self.salvar()
+        dados.update(status="Em elaboração", questoes=self.ids, periodo_letivo="3º período letivo")
+        self.assertEqual(self.client.put(f"/api/v1/provas/{self.id}", json={"prova": dados}).status_code, 409)
+
+    def test_criacao_exige_quantidade_inteira_entre_dois_e_dez(self):
+        for valor in (None, True, False, 0, 1, 11, 2.5, "3"):
+            with self.subTest(valor=valor):
+                resposta = self.client.post("/api/v1/provas/criar-prova", json={"prova": {**self.metadados, "quantidade_questoes": valor}})
+                self.assertEqual(resposta.status_code, 400)
+        dados = {chave: valor for chave, valor in self.metadados.items() if chave != "quantidade_questoes"}
+        self.assertEqual(self.client.post("/api/v1/provas/criar-prova", json={"prova": dados}).status_code, 400)
+        self.assertEqual(len(self.prova_dao.documentos), 1)
+        self.assertEqual(self.prova["quantidade_questoes"], 3)
+        consulta = self.client.get(f"/api/v1/provas/?id={self.id}").get_json()["data"]["provas"][0]
+        self.assertEqual(consulta["quantidade_questoes"], 3)
+
+    def test_selecao_parcial_salva_mas_so_envia_com_a_quantidade_definida(self):
+        self.assertEqual(self.salvar(self.ids[:2]).status_code, 200)
+        base = deepcopy(self.prova_dao.documentos[self.id])
+        versoes = deepcopy(self.prova_x_aluno_dao.documentos)
+        self.assertEqual(self.enviar().status_code, 400)
+        self.assertEqual(self.prova_dao.documentos[self.id], base)
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+        excedentes = self.ids_para_limite()[:4]
+        self.assertEqual(self.salvar(excedentes).status_code, 400)
+        self.assertEqual(self.prova_dao.documentos[self.id], base)
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+        self.assertEqual(self.salvar().status_code, 200)
+        self.assertEqual(self.enviar().status_code, 200)
+
+    def test_quantidade_pode_mudar_antes_de_selecionar_e_depois_fica_bloqueada(self):
+        payload = {**self.metadados, "quantidade_questoes": 4, "status": "Aguardando questões", "questoes": []}
+        resposta = self.client.put(f"/api/v1/provas/{self.id}", json={"prova": payload})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.get_json()["data"]["prova"]["quantidade_questoes"], 4)
+        self.assertEqual(self.prova_dao.documentos[self.id]["quantidade_questoes"], 4)
+        self.salvar()
+        payload.update(quantidade_questoes=3, status="Em elaboração", questoes=self.ids)
+        self.assertEqual(self.client.put(f"/api/v1/provas/{self.id}", json={"prova": payload}).status_code, 409)
+        payload.pop("quantidade_questoes")
+        resposta = self.client.put(f"/api/v1/provas/{self.id}", json={"prova": payload})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.get_json()["data"]["prova"]["quantidade_questoes"], 4)
+        self.assertEqual(self.prova_dao.documentos[self.id]["quantidade_questoes"], 4)
+
+    def test_bases_antigas_sem_quantidade_continuam_com_limites_anteriores(self):
+        self.prova_dao.documentos[self.id].pop("quantidade_questoes")
+        self.assertEqual(self.salvar(self.ids[:2]).status_code, 200)
+        self.assertEqual(self.enviar().status_code, 200)
+        self.assertEqual(self.client.get(f"/api/v1/provas/imprimir-provas/{self.id}").status_code, 200)
+
+    def test_impressao_e_confirmacao_rejeitam_quantidade_inconsistente(self):
+        self.salvar(); self.enviar()
+        self.prova_dao.documentos[self.id]["quantidade_questoes"] = 4
+        self.assertEqual(self.client.get(f"/api/v1/provas/imprimir-provas/{self.id}").status_code, 400)
+        self.assertEqual(self.client.patch(f"/api/v1/provas/{self.id}/confirmar-impressao").status_code, 400)
+        self.prova_dao.documentos[self.id]["quantidade_questoes"] = 3
+        registro = next(iter(self.prova_x_aluno_dao.documentos.values()))
+        registro["questoes"].pop()
+        self.assertEqual(self.client.get(f"/api/v1/provas/imprimir-provas/{self.id}").status_code, 400)
+
+    def test_confirmacao_rejeita_base_invalida_sem_versoes_e_corrigida(self):
+        rota = f"/api/v1/provas/{self.id}/confirmar-impressao"
+        self.salvar()
+        self.enviar()
+        with patch.object(self.prova_x_aluno_service, "quantidade_versoes", return_value=0):
+            self.assertEqual(self.client.patch(rota).status_code, 409)
+        self.assertEqual(self.prova_dao.documentos[self.id]["status"], "Enviada ao pedagógico")
+        self.prova_dao.documentos[self.id]["status"] = "Corrigida"
+        self.assertEqual(self.client.patch(rota).status_code, 409)
+        self.assertEqual(self.prova_dao.documentos[self.id]["status"], "Corrigida")
+        self.prova_dao.documentos[self.id]["ativo"] = False
+        self.assertEqual(self.client.patch(rota).status_code, 404)
+
+    def test_impressao_inclui_nome_por_matricula_em_uma_consulta_sem_alterar_versoes(self):
+        nomes = {20260001: "Ana Maria da Silva", 20260002: "João Pereira"}
+        for matricula, nome in nomes.items():
+            self.aluno_dao.documentos[matricula]["nome_aluno"] = nome
+        self.salvar()
+        self.enviar()
+        versoes = deepcopy(self.prova_x_aluno_dao.documentos)
+        with patch.object(self.aluno_dao, "consulta", wraps=self.aluno_dao.consulta) as consulta:
+            resposta = self.client.get(f"/api/v1/provas/imprimir-provas/{self.id}")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(consulta.call_count, 1)
+        self.assertEqual({item["matricula_aluno"]: item["nome_aluno"]
+                          for item in resposta.get_json()["data"]["provas_alunos"]}, nomes)
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+
+    def test_impressao_sem_cadastro_do_aluno_nao_inventa_nome(self):
+        self.salvar()
+        self.enviar()
+        self.aluno_dao.documentos = {}
+        resposta = self.client.get(f"/api/v1/provas/imprimir-provas/{self.id}")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(all(item["nome_aluno"] == "" for item in resposta.get_json()["data"]["provas_alunos"]))
 
     def test_geracao_bloqueia_conclusao_e_outras_escritas_da_mesma_prova(self):
         self.salvar()
@@ -811,10 +956,11 @@ class FluxoSelecaoEEnvioTest(unittest.TestCase):
         return self.ids + [self.questao_client.post("/api/v1/questoes/", json=payload_questao(numero))
                            .get_json()["data"]["questao"]["_id"] for numero in range(300, 308)]
 
-    def test_aceita_uma_e_dez_questoes_na_selecao_e_no_envio(self):
+    def test_aceita_duas_e_dez_questoes_na_selecao_e_no_envio(self):
         ids = self.ids_para_limite()
-        for quantidade in (1, 10):
+        for quantidade in (2, 10):
             with self.subTest(quantidade=quantidade):
+                self.metadados["quantidade_questoes"] = quantidade
                 self.id = self.client.post("/api/v1/provas/criar-prova", json={"prova": self.metadados}) \
                     .get_json()["data"]["prova"]["_id"]
                 resposta = self.salvar(ids[:quantidade])
@@ -850,6 +996,16 @@ class FluxoSelecaoEEnvioTest(unittest.TestCase):
         self.assertEqual(self.salvar([]).status_code, 400)
         self.assertEqual(self.prova_dao.documentos[self.id]["questoes"], [])
         self.assertEqual(self.prova_x_aluno_dao.documentos, {})
+
+    def test_uma_questao_nao_altera_base_nem_versoes(self):
+        self.salvar()
+        base = deepcopy(self.prova_dao.documentos[self.id])
+        versoes = deepcopy(self.prova_x_aluno_dao.documentos)
+        resposta = self.salvar(self.ids[:1])
+        self.assertEqual(resposta.status_code, 400)
+        self.assertEqual(resposta.get_json()["erro"]["mensagem"], "Informe ao menos duas questões")
+        self.assertEqual(self.prova_dao.documentos[self.id], base)
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
 
     def test_salvar_sem_mudanca_preserva_gabaritos_e_id_da_base(self):
         primeira = self.salvar()
