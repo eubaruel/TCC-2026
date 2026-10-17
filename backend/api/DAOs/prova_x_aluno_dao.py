@@ -77,3 +77,16 @@ class Prova_x_aluno_dao:
             "id_prova": obj_prova_x_aluno.id_prova,
             "questoes": [questao.copy() for questao in obj_prova_x_aluno.questoes]
         }
+
+    def salvar_correcao(self, registro, correcao) -> bool:
+        resultado = self.__colecao.update_one(
+            {"_id": ObjectId(registro["_id"]), "id_prova": registro["id_prova"], "questoes": registro["questoes"]},
+            {"$set": {"correcao": correcao}}
+        )
+        return resultado.matched_count > 0
+
+    def buscar_por_ids(self, ids):
+        registros = list(self.__colecao.find({"_id": {"$in": [ObjectId(id_) for id_ in ids]}}))
+        for registro in registros:
+            registro["_id"] = str(registro["_id"])
+        return registros

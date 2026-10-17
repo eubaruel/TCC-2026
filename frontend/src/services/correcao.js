@@ -1,6 +1,9 @@
 import { api } from "./api";
 import { recortarCartao } from "@/utils/recortarCartao";
 
+export const criarLoteCorrecao = (entradas) => api("/provas/lotes-correcao", { method: "POST", body: { entradas } });
+export const buscarLoteCorrecao = (id) => api(`/provas/lotes-correcao/${id}`);
+
 export async function corrigirImagens(arquivos, atualizar = () => {}) {
   const resultados = [], erros = [];
   let lote = [], bytes = 0, preparadas = 0, processadas = 0, recortadas = 0;
@@ -9,6 +12,7 @@ export async function corrigirImagens(arquivos, atualizar = () => {}) {
     if (!lote.length) return;
     const form = new FormData();
     lote.forEach((item) => form.append("imagens", item.imagem));
+    form.append("ids_provas_alunos", JSON.stringify(lote.map((item) => item.id_prova_aluno || null)));
     try {
       const dados = await api("/provas/corrigir-provas", { method: "POST", body: form });
       if (!Array.isArray(dados?.resultados) || !Array.isArray(dados?.erros)) throw new Error("Resposta de correção inválida.");
@@ -29,7 +33,7 @@ export async function corrigirImagens(arquivos, atualizar = () => {}) {
       erros.push({ indice, arquivo: original.name, mensagem: "Selecione uma imagem válida e não vazia." });
       processadas++; preparadas++; progresso(); continue;
     }
-    const { arquivo: imagem, recortada } = await recortarCartao(original);
+    const { arquivo: imagem, recortada, id_prova_aluno } = await recortarCartao(original);
     preparadas++; if (recortada) recortadas++;
     if (imagem.size > 5 * 1024 * 1024) {
       erros.push({ indice, arquivo: original.name, mensagem: "Imagem acima de 5 MiB. Não foi possível reduzi-la com segurança; digitalize em um tamanho menor." });
@@ -37,7 +41,7 @@ export async function corrigirImagens(arquivos, atualizar = () => {}) {
     }
     // A API aceita 50 arquivos; reserva espaço para o multipart dentro do limite de 50 MiB.
     if (lote.length === 50 || bytes + imagem.size > 40 * 1024 * 1024) await enviar();
-    lote.push({ indice, imagem }); bytes += imagem.size; progresso();
+    lote.push({ indice, imagem, id_prova_aluno }); bytes += imagem.size; progresso();
     await new Promise((resolve) => setTimeout(resolve, 0)); // Permite atualizar a tela entre imagens.
   }
   await enviar();

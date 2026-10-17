@@ -692,27 +692,41 @@ test("cartão vetorial preserva dez colunas, cinco alternativas e geometria do Q
   assert.match(html, />NOME DO ALUNO POR EXTENSO<\/text>/);
 });
 
-function ambienteImpressao(versoes, globais, falhaConfirmacao = null) {
+function ambienteImpressao(versoes, globais) {
   const { banco, prova, servicos } = ambiente();
   prova.status = "Enviada ao pedagógico";
   const qrs = [];
-  const confirmacoes = [];
   const draftModulo = carregarOpcoes("stores/provaDraft.js", { pinia: { defineStore: (_, opcoes) => opcoes } });
-  const dados = versoes || [{ id_prova_aluno: "versao-individual", matricula_aluno: 20260001, nome_aluno: "Ana Maria da Silva", questoes: [banco[2], banco[0]] }];
+  const dados = versoes || [{ id_prova_aluno: "versao-individual", matricula_aluno: 20260001, nome_aluno: "Ana Maria da Silva", turma_aluno: "Turma A", questoes: [banco[2], banco[0]] }];
   const opcoes = carregarOpcoes("views/ImprimirProvasView.vue", {
     qrcode: { toDataURL: async (id) => { qrs.push(id); return `qr:${id}`; } },
     "@/components/CartaoResposta.vue": {}, "@/components/PreviewProva.vue": {},
-    "@/services/provas": { ...servicos, confirmarImpressao: async (id) => {
-      confirmacoes.push(id);
-      if (falhaConfirmacao) throw falhaConfirmacao;
-      return { prova: { ...prova, status: "Impressa" } };
-    }, imprimirProvas: async (id) => {
+    "@/components/ListaTurma.vue": {},
+    "@/utils/listasTurma": carregarOpcoes("utils/listasTurma.js", {}),
+    "@/services/provas": { ...servicos, imprimirProvas: async (id) => {
       assert.equal(id, prova._id); return { provas_alunos: dados };
     } },
     "@/services/templates": { obterTemplateProva: async () => "template" }, "@/stores/provaDraft": draftModulo,
     "@/utils/cartaoResposta": { CARTAO_RESPOSTA: { qr: { margem: 4 } } },
   }, globais).default;
-  return { tela: instancia(opcoes, { id: prova._id }), prova, dados, qrs, confirmacoes };
+  return { tela: instancia(opcoes, { id: prova._id }), prova, dados, qrs };
+}
+
+function ambienteConfirmacaoImpressao(responder) {
+  const { prova, servicos } = ambiente();
+  prova.status = "Enviada ao pedagógico";
+  const confirmacoes = [], modais = [];
+  const opcoes = carregarOpcoes("views/ProvasView.vue", {
+    "@/stores/auth": {}, "@/components/CriarProvaBase.vue": {},
+    "@/services/provas": { ...servicos, confirmarImpressao: async (id) => {
+      confirmacoes.push(id);
+      return responder ? responder() : { prova: { ...prova, status: "Impressa" } };
+    } },
+  }, { window: { $modal: { abrir: (opcoes) => modais.push(opcoes) } } }).default;
+  const tela = instancia(opcoes, { authStore: { isProcessoPedagogico: true, isProfessor: false } });
+  const card = tela.adaptarProva(prova);
+  tela.minhasProvas = [card];
+  return { tela, card, confirmacoes, modais, opcoes };
 }
 
 test("impressão usa a ordem individual e gera QR com id_prova_aluno", async () => {
@@ -765,21 +779,70 @@ test("serviço de impressão chama a rota individualizada", async () => {
   assert.deepEqual(chamadas, ["/provas/imprimir-provas/base-1"]);
 });
 
-test("confirmar impressão persiste o status e impede duplicação ou regressão de corrigida", async () => {
-  const { tela, confirmacoes } = ambienteImpressao();
-  await tela.carregar();
-  tela.confirmando = true;
-  await tela.confirmarImpressao();
+test("card solicita confirmação em modal e só chama API após confirmar", async () => {
+  const { tela, card, confirmacoes, modais } = ambienteConfirmacaoImpressao();
+  tela.solicitarConfirmacaoImpressao(card);
+  assert.equal(modais[0].tipo, "confirmacao");
+  assert.match(modais[0].mensagem, /Confirmar impressão da prova\?/);
   assert.equal(confirmacoes.length, 0);
-  tela.confirmando = false;
-  await tela.confirmarImpressao();
-  assert.equal(tela.prova.status, "Impressa");
+  assert.equal(card.status, "Enviada ao pedagógico");
+  // Fechar/cancelar o modal não executa onConfirm e não altera o status.
+  tela.solicitarConfirmacaoImpressao(card);
+  assert.equal(confirmacoes.length, 0);
+  await modais[1].onConfirm();
+  assert.equal(card.status, "Impressa");
+  assert.equal(tela.provasRecebidas.length, 0);
+  assert.equal(tela.provasImpressas.length, 1);
   assert.equal(confirmacoes.length, 1);
-  assert.match(tela.aviso, /Impressão confirmada/);
-  await tela.confirmarImpressao();
-  tela.prova.status = "Corrigida";
-  await tela.confirmarImpressao();
+  assert.equal(confirmacoes[0], card.id);
+  await tela.confirmarImpressao(card);
+  card.status = "Corrigida";
+  tela.solicitarConfirmacaoImpressao(card);
+  await tela.confirmarImpressao(card);
   assert.equal(confirmacoes.length, 1);
+  assert.equal(modais.length, 2);
+});
+
+test("confirmação bloqueia professor e envios repetidos enquanto aguarda a API", async () => {
+  let resolver;
+  const contexto = ambienteConfirmacaoImpressao(() => new Promise((resolve) => { resolver = resolve; }));
+  const { tela, card, modais, confirmacoes } = contexto;
+  tela.authStore.isProcessoPedagogico = false;
+  tela.solicitarConfirmacaoImpressao(card);
+  await tela.confirmarImpressao(card);
+  assert.equal(modais.length, 0); assert.equal(confirmacoes.length, 0);
+  tela.authStore.isProcessoPedagogico = true;
+  const pendente = tela.confirmarImpressao(card);
+  assert.equal(tela.confirmandoImpressaoId, card.id);
+  assert.equal(card.status, "Enviada ao pedagógico");
+  tela.solicitarConfirmacaoImpressao(card);
+  await tela.confirmarImpressao(card);
+  assert.equal(confirmacoes.length, 1); assert.equal(modais.length, 0);
+  resolver({ prova: { ...card, _id: card.id, status: "Impressa" } });
+  await pendente;
+  assert.equal(tela.confirmandoImpressaoId, null);
+  assert.equal(card.status, "Impressa");
+});
+
+test("botão de confirmação fica ao lado da impressora só para pedagógico e provas recebidas", async () => {
+  const { createSSRApp } = require("vue"), { renderToString } = require("@vue/server-renderer");
+  const { opcoes, card } = ambienteConfirmacaoImpressao();
+  const template = parse(fs.readFileSync(path.join(__dirname, "../src/views/ProvasView.vue"), "utf8")).descriptor.template.content;
+  for (const [pedagogico, status, aba, esperado] of [[true, "Enviada ao pedagógico", "minhas", true], [true, "Impressa", "impressas", false], [true, "Corrigida", "corrigidas", false], [false, "Enviada ao pedagógico", "enviadas", false]]) {
+    const html = await renderToString(createSSRApp({ ...opcoes, template,
+      setup: () => ({ authStore: { isProcessoPedagogico: pedagogico, isProfessor: !pedagogico } }),
+      data: () => ({ ...opcoes.data(), carregando: false, abaAtiva: aba, minhasProvas: [{ ...card, status }] }),
+    }));
+    assert.equal(html.includes('aria-label="Confirmar impressão realizada"'), esperado);
+    if (esperado) assert.match(html, /🖨️\s*<\/button>\s*<button[^>]*btn-confirmar-impressao/);
+  }
+  const impressao = carregarOpcoes("views/ImprimirProvasView.vue", {
+    qrcode: {}, "@/components/CartaoResposta.vue": {}, "@/components/PreviewProva.vue": {}, "@/components/ListaTurma.vue": {},
+    "@/utils/listasTurma": {}, "@/services/provas": {}, "@/services/templates": {}, "@/stores/provaDraft": {}, "@/utils/cartaoResposta": {},
+  }).default;
+  assert.equal(impressao.methods.confirmarImpressao, undefined);
+  const fonte = fs.readFileSync(path.join(__dirname, "../src/views/ImprimirProvasView.vue"), "utf8");
+  assert.doesNotMatch(fonte, /Confirmar impressão realizada|confirmando|confirmarImpressao/);
 });
 
 test("serviço confirma impressão por PATCH dedicado", async () => {
@@ -791,14 +854,16 @@ test("serviço confirma impressão por PATCH dedicado", async () => {
 });
 
 test("falha ao confirmar impressão mantém status anterior e permite tentar novamente", async () => {
-  const { tela, confirmacoes } = ambienteImpressao(undefined, undefined, new Error("API indisponível"));
-  await tela.carregar();
-  await tela.confirmarImpressao();
-  assert.equal(tela.prova.status, "Enviada ao pedagógico");
-  assert.equal(tela.confirmando, false);
-  assert.match(tela.aviso, /API indisponível/);
-  await tela.confirmarImpressao();
-  assert.equal(confirmacoes.length, 2);
+  for (const responder of [() => { throw new Error("API indisponível"); }, () => ({ prova: { status: "Enviada ao pedagógico" } })]) {
+    const { tela, card, confirmacoes, modais } = ambienteConfirmacaoImpressao(responder);
+    await tela.confirmarImpressao(card);
+    assert.equal(card.status, "Enviada ao pedagógico");
+    assert.equal(tela.confirmandoImpressaoId, null);
+    assert.equal(modais[0].tipo, "alerta");
+    assert.match(modais[0].mensagem, /API indisponível|servidor não confirmou/);
+    await tela.confirmarImpressao(card);
+    assert.equal(confirmacoes.length, 2);
+  }
 });
 
 test("impressão remove contagem e reserva as margens dentro da prova, sem URL ou paginação", () => {
@@ -807,7 +872,7 @@ test("impressão remove contagem e reserva as margens dentro da prova, sem URL o
   assert.doesNotMatch(descriptor.template.content, /\{\{\s*versoes.length\s*\}\}/);
   const css = descriptor.styles.find((estilo) => !estilo.scoped).content;
   assert.match(css, /@page\s*\{[^}]*margin:\s*0\s*;/);
-  assert.match(css, /\.versao-aluno\s*\{[^}]*padding:\s*12mm\s*!important/);
+  assert.match(css, /\.documento-impressao\s*\{[^}]*padding:\s*12mm\s*!important/);
   assert.match(css, /box-decoration-break:\s*clone/);
   assert.match(css, /\.sidebar[^}]*display:\s*none\s*!important/);
 });
@@ -816,18 +881,47 @@ test("espera as imagens antes de imprimir e bloqueia impressão se uma delas fal
   let impressoes = 0;
   let decodificadas = 0;
   let falhar = false;
-  const { tela, confirmacoes } = ambienteImpressao(undefined, {
+  const { tela } = ambienteImpressao(undefined, {
     window: { print: () => { assert.equal(decodificadas, 2); impressoes++; } },
     document: { fonts: { ready: Promise.resolve() }, querySelectorAll: () => [{ src: "figura.png" }, { href: { baseVal: "cartao.png" } }] },
     Image: class { async decode() { if (falhar) throw new Error("Imagem indisponível"); decodificadas++; } },
   });
   await tela.carregar(); await tela.imprimir();
   assert.equal(impressoes, 1);
-  assert.equal(confirmacoes.length, 0);
   assert.equal(tela.prova.status, "Enviada ao pedagógico");
   assert.equal(tela.imprimindo, false);
   falhar = true;
   await tela.imprimir();
   assert.match(tela.erro, /imagem não carregou/);
   assert.equal(impressoes, 1);
+});
+
+test("impressão agrupa duas listas e as versões de cada turma sem misturar alunos", async () => {
+  const contexto = ambienteImpressao();
+  const base = contexto.dados[0];
+  contexto.prova.id_turma = ["1ºI - INFORMÁTICA", "1ºH - INFORMÁTICA"];
+  contexto.dados.splice(0, 1,
+    { ...base, matricula_aluno: 20260002, nome_aluno: "Bruno Teste", turma_aluno: "1ºI - INFORMÁTICA" },
+    { ...base, matricula_aluno: 20260001, nome_aluno: "Ana Teste", turma_aluno: "1ºI - INFORMÁTICA" },
+    { ...base, matricula_aluno: 20260003, nome_aluno: "Carla Teste", turma_aluno: "1ºH - INFORMÁTICA" });
+  await contexto.tela.carregar();
+  assert.equal(contexto.tela.erro, "");
+  assert.equal(contexto.tela.turmas.length, 2);
+  assert.deepEqual([...contexto.tela.turmas[1].alunos.map(a => a.nome_aluno)], ["Ana Teste", "Bruno Teste"]);
+  assert.deepEqual([...contexto.tela.turmas[1].alunos.map(a => a.numero_chamada)], [1, 2]);
+  const fonte = parse(fs.readFileSync(path.join(__dirname, "../src/views/ImprimirProvasView.vue"), "utf8")).descriptor.template.content;
+  assert.match(fonte, /ListaTurma[^>]*tipo="notas"/);
+  assert.match(fonte, /ListaTurma[^>]*tipo="entrega"/);
+  assert.match(fonte, /v-for="versao in grupo.alunos"/);
+});
+
+test("nome ou turma indisponíveis impedem imprimir listas incorretas", async () => {
+  for (const campo of ["nome_aluno", "turma_aluno"]) {
+    const contexto = ambienteImpressao();
+    contexto.dados[0][campo] = "";
+    await contexto.tela.carregar();
+    assert.match(contexto.tela.erro, /Confira o nome e a turma/);
+    assert.equal(contexto.tela.versoes.length, 0);
+    assert.equal(contexto.tela.turmas.length, 0);
+  }
 });

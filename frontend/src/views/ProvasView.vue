@@ -161,6 +161,19 @@
               🖨️
             </button>
             <button
+              v-if="authStore.isProcessoPedagogico && prova.status === 'Enviada ao pedagógico'"
+              @click="solicitarConfirmacaoImpressao(prova)"
+              class="btn-confirmar-impressao"
+              title="Confirmar impressão realizada"
+              aria-label="Confirmar impressão realizada"
+              :disabled="confirmandoImpressaoId !== null"
+            >
+              <span v-if="confirmandoImpressaoId === prova.id">…</span>
+              <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="m5 12 4 4L19 6" />
+              </svg>
+            </button>
+            <button
               v-if="authStore.isProcessoPedagogico && provaEditavel(prova)"
               @click="excluirProva(prova.id)"
               class="btn-excluir-prova"
@@ -179,7 +192,7 @@
 
 <script>
 import { useAuthStore } from "@/stores/auth";
-import { excluirProva as excluirProvaApi, listarProvas, provaEditavel } from "@/services/provas";
+import { excluirProva as excluirProvaApi, listarProvas, provaEditavel, confirmarImpressao as confirmarImpressaoApi } from "@/services/provas";
 import CriarProvaBase from "@/components/CriarProvaBase.vue";
 
 export default {
@@ -196,6 +209,7 @@ export default {
     temporizadorAviso: null,
     carregando: true,
     excluindoId: null,
+    confirmandoImpressaoId: null,
     mostrarCriacaoBase: false,
   }),
   computed: {
@@ -289,6 +303,26 @@ export default {
     },
     visualizarImpressao(prova) {
       this.$router.push(`/provas/imprimir/${prova.id}`);
+    },
+    solicitarConfirmacaoImpressao(prova) {
+      if (!this.authStore.isProcessoPedagogico || this.confirmandoImpressaoId !== null || prova.status !== "Enviada ao pedagógico") return;
+      window.$modal.abrir({
+        titulo: "Confirmar impressão",
+        mensagem: "Confirmar impressão da prova? Confirme somente se ela já foi impressa.",
+        tipo: "confirmacao",
+        onConfirm: () => this.confirmarImpressao(prova),
+      });
+    },
+    async confirmarImpressao(prova) {
+      if (!this.authStore.isProcessoPedagogico || this.confirmandoImpressaoId !== null || prova.status !== "Enviada ao pedagógico") return;
+      this.confirmandoImpressaoId = prova.id;
+      try {
+        const resposta = await confirmarImpressaoApi(prova.id);
+        if (resposta.prova?.status !== "Impressa") throw new Error("O servidor não confirmou o status da impressão. Tente novamente.");
+        Object.assign(prova, this.adaptarProva(resposta.prova));
+      } catch (error) {
+        window.$modal.abrir({ titulo: "Não foi possível confirmar a impressão", mensagem: this.mensagemErro(error), tipo: "alerta" });
+      } finally { this.confirmandoImpressaoId = null; }
     },
     excluirProva(id) {
       if (!this.authStore.isProcessoPedagogico) return;
@@ -510,6 +544,10 @@ export default {
   background: #f0f0f0;
   transform: scale(1.05);
 }
+
+.prova-actions .btn-confirmar-impressao { color: #00488b; display: inline-flex; align-items: center; justify-content: center; }
+.tema-escuro .prova-actions .btn-confirmar-impressao { color: #7bbcff; }
+.prova-actions button:disabled { opacity: .5; cursor: wait; transform: none; }
 
 .tema-escuro .prova-actions button:hover {
   background: #3a3a3a;

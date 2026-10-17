@@ -31,6 +31,13 @@ const routes = [
     meta: { requiresAuth: true, requiresProcesso: true },
   },
   {
+    path: "/provas/notas/:id",
+    name: "ImprimirNotasView",
+    component: () => import("@/views/ImprimirNotasView.vue"),
+    props: true,
+    meta: { requiresAuth: true, requiresProcesso: true },
+  },
+  {
     path: "/",
     component: TelaPrincipal,
     meta: { requiresAuth: true },

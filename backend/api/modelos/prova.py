@@ -6,6 +6,7 @@ class Prova:
     STATUS_EDITAVEIS = ("Aguardando questões", "Em elaboração")
     STATUS_ENVIADA = "Enviada ao pedagógico"
     STATUS_IMPRESSA = "Impressa"
+    STATUS_CORRIGIDA = "Corrigida"
 
     def __init__(self):
         self.__id_hash = None   

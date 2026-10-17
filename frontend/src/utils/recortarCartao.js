@@ -50,7 +50,7 @@ export function localizarFaixa(imagem, codigo) {
 }
 
 export async function recortarCartao(arquivo) {
-  let bitmap, analise, alinhada, saida;
+  let bitmap, analise, alinhada, saida, id_prova_aluno = null;
   try {
     bitmap = await createImageBitmap(arquivo);
     const escala = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
@@ -59,6 +59,7 @@ export async function recortarCartao(arquivo) {
     let pixels = analise.getContext("2d").getImageData(0, 0, analise.width, analise.height);
     const codigo = jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: "dontInvert" });
     if (!codigo || !/^[a-f\d]{24}$/i.test(codigo.data)) return { arquivo, recortada: false };
+    id_prova_aluno = codigo.data;
 
     const { topLeftCorner: origem, topRightCorner: direita } = codigo.location;
     const angulo = Math.atan2(direita.y - origem.y, direita.x - origem.x);
@@ -75,7 +76,7 @@ export async function recortarCartao(arquivo) {
     const localizacao = Object.fromEntries(Object.entries(codigo.location).map(([nome, ponto]) => [nome, transformar(ponto)]));
     pixels = contexto.getImageData(0, 0, alinhada.width, alinhada.height);
     const faixa = localizarFaixa(pixels, { ...codigo, location: localizacao });
-    if (!faixa) return { arquivo, recortada: false };
+    if (!faixa) return { arquivo, recortada: false, id_prova_aluno };
 
     // Desenha a partir do original, sem reduzir a resolução das marcações ou do QR.
     saida = canvas(alinhada.width / escala, faixa.altura / escala);
@@ -84,12 +85,12 @@ export async function recortarCartao(arquivo) {
     destino.translate(alinhada.width / (2 * escala), (alinhada.height / 2 - faixa.y) / escala);
     destino.rotate(-angulo); destino.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
     const blob = await new Promise((resolve) => saida.toBlob(resolve, "image/png"));
-    if (!blob || blob.size > 5 * 1024 * 1024) return { arquivo, recortada: false };
+    if (!blob || blob.size > 5 * 1024 * 1024) return { arquivo, recortada: false, id_prova_aluno };
     const nome = `${arquivo.name.replace(/\.[^.]+$/, "")}.png`;
-    return { arquivo: new File([blob], nome, { type: "image/png", lastModified: arquivo.lastModified }), recortada: true };
+    return { arquivo: new File([blob], nome, { type: "image/png", lastModified: arquivo.lastModified }), recortada: true, id_prova_aluno };
   } catch (_) {
     // Falha de leitura/detecção nunca resulta em um recorte presumido.
-    return { arquivo, recortada: false };
+    return { arquivo, recortada: false, id_prova_aluno };
   } finally {
     bitmap?.close();
     // Libera os buffers imediatamente, inclusive nos caminhos de preservação do original.
