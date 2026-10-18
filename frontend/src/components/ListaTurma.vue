@@ -110,7 +110,7 @@ h2 { margin: 0; font-size: 11pt; line-height: 1.4; font-weight: 700; }
 .datas-controle > div + div { border-left: .25mm solid #333; }
 .assinatura-professor { min-height: 12mm; padding: 1mm; border: .25mm solid #333; border-top: 0; }
 .entrega-rodape { padding-top: 12mm; }
-.entrega-rodape > div { width: 100mm; max-width: 100%; border-top: .25mm solid #333; padding-top: 2mm; }
+.entrega-rodape > div { width: 55%; max-width: 100%; border-top: .25mm solid #333; padding-top: 2mm; }
 @media print {
   .lista-turma-folha { min-height: 296mm; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .lista-alunos thead { display: table-header-group; }

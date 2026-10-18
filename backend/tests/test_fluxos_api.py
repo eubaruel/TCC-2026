@@ -828,6 +828,70 @@ class FluxoSelecaoEEnvioTest(unittest.TestCase):
         self.prova_dao.documentos[self.id]["ativo"] = False
         self.assertEqual(self.client.patch(rota).status_code, 404)
 
+    def _preparar_correcao_parcial(self, total=4, processadas=3):
+        self.salvar()
+        self.enviar()
+        self.client.patch(f"/api/v1/provas/{self.id}/confirmar-impressao")
+        documentos = self.prova_x_aluno_dao.documentos
+        modelo = deepcopy(next(iter(documentos.values())))
+        documentos.clear()
+        for indice in range(total):
+            versao = {**deepcopy(modelo), "_id": f"{indice + 10000:024x}", "matricula_aluno": indice + 9000}
+            if indice < processadas:
+                versao["tentativa_correcao"] = {"sucesso": indice % 2 == 0, "concluida_em": "2026-10-18T22:00:00+00:00"}
+            documentos[(self.id, versao["matricula_aluno"])] = versao
+
+    def test_consulta_impressas_retorna_contador_com_falhas_sem_alterar_documentos(self):
+        self._preparar_correcao_parcial()
+        versoes = deepcopy(self.prova_x_aluno_dao.documentos)
+        resposta = self.client.get("/api/v1/provas/", query_string={"status": "Impressa"})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json["data"]["provas"][0]["progresso_correcao"], {"total": 4, "processadas": 3})
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+        self.assertEqual(self.prova_dao.documentos[self.id]["status"], "Impressa")
+
+    def test_ignorar_acima_da_metade_altera_so_o_status_e_preserva_versoes(self):
+        self._preparar_correcao_parcial()
+        versoes = deepcopy(self.prova_x_aluno_dao.documentos)
+        resposta = self.client.patch(f"/api/v1/provas/{self.id}/ignorar-provas-nao-corrigidas")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json["data"]["prova"]["status"], "Corrigida")
+        self.assertEqual(resposta.json["data"]["prova"]["progresso_correcao"], {"total": 4, "processadas": 3})
+        self.assertEqual(self.prova_x_aluno_dao.documentos, versoes)
+        self.assertNotIn("operacao_em_andamento", self.prova_dao.documentos[self.id])
+        self.assertEqual(self.client.patch(f"/api/v1/provas/{self.id}/ignorar-provas-nao-corrigidas").status_code, 409)
+
+    def test_ignorar_nao_aceita_metade_ou_menos_e_reconsulta_contagem_na_confirmacao(self):
+        self._preparar_correcao_parcial()
+        rota = f"/api/v1/provas/{self.id}/ignorar-provas-nao-corrigidas"
+        # A lista informa 3/4, mas uma versão muda antes da confirmação.
+        self.assertEqual(self.client.get(f"/api/v1/provas/?id={self.id}").json["data"]["provas"][0]["progresso_correcao"]["processadas"], 3)
+        list(self.prova_x_aluno_dao.documentos.values())[2].pop("tentativa_correcao")
+        for tentativas in (2, 1, 0):
+            if tentativas < 2:
+                list(self.prova_x_aluno_dao.documentos.values())[tentativas].pop("tentativa_correcao")
+            # Números enviados pelo navegador não podem contornar a contagem do banco.
+            self.assertEqual(self.client.patch(rota, json={"processadas": 4, "total": 4}).status_code, 409)
+            self.assertEqual(self.prova_dao.documentos[self.id]["status"], "Impressa")
+            self.assertNotIn("operacao_em_andamento", self.prova_dao.documentos[self.id])
+        self.prova_x_aluno_dao.documentos.clear()
+        self.assertEqual(self.client.patch(rota).status_code, 409)
+
+    def test_ignorar_rejeita_status_diferente_de_impressa_e_base_inexistente(self):
+        self._preparar_correcao_parcial()
+        for status in ("Aguardando questões", "Em elaboração", "Enviada ao pedagógico", "Corrigida"):
+            self.prova_dao.documentos[self.id]["status"] = status
+            self.assertEqual(self.client.patch(f"/api/v1/provas/{self.id}/ignorar-provas-nao-corrigidas").status_code, 409)
+        self.assertEqual(self.client.patch(f"/api/v1/provas/{'f' * 24}/ignorar-provas-nao-corrigidas").status_code, 404)
+
+    def test_ignorar_conta_maioria_estrita_com_total_impar_e_respeita_reserva(self):
+        self._preparar_correcao_parcial(total=3, processadas=2)
+        self.assertTrue(self.prova_dao.reservar_operacao(self.id, "outra-operacao"))
+        rota = f"/api/v1/provas/{self.id}/ignorar-provas-nao-corrigidas"
+        self.assertEqual(self.client.patch(rota).status_code, 409)
+        self.prova_dao.liberar_operacao(self.id, "outra-operacao")
+        self.assertEqual(self.client.patch(rota).status_code, 200)
+
     def test_impressao_inclui_nome_por_matricula_em_uma_consulta_sem_alterar_versoes(self):
         nomes = {20260001: "Ana Maria da Silva", 20260002: "João Pereira"}
         for matricula, nome in nomes.items():

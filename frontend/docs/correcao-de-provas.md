@@ -38,13 +38,27 @@ Sem QR válido/cadastro correspondente, aparece **Aluno não identificado**, com
 
 A identificação foi conferida com o mesmo lote real: a falha do PNG de Bruno passou a exibir matrícula `20260002`, nome `Bruno Demonstracao` e turma `Turma MVP 2026 A`, usando o QR já lido no frontend. O cartão sem QR e o arquivo corrompido permaneceram explicitamente sem aluno identificado. A API principal foi reiniciada para carregar o novo contrato; o microserviço não foi modificado.
 
-A API **persiste as notas e ambos os gabaritos na versão individual** e, após uma correção bem-sucedida, altera
-a prova-base de `Impressa` para o status existente `Corrigida`, utilizando o
-`id_prova` da versão individual. Outros status não mudam. A interface comunica
-que os resultados confirmados foram salvos e que a transição pode ocorrer mesmo com cartões
-pendentes: não é uma confirmação de correção de todos os alunos. Se todas as
-imagens falharem, a base permanece impressa. Ao retornar à listagem, a prova
-aparece em **Provas Corrigidas**. O microserviço não foi alterado.
+A API **persiste as notas e ambos os gabaritos na versão individual**. Cada versão
+identificada recebe também `tentativa_correcao`, inclusive quando o processamento falha.
+A prova-base passa automaticamente de `Impressa` para `Corrigida` quando a quantidade de versões
+com tentativa registrada for igual ao total de registros com seu `id_prova` em
+`provas_x_alunos`, e esse total for maior que zero. Cada registro conta uma vez:
+reenvios não aumentam a contagem, e envios separados ou simultâneos usam os dados
+persistidos. Correções antigas já salvas também contam. Outros status não mudam.
+Uma imagem sem identificação individual confiável ou recusada por fila ocupada não
+é atribuída a uma versão por suposição. Falhas de persistência e versões alteradas
+durante a leitura não completam a contagem. Regenerar versões limpa as correções e
+tentativas anteriores. Na transição automática, `Corrigida` indica que todas as versões foram tentadas;
+as falhas continuam visíveis e impedem a impressão das notas daquele lote.
+O microserviço não foi alterado.
+
+Na aba **Provas Impressas**, o contador **Corrigidas: X / Y** mostra a quantidade
+de versões com tentativa registrada e o total daquela prova. Depois de mais da
+metade, o processo pedagógico pode usar **Ignorar provas não corrigidas** ao lado
+do contador. O modal informa as quantidades e só a confirmação envia o PATCH
+`/provas/{id}/ignorar-provas-nao-corrigidas`. A API revalida a maioria estrita e
+o status antes de marcar a base como `Corrigida`. As versões restantes não recebem
+notas ou tentativas fictícias, e lotes com falhas continuam bloqueados para impressão.
 
 ## Organização e impressão das notas
 
@@ -77,9 +91,9 @@ Deixe zero no primeiro teste. Os ajustes são da tela atual, não alteram notas.
 
 O componente `NotaSobreposta.vue` imprime exclusivamente o número, em preto,
 Arial 12 pt, peso normal (400), com duas casas decimais. A posição deriva do centro do campo NOTA no
-cartão vetorial, em `utils/cartaoResposta.js`, e das margens de 16 mm nas laterais
-e 13 mm no topo. O cartão mantém a proporção e ocupa 178 mm de largura na folha A4.
-O centro inicial da nota é aproximadamente X=24,27 mm e Y=29,98 mm.
+cartão vetorial, em `utils/cartaoResposta.js`, e das margens de 6,3 mm nas laterais
+e 6,27 mm no topo. O cartão mantém a proporção e ocupa 197,4 mm de largura na folha A4.
+O centro inicial da nota é aproximadamente X=15,47 mm e Y=25,11 mm.
 Para folhas já impressas com o modelo anterior, refaça o teste de alinhamento:
 a mudança não reposiciona o gabarito que já está no papel.
 `ImprimirNotasView.vue` oculta os controles e a tabela na impressão, gera uma

@@ -178,6 +178,29 @@ O autor:
 
 ## Enunciado
 
+No cadastro e na atualização, o enunciado aceita até **7.000 caracteres de texto**;
+cada alternativa aceita até **2.000**, sem limite total adicional por questão.
+A contagem inclui espaços e pontuação, sem agrupar nem aparar espaços; ignora
+tags, atributos HTML, comentários e dados base64 de imagens. Entidades HTML são
+decodificadas (`&amp;` conta como um caractere), assim como no contador do editor.
+São contados caracteres Unicode, não bytes; quebras CRLF/CR viram LF. Tags de
+parágrafo e `<br>` não somam caracteres, mas quebras presentes no texto somam.
+
+Exceder qualquer limite retorna HTTP `400`, com `mensagem: "Dados inválidos"`
+e a indicação do campo/limite em `erro.detalhes`, antes de cadastrar ou atualizar.
+Nenhum conteúdo é truncado automaticamente. As consultas e os registros antigos
+não são alterados; o limite passa a ser exigido quando esses registros são editados.
+O limite de caracteres não determina a quantidade de páginas da questão impressa.
+
+Cada campo (enunciado ou alternativa) aceita ainda **até três imagens** (`img`).
+Essa validação também ocorre no POST/PUT, retorna HTTP 400 com o campo em
+`erro.detalhes` antes de gravar e não remove conteúdo automaticamente. Não há
+limite total adicional de imagens por questão. No frontend, inserções novas são
+limitadas antes de entrar no editor, com aviso ao descartar excedentes, e os
+arquivos são comprimidos proporcionalmente para até 800 × 600 px, em JPEG a 75%.
+A API valida a quantidade, não executa essa compressão. Registros antigos não
+são recomprimidos ou migrados automaticamente.
+
 O campo `enunciado`:
 
 - deve ser uma string;
