@@ -43,10 +43,10 @@
                       <span v-if="questao.professor?.nome">Autor: {{ questao.professor.nome }}</span>
                     </div>
                     <details>
-                      <summary><p class="questao-resumo">{{ resumo(questao.enunciado) }}</p><span class="ver-questao">Ver questão completa</span></summary>
+                      <summary><p class="questao-resumo texto-questao">{{ resumo(questao.enunciado) }}</p><span class="ver-questao">Ver questão completa</span></summary>
                       <!-- eslint-disable-next-line vue/no-v-html -->
-                      <div class="questao-texto" v-html="sanitizar(questao.enunciado)"></div>
-                      <ol class="alternativas">
+                      <div class="questao-texto texto-questao" v-html="sanitizar(questao.enunciado)"></div>
+                      <ol class="alternativas texto-questao">
                         <li v-for="(alternativa, index) in questao.alternativas" :key="alternativa.id" :class="{ correta: alternativa.id === questao.alternativa_correta }">
                           <strong>{{ letras[index] }})</strong>
                           <!-- eslint-disable-next-line vue/no-v-html -->
@@ -74,7 +74,11 @@
         </template>
       </section>
       <section class="painel painel-preview">
-        <PreviewProva :template="template" :metadados="metadados" :questoes="questoes" :professor="prova?.professor.nome || ''" />
+        <PreviewProva :template="template" :metadados="metadados" :questoes="questoes" :professor="prova?.professor.nome || ''">
+          <template #cabecalho>
+            <CartaoResposta v-if="prova && !carregando && !erroCarregamento" class="cabecalho-preview" :prova="prova" matricula="" qrCode="" />
+          </template>
+        </PreviewProva>
       </section>
     </div>
     <ModalSairEdicao :visivel="mostrarModalSair" :salvando="salvando" :provaSalva="Boolean(draft.provaId)"
@@ -85,6 +89,7 @@
 <script>
 import QuestaoEditor from "@/components/QuestaoEditor.vue";
 import PreviewProva from "@/components/PreviewProva.vue";
+import CartaoResposta from "@/components/CartaoResposta.vue";
 import ModalSairEdicao from "@/components/ModalSairEdicao.vue";
 import FiltrosQuestoes from "@/components/FiltrosQuestoes.vue";
 import { useAuthStore } from "@/stores/auth";
@@ -97,7 +102,7 @@ import { filtrarQuestoes, novosFiltrosQuestoes } from "@/utils/filtrosQuestoes";
 
 export default {
   name: "CriarProvaView",
-  components: { QuestaoEditor, PreviewProva, ModalSairEdicao, FiltrosQuestoes },
+  components: { QuestaoEditor, PreviewProva, CartaoResposta, ModalSairEdicao, FiltrosQuestoes },
   props: { id: { type: String, required: true } },
   setup() {
     return { authStore: useAuthStore(), draft: useProvaDraftStore() };
@@ -414,6 +419,8 @@ export default {
 .painel-preview {
   background: #e9ecef;
 }
+
+.cabecalho-preview { margin-bottom: 20px; }
 
 .tema-escuro .painel-preview {
   background: #111;

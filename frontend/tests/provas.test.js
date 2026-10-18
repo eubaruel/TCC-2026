@@ -52,7 +52,7 @@ function ambiente(quantidade = 3, tamanhoBanco = 3) {
     enviarProva: async (id) => { chamadas.push({ rota: "enviar", id }); prova = { ...prova, status: "Enviada ao pedagógico" }; return { prova }; },
   };
   const opcoes = carregarOpcoes("views/CriarProvaView.vue", {
-    "@/components/QuestaoEditor.vue": {}, "@/components/PreviewProva.vue": {}, "@/components/ModalSairEdicao.vue": {},
+    "@/components/QuestaoEditor.vue": {}, "@/components/PreviewProva.vue": {}, "@/components/CartaoResposta.vue": {}, "@/components/ModalSairEdicao.vue": {},
     "@/components/FiltrosQuestoes.vue": filtrosComponente, "@/utils/filtrosQuestoes": filtrosModulo,
     "@/stores/auth": {}, "@/stores/provaDraft": draftModulo, "@/services/questoes": { listarQuestoes: async () => ({ questoes: banco }) },
     "@/services/provas": servicos, "@/services/templates": { obterTemplateProva: async () => "template" },
@@ -348,6 +348,7 @@ test("visualização e Minhas Questões compartilham os filtros sem alterar o ba
     { _id: "q3", disciplina: ["HIST"], dificuldade: "Médio", professor: { nome: "Ana" }, enunciado: "Brasil", alternativas: [] },
   ];
   const opcoes = carregarOpcoes("views/QuestoesView.vue", {
+    "@/components/EditorQuill.vue": {},
     "vue-router": {}, "@/stores/auth": {}, "@/stores/provaDraft": {}, "@/components/FiltrosQuestoes.vue": filtrosComponente,
     "@/utils/filtrosQuestoes": filtrosModulo, "@/utils/html": { sanitizar: (valor) => valor },
     "@/services/disciplinas": { listarDisciplinas: async () => ({ disciplinas: [{ codigo_disciplina: "MAT", nome_disciplina: "Matemática" }] }) },
@@ -364,6 +365,112 @@ test("visualização e Minhas Questões compartilham os filtros sem alterar o ba
   assert.equal(tela.resultados.length, 2); tela.filtrosQuestoes.enunciado = "brasil";
   assert.deepEqual([...tela.resultados.map((questao) => questao.id)], ["q3"]);
   assert.equal(tela.todasQuestoes.length, 3); assert.equal(tela.carregandoQuestoes, false);
+});
+
+function ambienteCadastroQuestao() {
+  const chamadas = [], avisos = [];
+  const opcoes = carregarOpcoes("views/QuestoesView.vue", {
+    "@/components/EditorQuill.vue": {
+      props: { id: String, rotulo: String, modelValue: String, obrigatorio: Boolean },
+      setup: (props) => () => require("vue").h("div", { id: props.id, role: "textbox", "aria-label": props.rotulo, "aria-required": String(props.obrigatorio), "data-editor-quill": "" }, props.modelValue),
+    },
+    "vue-router": {}, "@/stores/auth": {}, "@/stores/provaDraft": {}, "@/components/FiltrosQuestoes.vue": filtrosComponente,
+    "@/utils/filtrosQuestoes": filtrosModulo, "@/utils/html": {
+      sanitizar: (valor) => valor,
+      htmlVazio: (valor) => !String(valor || "").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim() && !/<img\s/i.test(valor || ""),
+    },
+    "@/services/disciplinas": {}, "@/services/questoes": {
+      criarQuestao: async (payload) => chamadas.push({ rota: "criar", payload }),
+      atualizarQuestao: async (id, payload) => chamadas.push({ rota: "atualizar", id, payload }),
+      listarQuestoes: async () => ({ questoes: [] }),
+    },
+  }, { window: { $modal: { abrir: (aviso) => avisos.push(aviso) } } }).default;
+  const tela = instancia(opcoes, { authStore: { isProfessor: true, user: { nome: "Professor Teste" } },
+    disciplinas: [{ codigo_disciplina: "MAT", nome_disciplina: "Matemática" }], carregandoDisciplinas: false });
+  return { tela, opcoes, chamadas, avisos };
+}
+
+test("cadastro mostra A como correta, B a E como demais alternativas e remove o seletor de gabarito", async () => {
+  const { createSSRApp } = require("vue");
+  const { renderToString } = require("@vue/server-renderer");
+  const { tela, opcoes } = ambienteCadastroQuestao();
+  const template = parse(fs.readFileSync(path.join(__dirname, "../src/views/QuestoesView.vue"), "utf8")).descriptor.template.content;
+  const html = await renderToString(createSSRApp({ ...opcoes, template,
+    setup: () => ({ authStore: tela.authStore }),
+    data: () => ({ ...opcoes.data(), abaAtiva: "cadastrar", disciplinas: tela.disciplinas, carregandoDisciplinas: false }),
+  }));
+  assert.match(html, /Alternativa correta \*/);
+  assert.match(html, /Demais alternativas \*/);
+  assert.ok(html.indexOf("Alternativa correta *") < html.indexOf('id="alternativa-A"'));
+  assert.ok(html.indexOf('id="alternativa-A"') < html.indexOf("Demais alternativas *"));
+  assert.ok(html.indexOf("Demais alternativas *") < html.indexOf('id="alternativa-B"'));
+  for (const letra of ["A", "B", "C", "D", "E"]) {
+    assert.match(html, new RegExp(`for="alternativa-${letra}"[^>]*>${letra}\\)</label>`));
+    assert.match(html, new RegExp(`id="alternativa-${letra}"[^>]*aria-required="true"`));
+  }
+  assert.equal((html.match(/data-editor-quill/g) || []).length, 6);
+  assert.match(html, /id="enunciado-questao"[^>]*aria-label="Enunciado da questão"/);
+  assert.match(html, /aria-label="Alternativa A - correta"/);
+  assert.doesNotMatch(html, /select-correta|Selecione qual alternativa|value="Alternativa [A-E]"/);
+});
+
+test("editores vazios ou com apenas espaços não enviam questões, mas conteúdo HTML preenchido é preservado", async () => {
+  const { tela, chamadas, avisos } = ambienteCadastroQuestao();
+  Object.assign(tela.novaQuestao, { disciplina: "Matemática", assunto: "Teste", texto: "<p><br></p>" });
+  tela.novaQuestao.alternativas.forEach((alternativa, index) => { alternativa.texto = `<p><strong>Resposta ${index}</strong></p>`; });
+  await tela.salvarQuestao();
+  assert.equal(chamadas.length, 0);
+  assert.match(avisos.at(-1).mensagem, /Preencha o enunciado/);
+  tela.novaQuestao.texto = "<p>Texto com <em>formatação</em>.</p>";
+  tela.novaQuestao.alternativas[3].texto = "<p>&nbsp; </p>";
+  await tela.salvarQuestao();
+  assert.equal(chamadas.length, 0);
+  assert.match(avisos.at(-1).mensagem, /alternativa D/);
+  tela.novaQuestao.alternativas[3].texto = '<p><img src="data:image/png;base64,teste"></p>';
+  await tela.salvarQuestao();
+  assert.equal(chamadas.length, 1);
+  assert.match(chamadas[0].payload.enunciado, /<em>formatação<\/em>/);
+  assert.match(chamadas[0].payload.alternativas[0], /<strong>Resposta 0<\/strong>/);
+  assert.equal(chamadas[0].payload.alternativa_correta, chamadas[0].payload.alternativas[0]);
+});
+
+test("cadastro envia os cinco textos e identifica o primeiro como correto, mantendo o contrato da API", async () => {
+  const { tela, chamadas } = ambienteCadastroQuestao();
+  Object.assign(tela.novaQuestao, { disciplina: "Matemática", assunto: "Adição", texto: "Quanto é 2 + 2?" });
+  tela.novaQuestao.alternativas.forEach((alternativa, index) => { alternativa.texto = ["4", "3", "5", "6", "7"][index]; });
+  await tela.salvarQuestao();
+  assert.equal(chamadas.length, 1);
+  assert.equal(chamadas[0].rota, "criar");
+  assert.deepEqual([...chamadas[0].payload.alternativas], ["4", "3", "5", "6", "7"]);
+  assert.equal(chamadas[0].payload.alternativa_correta, "4");
+  assert.deepEqual([...chamadas[0].payload.disciplina], ["MAT", "Matemática"]);
+  assert.equal(tela.novaQuestao.alternativas[0].texto, "");
+  assert.equal(tela.abaAtiva, "minhas");
+});
+
+test("edição traz a correta de qualquer posição para A sem alterar o registro original ou perder alternativas", async () => {
+  for (let indice = 0; indice < 5; indice++) {
+    const { tela, chamadas } = ambienteCadastroQuestao();
+    const original = { _id: "questao-antiga", disciplina: ["mat"], assunto: "Teste", enunciado: "Selecione a resposta.",
+      alternativas: Array.from({ length: 5 }, (_, index) => ({ id: String(index), texto: `Resposta ${index}` })),
+      alternativa_correta: String(indice), dificuldade: "Médio" };
+    const antes = JSON.stringify(original);
+    tela.editarQuestao(tela.adaptarQuestao(original));
+    assert.equal(tela.novaQuestao.alternativas[0].texto, `Resposta ${indice}`);
+    assert.deepEqual([...tela.novaQuestao.alternativas.map(a => a.letra)], ["A", "B", "C", "D", "E"]);
+    assert.equal(new Set(tela.novaQuestao.alternativas.map(a => a.texto)).size, 5);
+    assert.equal(JSON.stringify(original), antes);
+    assert.equal(chamadas.length, 0);
+    await tela.salvarQuestao();
+    assert.equal(chamadas[0].rota, "atualizar");
+    assert.equal(chamadas[0].id, original._id);
+    assert.equal(chamadas[0].payload.alternativa_correta, `Resposta ${indice}`);
+  }
+  const { tela, avisos, chamadas } = ambienteCadastroQuestao();
+  tela.editarQuestao({ alternativas: [{ letra: "A", texto: "Texto" }], alternativaCorreta: "" });
+  assert.equal(tela.editandoId, null);
+  assert.equal(chamadas.length, 0);
+  assert.match(avisos[0].mensagem, /sem uma alternativa correta válida/);
 });
 
 test("seleção em lote acima do limite é recusada com aviso, sem alterar a seleção salva", async () => {
@@ -648,6 +755,7 @@ test("cada status da prova tem um balão distinto e status desconhecido usa o es
 
 test("prévia utiliza o novo campo e marcador de período letivo", () => {
   const opcoes = carregarOpcoes("components/PreviewProva.vue", {
+    "@/utils/cartaoResposta": carregarOpcoes("utils/cartaoResposta.js", {}),
     "@/stores/provaDraft": { LETRAS: ["A", "B", "C", "D", "E"] },
     "@/utils/html": { escaparHtml: String, sanitizar: (valor) => valor, htmlVazio: (valor) => !valor },
   }).default;
@@ -690,6 +798,71 @@ test("cartão vetorial preserva dez colunas, cinco alternativas e geometria do Q
   assert.match(html, /x="705" y="107"[^>]*>Ana Maria da Silva<\/text>/);
   assert.match(html, /M738 250H1107/);
   assert.match(html, />NOME DO ALUNO POR EXTENSO<\/text>/);
+});
+
+test("folha A4 compartilha margens de 16 mm nas laterais e 13 mm no topo em tela e na impressão", () => {
+  const modelo = carregarOpcoes("utils/cartaoResposta.js", {});
+  const opcoes = carregarOpcoes("components/PreviewProva.vue", {
+    "@/utils/cartaoResposta": modelo, "@/stores/provaDraft": {}, "@/utils/html": {},
+  }).default;
+  const estilo = opcoes.computed.estiloPagina();
+  assert.equal(estilo["--largura-pagina"], "210mm");
+  assert.equal(estilo["--proporcao-pagina"], "210 / 297");
+  assert.equal(estilo["--margens-impressao"], "13mm 16mm 12mm");
+  const margens = estilo["--margens-previa"].split(" ").map(parseFloat);
+  assert.ok(Math.abs(margens[0] / 100 * 210 - 13) < 1e-10);
+  assert.ok(Math.abs(margens[1] / 100 * 210 - 16) < 1e-10);
+  assert.equal(210 - 2 * modelo.PAGINA_PROVA.margemLateral, 178);
+  const fonte = parse(fs.readFileSync(path.join(__dirname, "../src/components/PreviewProva.vue"), "utf8")).descriptor;
+  const css = compileStyle({ source: fonte.styles[0].content, id: "data-v-previa", scoped: true });
+  assert.deepEqual(css.errors, []);
+  assert.match(css.code, /padding: var\(--margens-previa\)/);
+  assert.match(css.code, /@media print[\s\S]*padding: var\(--margens-impressao\)/);
+  assert.match(css.code, /box-decoration-break: clone/);
+  const editor = fs.readFileSync(path.join(__dirname, "../src/views/CriarProvaView.vue"), "utf8");
+  assert.doesNotMatch(editor, /:deep\(\.(?:folha|conteudo-prova)\)|width: 96%/);
+});
+
+test("prévia do professor inclui o cartão real antes das questões, sem identificação individual fictícia", async () => {
+  const { createSSRApp } = require("vue");
+  const { renderToString } = require("@vue/server-renderer");
+  const componente = (arquivo, modulos) => ({
+    ...carregarOpcoes(arquivo, modulos).default,
+    template: parse(fs.readFileSync(path.join(__dirname, "../src", arquivo), "utf8")).descriptor.template.content,
+  });
+  const CartaoResposta = componente("components/CartaoResposta.vue", {
+    "@/assets/templates/cartao-resposta.png": "logos-originais.png",
+    "@/utils/cartaoResposta": carregarOpcoes("utils/cartaoResposta.js", {}),
+  });
+  const PreviewProva = componente("components/PreviewProva.vue", {
+    "@/utils/cartaoResposta": carregarOpcoes("utils/cartaoResposta.js", {}),
+    "@/stores/provaDraft": { LETRAS: ["A", "B", "C", "D", "E"] },
+    "@/utils/html": { escaparHtml: String, sanitizar: (valor) => valor, htmlVazio: (valor) => !valor },
+  });
+  const { tela, prova, draft, banco, opcoes, chamadas } = ambiente();
+  await tela.carregar();
+  const template = parse(fs.readFileSync(path.join(__dirname, "../src/views/CriarProvaView.vue"), "utf8")).descriptor.template.content;
+  const renderizar = (estado = {}) => renderToString(createSSRApp({ ...opcoes, template,
+    components: { ...opcoes.components, CartaoResposta, PreviewProva, QuestaoEditor: () => null, ModalSairEdicao: () => null },
+    setup: () => ({ authStore: tela.authStore, draft }),
+    data: () => ({ ...opcoes.data(), prova, bancoQuestoes: banco, carregando: false, template: "{{QUESTOES}}", ...estado }),
+  }, { id: prova._id }));
+  for (const status of ["Aguardando questões", "Enviada ao pedagógico"]) {
+    prova.status = status;
+    const html = await renderizar();
+    const previa = html.slice(html.indexOf('class="painel painel-preview"'));
+    assert.equal((previa.match(/class="cartao-resposta/g) || []).length, 1);
+    assert.match(previa, /aria-label="Cartão-resposta da prova"/);
+    for (const dado of ["Matemática", "Professor Teste", "Turma A", "3º período letivo", "3ª série", "14/10/2026"]) assert.ok(previa.includes(dado));
+    assert.match(previa, /x="705" y="107"[^>]*><\/text>/);
+    assert.match(previa, /x="744" y="136"><\/text>/);
+    assert.equal((previa.match(/<image /g) || []).length, 2); // Somente logotipos; não gera QR fictício.
+    assert.ok(previa.indexOf("cartao-resposta") < previa.indexOf("preview-questao"));
+    assert.ok(previa.indexOf("q2") < previa.indexOf("q1"));
+  }
+  assert.doesNotMatch(await renderizar({ carregando: true }), /class="cartao-resposta/);
+  assert.doesNotMatch(await renderizar({ erroCarregamento: "Falha ao carregar" }), /class="cartao-resposta/);
+  assert.equal(chamadas.length, 0);
 });
 
 function ambienteImpressao(versoes, globais) {
@@ -873,8 +1046,35 @@ test("impressão remove contagem e reserva as margens dentro da prova, sem URL o
   const css = descriptor.styles.find((estilo) => !estilo.scoped).content;
   assert.match(css, /@page\s*\{[^}]*margin:\s*0\s*;/);
   assert.match(css, /\.documento-impressao\s*\{[^}]*padding:\s*12mm\s*!important/);
+  assert.match(css, /\.versao-aluno\.documento-impressao\s*\{ padding: 0 !important/);
   assert.match(css, /box-decoration-break:\s*clone/);
   assert.match(css, /\.sidebar[^}]*display:\s*none\s*!important/);
+});
+
+test("impressão usa a mesma folha da prévia e mantém cartão e questões dentro de uma única margem", async () => {
+  const { createSSRApp, h } = require("vue");
+  const { renderToString } = require("@vue/server-renderer");
+  const { tela } = ambienteImpressao();
+  await tela.carregar();
+  const fonte = parse(fs.readFileSync(path.join(__dirname, "../src/views/ImprimirProvasView.vue"), "utf8")).descriptor;
+  const preview = carregarOpcoes("components/PreviewProva.vue", {
+    "@/utils/cartaoResposta": carregarOpcoes("utils/cartaoResposta.js", {}),
+    "@/stores/provaDraft": { LETRAS: ["A", "B", "C", "D", "E"] },
+    "@/utils/html": { escaparHtml: String, sanitizar: (valor) => valor, htmlVazio: (valor) => !valor },
+  }).default;
+  const html = await renderToString(createSSRApp({
+    template: fonte.template.content, data: () => ({ ...tela, metadados: tela.metadados, template: "{{QUESTOES}}" }),
+    components: {
+      ListaTurma: () => null,
+      PreviewProva: { ...preview, template: parse(fs.readFileSync(path.join(__dirname, "../src/components/PreviewProva.vue"), "utf8")).descriptor.template.content },
+      CartaoResposta: { props: ["matricula"], setup: (props) => () => h("svg", { class: "cartao-teste" }, String(props.matricula)) },
+    },
+  }));
+  assert.equal((html.match(/class="folha"/g) || []).length, 1);
+  assert.match(html, /--margens-impressao:13mm 16mm 12mm/);
+  assert.match(html, /class="folha"[^>]*>[\s\S]*class="cartao-teste"[^>]*>20260001/);
+  assert.ok(html.indexOf("cartao-teste") < html.indexOf("conteudo-prova"));
+  assert.match(html, /class="conteudo-prova texto-questao"[\s\S]*preview-questao/);
 });
 
 test("espera as imagens antes de imprimir e bloqueia impressão se uma delas falhar", async () => {

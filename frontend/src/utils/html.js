@@ -7,6 +7,8 @@ const configuracao = {
     "table", "thead", "tbody", "tr", "th", "td", "div", "header", "section", "hr",
   ],
   ALLOWED_ATTR: ["src", "alt", "width", "height", "class", "style", "data-list", "colspan", "rowspan"],
+  // Dimensões não são URLs; não devem passar pela restrição de protocolos abaixo.
+  ADD_URI_SAFE_ATTR: ["width", "height"],
   ALLOWED_URI_REGEXP: /^(?:data:image\/(?:png|jpe?g|gif|webp);base64,|https?:)/i,
 };
 

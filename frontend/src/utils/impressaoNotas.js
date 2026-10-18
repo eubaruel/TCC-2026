@@ -10,11 +10,11 @@ export function ajusteValido(valor) {
 }
 
 export function posicaoNota(ajusteX = 0, ajusteY = 0) {
-  const escala = (PAGINA_PROVA.largura - 2 * PAGINA_PROVA.margem) / CARTAO_RESPOSTA.largura;
+  const escala = (PAGINA_PROVA.largura - 2 * PAGINA_PROVA.margemLateral) / CARTAO_RESPOSTA.largura;
   const campo = CARTAO_RESPOSTA.nota;
   return {
-    left: `${PAGINA_PROVA.margem + (campo.x + campo.largura / 2) * escala + ajusteX}mm`,
-    top: `${PAGINA_PROVA.margem + (campo.y + campo.altura / 2) * escala + ajusteY}mm`,
+    left: `${PAGINA_PROVA.margemLateral + (campo.x + campo.largura / 2) * escala + ajusteX}mm`,
+    top: `${PAGINA_PROVA.margemSuperior + (campo.y + campo.altura / 2) * escala + ajusteY}mm`,
     width: `${campo.largura * escala}mm`, height: `${campo.altura * escala}mm`,
   };
 }

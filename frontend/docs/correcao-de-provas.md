@@ -77,8 +77,11 @@ Deixe zero no primeiro teste. Os ajustes são da tela atual, não alteram notas.
 
 O componente `NotaSobreposta.vue` imprime exclusivamente o número, em preto,
 Arial 12 pt, peso normal (400), com duas casas decimais. A posição deriva do centro do campo NOTA no
-cartão vetorial, em `utils/cartaoResposta.js`, e das margens originais de 12 mm.
-O centro inicial é aproximadamente X=20,64 mm e Y=29,75 mm na folha A4.
+cartão vetorial, em `utils/cartaoResposta.js`, e das margens de 16 mm nas laterais
+e 13 mm no topo. O cartão mantém a proporção e ocupa 178 mm de largura na folha A4.
+O centro inicial da nota é aproximadamente X=24,27 mm e Y=29,98 mm.
+Para folhas já impressas com o modelo anterior, refaça o teste de alinhamento:
+a mudança não reposiciona o gabarito que já está no papel.
 `ImprimirNotasView.vue` oculta os controles e a tabela na impressão, gera uma
 página por nota e não acrescenta página final. Não desenha fundos, bordas, QR,
 cartão ou identificação sobre a prova. Não cria PDFs nem instala dependências.

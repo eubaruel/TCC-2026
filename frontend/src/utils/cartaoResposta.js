@@ -6,5 +6,5 @@ export const CARTAO_RESPOSTA = {
   qr: { x: 9, y: 168, tamanho: 94, margem: 4 },
 };
 
-// Mesmo A4 e margens usados na impressão original de ImprimirProvasView.
-export const PAGINA_PROVA = { largura: 210, altura: 297, margem: 12 };
+// Medidas em milímetros, compartilhadas pela prévia, impressão da prova e da nota.
+export const PAGINA_PROVA = { largura: 210, altura: 297, margemLateral: 16, margemSuperior: 13, margemInferior: 12 };

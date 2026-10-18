@@ -72,5 +72,11 @@ impressora imprimiu. Não há novo status de impressão de notas.
   Bruno: notas 3,33; 10,00; 6,67. O lote persistiu nessa ordem e reabriu por GET.
   Outro lote com Ana e um cartão sem QR preservou a segunda posição como pendente
   e manteve impressão/teste desabilitados. Nenhuma impressão física foi realizada.
-- A posição foi conferida visualmente com o cartão vetorial em A4 e margens de
-  12 mm. Capturas de tela redimensionadas não servem como medida da impressão física.
+- O padrão atual é A4 com 16 mm nas laterais, 13 mm no topo e 12 mm na base.
+  O cartão ocupa 178 mm de largura, sem deformação, e as questões usam as mesmas
+  margens laterais. `PreviewProva.vue` compartilha a folha entre a seleção do
+  professor, a visualização individual e a impressão; em telas menores, a folha
+  e suas margens reduzem proporcionalmente. As listas de turma mantêm seu modelo.
+- A nota acompanha essas medidas pelo centro do campo: aproximadamente
+  X=24,27 mm e Y=29,98 mm. Folhas do modelo anterior exigem novo teste e calibração.
+  Capturas de tela redimensionadas não servem como medida da impressão física.

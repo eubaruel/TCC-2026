@@ -36,10 +36,10 @@ function ambiente(dados = lote(), globais = {}) {
   return { tela, opcoes, impressoes };
 }
 
-test("posição da nota usa o centro do campo original, margens de 12 mm e deslocamentos calibráveis", () => {
+test("posição da nota acompanha as margens de 16 mm laterais e 13 mm superiores e aceita calibração", () => {
   const posicao = util.posicaoNota();
-  assert.ok(Math.abs(parseFloat(posicao.left) - 20.64125) < .0001);
-  assert.ok(Math.abs(parseFloat(posicao.top) - 29.7475) < .0001);
+  assert.ok(Math.abs(parseFloat(posicao.left) - 24.2695833333) < .0001);
+  assert.ok(Math.abs(parseFloat(posicao.top) - 29.9841666667) < .0001);
   assert.equal(parseFloat(util.posicaoNota(2, -1).left) - parseFloat(posicao.left), 2);
   assert.equal(parseFloat(util.posicaoNota(2, -1).top) - parseFloat(posicao.top), -1);
   assert.equal(util.formatarNota(0), "0,00"); assert.equal(util.formatarNota(10), "10,00"); assert.equal(util.formatarNota(6.67), "6,67");

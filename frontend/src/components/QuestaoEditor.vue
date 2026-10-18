@@ -1,7 +1,7 @@
 <template>
   <div class="questao-editor">
     <div class="questao-cabecalho">
-      <h4>Questão {{ numero }}</h4>
+      <h4 class="texto-questao">Questão {{ numero }}</h4>
       <div v-if="!bloqueada" class="questao-acoes">
         <button type="button" title="Mover para cima" :disabled="primeira" @click="$emit('mover', -1)">↑</button>
         <button type="button" title="Mover para baixo" :disabled="ultima" @click="$emit('mover', 1)">↓</button>
@@ -15,14 +15,14 @@
     <div class="campo">
       <label>Enunciado</label>
       <!-- eslint-disable-next-line vue/no-v-html -->
-      <div v-html="sanitizar(questao.enunciado)"></div>
+      <div class="texto-questao" v-html="sanitizar(questao.enunciado)"></div>
     </div>
     <div class="campo">
       <label>Alternativas — correta destacada</label>
       <div v-for="(alternativa, index) in questao.alternativas" :key="index" class="alternativa">
-        <span class="marcador" :class="{ correta: questao.indiceCorreta === index }">{{ letras[index] }}</span>
+        <span class="marcador texto-questao" :class="{ correta: questao.indiceCorreta === index }">{{ letras[index] }}</span>
         <!-- eslint-disable-next-line vue/no-v-html -->
-        <div class="alternativa-editor" v-html="sanitizar(alternativa)"></div>
+        <div class="alternativa-editor texto-questao" v-html="sanitizar(alternativa)"></div>
       </div>
     </div>
     <small class="aviso-banco">Conteúdo do banco de questões: somente seleção e ordenação nesta tela.</small>
