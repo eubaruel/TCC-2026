@@ -1,42 +1,24 @@
-import sys
-import os
+from api.modelos.alternativa import Alternativa
+from api.modelos.questao import Questao
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from questao import Questao
-from professor import Professor
+print("TESTANDO QUESTÃO")
 
-print("TESTANDO QUESTAO")
+questao = Questao()
+questao.tipo_questao = "Objetiva"
+questao.alternativas = [
+    Alternativa("alt-a", "A"),
+    Alternativa("alt-b", "B"),
+    Alternativa("alt-c", "C"),
+    Alternativa("alt-d", "D"),
+    Alternativa("alt-e", "E")
+]
+questao.alternativa_correta = "alt-a"
 
-q = Questao()
-prof = Professor()
+print("OK - alternativas como objetos e gabarito por id")
 
-prof.nome_professor = "João Silva"
-
-# Tipo
 try:
-    q.tipo_questao = "objetiva"
-    print("OK - tipo questão")
-except Exception as e:
-    print("ERRO:", e)
-
-# Alternativas válidas
-try:
-    q.alternativas = ["A", "B", "C", "D", "E"]
-    print("OK - alternativas")
-except Exception as e:
-    print("ERRO:", e)
-
-# Alternativa correta
-try:
-    q.alternativa_correta = "A"
-    print("OK - alternativa correta")
-except Exception as e:
-    print("ERRO:", e)
-
-# Alternativa inválida
-try:
-    q.alternativa_correta = "X"
+    questao.alternativa_correta = "id-inexistente"
     print("ERRO - alternativa inválida passou")
-except:
-    print("OK - alternativa inválida")
+except ValueError:
+    print("OK - alternativa inválida rejeitada")

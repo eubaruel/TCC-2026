@@ -1,0 +1,18 @@
+/* Padrão do conteúdo das questões, inclusive títulos e HTML colado.
+   Não altera a interface, a barra do editor ou o cartão-resposta. */
+.texto-questao,
+.texto-questao *,
+.editor-quill .ql-editor,
+.editor-quill .ql-editor * {
+  font-family: Arial, sans-serif !important;
+  font-size: 10pt !important;
+}
+
+/* Também protege imagens antigas ou coladas com dimensões maiores. */
+.texto-questao img,
+.editor-quill .ql-editor img {
+  max-height: 45mm !important;
+  height: auto !important;
+  object-fit: contain;
+  object-position: left center;
+}
