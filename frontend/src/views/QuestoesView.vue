@@ -30,24 +30,17 @@
     </div>
     
     <div class="tab-content">
+      <FiltrosQuestoes v-if="abaAtiva !== 'cadastrar'" v-model="filtrosQuestoes" :disciplinas="disciplinas" :questoes="todasQuestoes" />
       <!-- Buscar Questões -->
       <div v-if="abaAtiva === 'buscar'" class="buscar-questoes">
-        <div class="search-box">
-          <input 
-            type="text" 
-            v-model="busca" 
-            placeholder="Buscar por disciplina, assunto, autor ou texto..."
-            class="search-input"
-          />
-          <button @click="buscarQuestoes" class="btn-buscar">Buscar</button>
-        </div>
+        <p v-if="carregandoQuestoes" class="sem-resultados">Carregando questões...</p>
         
         <div class="resultados" v-if="resultados.length > 0">
           <div v-for="questao in resultados" :key="questao.id" class="questao-card">
             <div class="questao-header">
               <span class="disciplina">{{ questao.disciplina }}</span>
-              <span class="tipo-questao" :class="questao.tipo">
-                {{ questao.tipo === 'objetiva' ? 'Objetiva' : 'Dissertativa' }}
+              <span class="tipo-questao objetiva">
+                Objetiva
               </span>
               <span class="dificuldade" :class="getDificuldadeClass(questao.dificuldade)">
                 {{ questao.dificuldade }}
@@ -57,19 +50,19 @@
               <span v-if="questao.autor" class="autor">Autor: {{ questao.autor }}</span>
               <span class="data-criacao">Criada em: {{ questao.dataCriacao }}</span>
             </div>
-            <p class="questao-texto">{{ questao.texto }}</p>
-            <div v-if="questao.tipo === 'objetiva'" class="alternativas">
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <div class="questao-texto texto-questao" v-html="sanitizar(questao.texto)"></div>
+            <div class="alternativas texto-questao">
               <p><strong>Texto das Alternativas:</strong></p>
               <ul>
                 <li v-for="alt in questao.alternativas" :key="alt.letra" 
                     :class="{ correta: alt.letra === questao.alternativaCorreta }">
-                  {{ alt.letra }}) {{ alt.texto }}
+                  <span class="letra-alternativa">{{ alt.letra }})</span>
+                  <!-- eslint-disable-next-line vue/no-v-html -->
+                  <span class="texto-alternativa" v-html="sanitizar(alt.texto)"></span>
                 </li>
               </ul>
               <p class="correta-destaque">✅ Alternativa correta: {{ questao.alternativaCorreta }}</p>
-            </div>
-            <div v-else class="linhas-resposta">
-              <p><strong>Linhas para resposta:</strong> {{ questao.linhasResposta }} linhas</p>
             </div>
             <div class="questao-footer">
               <button v-if="isProfessor" @click="usarQuestao(questao)" class="btn-usar">
@@ -78,7 +71,7 @@
             </div>
           </div>
         </div>
-        <div v-else-if="buscou" class="sem-resultados">
+        <div v-else-if="!carregandoQuestoes" class="sem-resultados">
           Nenhuma questão encontrada.
         </div>
       </div>
@@ -88,12 +81,43 @@
         <form @submit.prevent="salvarQuestao" class="form-questao">
           <div class="form-group">
             <label>Disciplina *</label>
-            <select v-model="novaQuestao.disciplina" required>
+            <select
+              v-if="!carregandoDisciplinas && disciplinas.length"
+              v-model="novaQuestao.disciplina"
+              required
+            >
               <option value="">Selecione a disciplina</option>
-              <option v-for="disc in disciplinas" :key="disc" :value="disc">
-                {{ disc }}
+              <option
+                v-for="disc in disciplinas"
+                :key="disc.codigo_disciplina"
+                :value="disc.nome_disciplina"
+              >
+                {{ disc.nome_disciplina }} ({{ disc.codigo_disciplina }})
               </option>
             </select>
+            <input
+              v-else-if="!carregandoDisciplinas"
+              v-model="novaQuestao.disciplina"
+              type="text"
+              required
+              minlength="2"
+              placeholder="Digite o nome da disciplina"
+            />
+            <p v-else class="estado-disciplina">Carregando disciplinas...</p>
+            <small v-if="erroDisciplinas" class="mensagem-erro">
+              {{ erroDisciplinas }} Você ainda pode informar a disciplina manualmente.
+            </small>
+            <small v-else-if="!carregandoDisciplinas && !disciplinas.length" class="helper-text">
+              Nenhuma disciplina cadastrada foi encontrada. Informe a disciplina manualmente.
+            </small>
+            <button
+              v-if="erroDisciplinas"
+              type="button"
+              class="btn-recarregar"
+              @click="carregarDisciplinas"
+            >
+              Tentar carregar novamente
+            </button>
           </div>
           
           <div class="form-group">
@@ -115,67 +139,31 @@
           </div>
           
           <div class="form-group">
-            <label>Tipo de Questão *</label>
-            <div class="radio-group">
-              <label class="radio-label">
-                <input type="radio" value="objetiva" v-model="novaQuestao.tipo" />
-                Objetiva
-              </label>
-              <label class="radio-label">
-                <input type="radio" value="dissertativa" v-model="novaQuestao.tipo" />
-                Dissertativa
-              </label>
-            </div>
+            <label>Tipo de Questão</label>
+            <input type="text" value="Objetiva" readonly />
           </div>
           
           <div class="form-group">
-            <label>Enunciado da Questão *</label>
-            <textarea v-model="novaQuestao.texto" rows="5" required placeholder="Digite o enunciado da questão..."></textarea>
+            <label for="enunciado-questao">Enunciado da Questão *</label>
+            <EditorQuill id="enunciado-questao" v-model="novaQuestao.texto" rotulo="Enunciado da questão" obrigatorio placeholder="Digite o enunciado da questão..." />
           </div>
           
           <!-- Campo para questão objetiva -->
-          <div v-if="novaQuestao.tipo === 'objetiva'" class="objetiva-fields">
-            <div class="form-group">
-              <label>Texto das Alternativas</label>
-              <div v-for="(alt, idx) in novaQuestao.alternativas" :key="idx" class="alternativa-item">
-                <span class="letra-alt">{{ alt.letra }})</span>
-                <input 
-                  type="text" 
-                  v-model="alt.texto" 
-                  :placeholder="`Texto da alternativa ${alt.letra}`" 
-                  required
+          <div class="objetiva-fields">
+            <template v-for="(alt, idx) in novaQuestao.alternativas" :key="alt.letra">
+              <h3 v-if="idx === 0" class="titulo-alternativas">Alternativa correta *</h3>
+              <h3 v-else-if="idx === 1" class="titulo-alternativas">Demais alternativas *</h3>
+              <div class="form-group alternativa-item">
+                <label :for="`alternativa-${alt.letra}`" class="letra-alt">{{ alt.letra }})</label>
+                <EditorQuill
+                  :id="`alternativa-${alt.letra}`"
+                  v-model="alt.texto"
+                  :rotulo="`Alternativa ${alt.letra}${idx === 0 ? ' - correta' : ''}`"
+                  :placeholder="`Texto da alternativa ${alt.letra}`"
+                  compacto obrigatorio
                 />
               </div>
-            </div>
-
-            <div class="form-group">
-              <label>Alternativa Correta *</label>
-              <select v-model="novaQuestao.alternativaCorreta" required class="select-correta">
-                <option value="A">Alternativa A</option>
-                <option value="B">Alternativa B</option>
-                <option value="C">Alternativa C</option>
-                <option value="D">Alternativa D</option>
-                <option value="E">Alternativa E</option>
-              </select>
-              <small class="helper-text">Selecione qual alternativa é a correta</small>
-            </div>
-          </div>
-          
-          <!-- Campo para questão dissertativa -->
-          <div v-if="novaQuestao.tipo === 'dissertativa'" class="dissertativa-fields">
-            <div class="form-group">
-              <label>Quantidade de Linhas para Resposta *</label>
-              <input 
-                type="number" 
-                v-model.number="novaQuestao.linhasResposta" 
-                min="1" 
-                max="10"
-                step="1"
-                required
-                class="input-linhas"
-              />
-              <small class="helper-text">Digite um número inteiro entre 1 e 10 linhas</small>
-            </div>
+            </template>
           </div>
           
           <div class="form-group">
@@ -189,21 +177,27 @@
             </select>
           </div>
           
-          <button type="submit" class="btn-salvar-questao">Salvar Questão</button>
+          <button
+            type="submit"
+            class="btn-salvar-questao"
+            :disabled="carregandoDisciplinas"
+          >
+            {{ carregandoDisciplinas ? "Carregando..." : "Salvar Questão" }}
+          </button>
         </form>
       </div>
       
       <!-- Minhas Questões -->
       <div v-if="abaAtiva === 'minhas'" class="minhas-questoes">
         <div v-if="minhasQuestoes.length === 0" class="sem-questoes">
-          Você ainda não cadastrou nenhuma questão.
+          Nenhuma questão sua encontrada com os filtros atuais.
         </div>
         <div v-else>
           <div v-for="questaoItem in minhasQuestoes" :key="questaoItem.id" class="questao-card minhas">
             <div class="questao-header">
               <span class="disciplina">{{ questaoItem.disciplina }}</span>
-              <span class="tipo-questao" :class="questaoItem.tipo">
-                {{ questaoItem.tipo === 'objetiva' ? 'Objetiva' : 'Dissertativa' }}
+              <span class="tipo-questao objetiva">
+                Objetiva
               </span>
               <span class="dificuldade" :class="getDificuldadeClass(questaoItem.dificuldade)">
                 {{ questaoItem.dificuldade }}
@@ -213,19 +207,19 @@
               <span v-if="questaoItem.autor" class="autor">Autor: {{ questaoItem.autor }}</span>
               <span class="data-criacao">Criada em: {{ questaoItem.dataCriacao }}</span>
             </div>
-            <p class="questao-texto">{{ questaoItem.texto }}</p>
-            <div v-if="questaoItem.tipo === 'objetiva'" class="alternativas">
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <div class="questao-texto texto-questao" v-html="sanitizar(questaoItem.texto)"></div>
+            <div class="alternativas texto-questao">
               <p><strong>Texto das Alternativas:</strong></p>
               <ul>
                 <li v-for="alt in questaoItem.alternativas" :key="alt.letra" 
                     :class="{ correta: alt.letra === questaoItem.alternativaCorreta }">
-                  {{ alt.letra }}) {{ alt.texto }}
+                  <span class="letra-alternativa">{{ alt.letra }})</span>
+                  <!-- eslint-disable-next-line vue/no-v-html -->
+                  <span class="texto-alternativa" v-html="sanitizar(alt.texto)"></span>
                 </li>
               </ul>
               <p class="correta-destaque">✅ Alternativa correta: {{ questaoItem.alternativaCorreta }}</p>
-            </div>
-            <div v-else class="linhas-resposta">
-              <p><strong>Linhas para resposta:</strong> {{ questaoItem.linhasResposta }} linhas</p>
             </div>
             <div class="questao-actions">
               <button @click="editarQuestao(questaoItem)" class="btn-editar">Editar</button>
@@ -239,244 +233,185 @@
 </template>
 
 <script>
-import { useAuthStore } from '@/stores/auth'
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+import { useProvaDraftStore } from "@/stores/provaDraft";
+import { listarDisciplinas } from "@/services/disciplinas";
+import { atualizarQuestao, criarQuestao, excluirQuestao, listarQuestoes } from "@/services/questoes";
+import { htmlVazio, sanitizar } from "@/utils/html";
+import EditorQuill from "@/components/EditorQuill.vue";
+import FiltrosQuestoes from "@/components/FiltrosQuestoes.vue";
+import { filtrarQuestoes, novosFiltrosQuestoes } from "@/utils/filtrosQuestoes";
+
+const letras = ["A", "B", "C", "D", "E"];
+const novaQuestao = () => ({
+  disciplina: "",
+  assunto: "",
+  autor: "",
+  texto: "",
+  alternativas: letras.map((letra) => ({ letra, texto: "" })),
+  dificuldade: "Médio",
+});
 
 export default {
-  name: 'QuestoesView',
+  name: "QuestoesView",
+  components: { FiltrosQuestoes, EditorQuill },
   setup() {
-    const authStore = useAuthStore()
-    return { authStore }
+    return { authStore: useAuthStore(), draftStore: useProvaDraftStore(), router: useRouter() };
   },
-  data() {
-    return {
-      abaAtiva: 'buscar',
-      busca: '',
-      buscou: false,
-      resultados: [],
-      minhasQuestoes: [],
-      disciplinas: [
-        'Matemática FGB',
-        'Matemática AP',
-        'Português',
-        'Literatura',
-        'Inglês',
-        'Projeto de Vida',
-        'Eletiva',
-        'Física FGB',
-        'Física AP',
-        'Química FGB',
-        'Química AP',
-        'Biologia FGB',
-        'Biologia AP',
-        'História',
-        'Geografia',
-        'Filosofia/Sociologia',
-        'Arte',
-        'Educação Física',
-        'Redação'
-      ],
-      novaQuestao: {
-        disciplina: '',
-        assunto: '',
-        autor: '',
-        tipo: 'objetiva',
-        texto: '',
-        alternativas: [
-          { letra: 'A', texto: '' },
-          { letra: 'B', texto: '' },
-          { letra: 'C', texto: '' },
-          { letra: 'D', texto: '' },
-          { letra: 'E', texto: '' }
-        ],
-        alternativaCorreta: 'A',
-        linhasResposta: 5,
-        dificuldade: 'Médio'
-      }
-    }
-  },
+  data: () => ({
+    abaAtiva: "buscar",
+    filtrosQuestoes: novosFiltrosQuestoes(),
+    carregandoQuestoes: true,
+    todasQuestoes: [],
+    disciplinas: [],
+    carregandoDisciplinas: true,
+    erroDisciplinas: "",
+    novaQuestao: novaQuestao(),
+    editandoId: null,
+    erro: "",
+  }),
   computed: {
     isProfessor() {
-      return this.authStore.isProfessor
-    }
+      return this.authStore.isProfessor;
+    },
+    resultados() {
+      return filtrarQuestoes(this.todasQuestoes, this.filtrosQuestoes, this.disciplinas);
+    },
+    minhasQuestoes() {
+      const minhas = this.todasQuestoes.filter((questao) => questao.professor?.nome === this.authStore.user?.nome);
+      return filtrarQuestoes(minhas, this.filtrosQuestoes, this.disciplinas);
+    },
   },
-  mounted() {
-    this.carregarMinhasQuestoes()
+  async mounted() {
+    await Promise.all([this.carregarDisciplinas(), this.carregarQuestoes()]);
   },
   methods: {
+    sanitizar,
     getDificuldadeClass(dificuldade) {
-      const mapa = {
-        'Muito Fácil': 'muito-facil',
-        'Fácil': 'facil',
-        'Médio': 'medio',
-        'Difícil': 'dificil',
-        'Muito Difícil': 'muito-dificil'
-      }
-      return mapa[dificuldade] || 'medio'
+      return { "Muito Fácil": "muito-facil", "Fácil": "facil", "Médio": "medio", "Difícil": "dificil", "Muito Difícil": "muito-dificil" }[dificuldade] || "medio";
     },
-    
-    carregarMinhasQuestoes() {
-      const salvas = localStorage.getItem('questoes')
-      if (salvas) {
-        const todas = JSON.parse(salvas)
-        const usuario = this.authStore.user
-        this.minhasQuestoes = todas.filter(q => q.autorId === usuario?.id)
+    adaptarQuestao(questao) {
+      const indiceCorreta = questao.alternativas?.findIndex((alternativa) => alternativa.id === questao.alternativa_correta) ?? -1;
+      const disciplinasOriginais = Array.isArray(questao.disciplina) ? [...questao.disciplina] : [];
+      return {
+        ...questao,
+        id: questao._id,
+        disciplina: disciplinasOriginais.join(", "),
+        disciplinasOriginais,
+        texto: questao.enunciado,
+        dataCriacao: "—",
+        alternativas: questao.alternativas?.map((alternativa, index) => ({ ...alternativa, letra: letras[index] })) || [],
+        alternativaCorreta: indiceCorreta >= 0 ? letras[indiceCorreta] : "",
+      };
+    },
+    async carregarDisciplinas() {
+      this.carregandoDisciplinas = true;
+      this.erroDisciplinas = "";
+      try {
+        const resposta = await listarDisciplinas();
+        this.disciplinas = Array.isArray(resposta?.disciplinas)
+          ? resposta.disciplinas.filter(
+              (disciplina) => disciplina?.codigo_disciplina && disciplina?.nome_disciplina,
+            )
+          : [];
+      } catch (error) {
+        this.disciplinas = [];
+        this.erroDisciplinas = error.details || error.message;
+      } finally {
+        this.carregandoDisciplinas = false;
       }
     },
-    
-    buscarQuestoes() {
-      this.buscou = true
-      const todas = JSON.parse(localStorage.getItem('questoes') || '[]')
-      const termoBusca = this.busca.toLowerCase()
-      this.resultados = todas.filter(q => 
-        q.disciplina?.toLowerCase().includes(termoBusca) ||
-        q.assunto?.toLowerCase().includes(termoBusca) ||
-        q.autor?.toLowerCase().includes(termoBusca) ||
-        q.texto?.toLowerCase().includes(termoBusca)
-      )
+    async carregarQuestoes() {
+      this.carregandoQuestoes = true;
+      try {
+        const questoes = (await listarQuestoes()).questoes;
+        this.todasQuestoes = questoes.map(this.adaptarQuestao);
+      } catch (error) {
+        this.erro = error.details || error.message;
+      } finally {
+        this.carregandoQuestoes = false;
+      }
     },
-    
-    validarAlternativasObjetiva() {
-      const alternativasVazias = this.novaQuestao.alternativas.filter(a => !a.texto.trim())
-      if (alternativasVazias.length > 0) {
-        const letrasFaltando = alternativasVazias.map(a => a.letra).join(', ')
-        window.$modal.abrir({
-          titulo: "Atenção",
-          mensagem: `Preencha todas as alternativas! Faltam: ${letrasFaltando}`,
-          tipo: "alerta"
-        });
-        return false
-      }
-      return true
-    },
-    
-    validarLinhasResposta() {
-      const linhas = this.novaQuestao.linhasResposta
-      if (!Number.isInteger(linhas) || linhas < 1 || linhas > 10) {
-        window.$modal.abrir({
-          titulo: "Atenção",
-          mensagem: "A quantidade de linhas deve ser um número inteiro entre 1 e 10!",
-          tipo: "alerta"
-        });
-        return false
-      }
-      return true
-    },
-    
-    salvarQuestao() {
-      if (!this.novaQuestao.disciplina || !this.novaQuestao.assunto || !this.novaQuestao.texto) {
-        window.$modal.abrir({
-          titulo: "Atenção",
-          mensagem: "Preencha todos os campos obrigatórios!",
-          tipo: "alerta"
-        });
-        return
-      }
-      
-      if (this.novaQuestao.tipo === 'objetiva') {
-        if (!this.validarAlternativasObjetiva()) {
-          return
-        }
-      }
-      
-      if (this.novaQuestao.tipo === 'dissertativa') {
-        if (!this.validarLinhasResposta()) {
-          return
-        }
-      }
-      
-      const nova = {
-        id: Date.now(),
-        disciplina: this.novaQuestao.disciplina,
+    payloadQuestao() {
+      const disciplinaInformada = this.novaQuestao.disciplina.trim();
+      const disciplinaCadastrada = this.disciplinas.find(
+        (disciplina) => disciplina.nome_disciplina === disciplinaInformada,
+      );
+      const referenciasDisciplina = disciplinaCadastrada
+        ? [disciplinaCadastrada.codigo_disciplina, disciplinaCadastrada.nome_disciplina]
+        : [disciplinaInformada];
+      const payload = {
+        professor: { nome: this.authStore.user.nome },
         assunto: this.novaQuestao.assunto,
-        autor: this.novaQuestao.autor,
-        tipo: this.novaQuestao.tipo,
-        texto: this.novaQuestao.texto,
+        disciplina: [...new Set(referenciasDisciplina.filter(Boolean))],
+        tipo_questao: "Objetiva",
         dificuldade: this.novaQuestao.dificuldade,
-        autorId: this.authStore.user?.id,
-        autorNome: this.authStore.user?.nome,
-        dataCriacao: new Date().toLocaleDateString('pt-BR'),
-        alternativas: this.novaQuestao.tipo === 'objetiva' 
-          ? this.novaQuestao.alternativas
-          : [],
-        alternativaCorreta: this.novaQuestao.tipo === 'objetiva' 
-          ? this.novaQuestao.alternativaCorreta
-          : null,
-        linhasResposta: this.novaQuestao.tipo === 'dissertativa' 
-          ? this.novaQuestao.linhasResposta 
-          : null
-      }
-      
-      const todas = JSON.parse(localStorage.getItem('questoes') || '[]')
-      todas.push(nova)
-      localStorage.setItem('questoes', JSON.stringify(todas))
-      
-      window.$modal.abrir({
-        titulo: "Sucesso",
-        mensagem: "Questão salva com sucesso!",
-        tipo: "alerta"
-      });
-      
-      this.carregarMinhasQuestoes()
-      this.resetarFormulario()
-      this.abaAtiva = 'minhas'
+        enunciado: sanitizar(this.novaQuestao.texto),
+      };
+      if (this.novaQuestao.autor) payload.autor = this.novaQuestao.autor;
+      payload.alternativas = this.novaQuestao.alternativas.map((alternativa) => sanitizar(alternativa.texto));
+      payload.alternativa_correta = payload.alternativas[0];
+      return payload;
     },
-    
-    resetarFormulario() {
-      this.novaQuestao = {
-        disciplina: '',
-        assunto: '',
-        autor: '',
-        tipo: 'objetiva',
-        texto: '',
-        alternativas: [
-          { letra: 'A', texto: '' },
-          { letra: 'B', texto: '' },
-          { letra: 'C', texto: '' },
-          { letra: 'D', texto: '' },
-          { letra: 'E', texto: '' }
-        ],
-        alternativaCorreta: 'A',
-        linhasResposta: 5,
-        dificuldade: 'Médio'
-      }
-    },
-    
-    editarQuestao(questaoItem) {
-      window.$modal.abrir({
-        titulo: "Editar Questão",
-        mensagem: `Editar questão: ${questaoItem.texto.substring(0, 50)}...`,
-        tipo: "alerta"
-      });
-    },
-    
-    excluirQuestao(id) {
-      window.$modal.abrir({
-        titulo: "Confirmar Exclusão",
-        mensagem: "Tem certeza que deseja excluir esta questão?",
-        tipo: "confirmacao",
-        onConfirm: () => {
-          const todas = JSON.parse(localStorage.getItem('questoes') || '[]')
-          const filtradas = todas.filter(q => q.id !== id)
-          localStorage.setItem('questoes', JSON.stringify(filtradas))
-          this.carregarMinhasQuestoes()
-          window.$modal.abrir({
-            titulo: "Sucesso",
-            mensagem: "Questão excluída com sucesso!",
-            tipo: "alerta"
-          });
+    async salvarQuestao() {
+      try {
+        if (!this.novaQuestao.disciplina?.trim()) {
+          window.$modal.abrir({ titulo: "Atenção", mensagem: "Informe uma disciplina.", tipo: "alerta" });
+          return;
         }
-      });
+        if (htmlVazio(this.novaQuestao.texto)) {
+          window.$modal.abrir({ titulo: "Atenção", mensagem: "Preencha o enunciado da questão.", tipo: "alerta" });
+          return;
+        }
+        const alternativaVazia = this.novaQuestao.alternativas.find((alternativa) => htmlVazio(alternativa.texto));
+        if (alternativaVazia) {
+          window.$modal.abrir({ titulo: "Atenção", mensagem: `Preencha a alternativa ${alternativaVazia.letra}.`, tipo: "alerta" });
+          return;
+        }
+        const payload = this.payloadQuestao();
+        if (this.editandoId) await atualizarQuestao(this.editandoId, payload);
+        else await criarQuestao(payload);
+        await this.carregarQuestoes();
+        this.resetarFormulario();
+        this.abaAtiva = "minhas";
+        window.$modal.abrir({ titulo: "Sucesso", mensagem: "Questão salva com sucesso.", tipo: "alerta" });
+      } catch (error) {
+        window.$modal.abrir({ titulo: "Erro", mensagem: error.details || error.message, tipo: "alerta" });
+      }
     },
-    
-    usarQuestao(questaoItem) {
-      window.$modal.abrir({
-        titulo: "Adicionar à Prova",
-        mensagem: `Questão "${questaoItem.texto.substring(0, 50)}..." adicionada à prova!`,
-        tipo: "alerta"
-      });
-    }
-  }
-}
+    resetarFormulario() {
+      this.novaQuestao = novaQuestao();
+      this.editandoId = null;
+    },
+    editarQuestao(questao) {
+      const correta = questao.alternativas.find((alternativa) => alternativa.letra === questao.alternativaCorreta);
+      if (!correta) {
+        window.$modal.abrir({ titulo: "Atenção", mensagem: "Esta questão está sem uma alternativa correta válida. Confira o cadastro antes de editar.", tipo: "alerta" });
+        return;
+      }
+      const alternativas = [correta, ...questao.alternativas.filter((alternativa) => alternativa !== correta)];
+      this.editandoId = questao._id;
+      const referencias = (questao.disciplinasOriginais || []).map((item) => item.toLowerCase());
+      const disciplinaCadastrada = this.disciplinas.find((disciplina) =>
+        [disciplina.codigo_disciplina, disciplina.nome_disciplina]
+          .map((item) => item.toLowerCase())
+          .some((item) => referencias.includes(item)),
+      );
+      const disciplinaLegada = [...(questao.disciplinasOriginais || [])]
+        .sort((primeira, segunda) => segunda.length - primeira.length)[0] || "";
+      this.novaQuestao = { disciplina: disciplinaCadastrada?.nome_disciplina || disciplinaLegada, assunto: questao.assunto, autor: questao.autor, texto: questao.texto, alternativas: alternativas.map((alternativa, index) => ({ letra: letras[index], texto: alternativa.texto })), dificuldade: questao.dificuldade };
+      this.abaAtiva = "cadastrar";
+    },
+    excluirQuestao(id) {
+      window.$modal.abrir({ titulo: "Excluir questão", mensagem: "Deseja excluir esta questão?", tipo: "confirmacao", onConfirm: async () => { try { await excluirQuestao(id); await this.carregarQuestoes(); } catch (error) { this.erro = error.details || error.message; } } });
+    },
+    usarQuestao(questao) {
+      this.draftStore.adicionar(questao);
+      this.router.push("/provas");
+    },
+  },
+};
 </script>
 
 <style scoped>
@@ -534,29 +469,6 @@ export default {
 .tema-escuro .tab-btn.ativo {
   color: #0066cc;
   border-bottom-color: #0066cc;
-}
-
-.search-box {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.search-input {
-  flex: 1;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 16px;
-}
-
-.btn-buscar {
-  padding: 12px 24px;
-  background: #00488b;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
 }
 
 .questao-card {
@@ -625,11 +537,6 @@ export default {
   color: #17a2b8;
 }
 
-.tipo-questao.dissertativa {
-  background: #6c757d20;
-  color: #6c757d;
-}
-
 /* Estilos de dificuldade */
 .dificuldade {
   padding: 4px 12px;
@@ -668,6 +575,23 @@ export default {
   margin-bottom: 16px;
 }
 
+.questao-texto :deep(img),
+.texto-alternativa :deep(img) {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 6px 0;
+}
+
+.letra-alternativa {
+  margin-right: 4px;
+}
+
+.texto-alternativa,
+.texto-alternativa :deep(p) {
+  display: inline;
+}
+
 .alternativas ul {
   margin-top: 8px;
   padding-left: 20px;
@@ -688,12 +612,6 @@ export default {
   font-size: 13px;
   color: #28a745;
   font-weight: 500;
-}
-
-.linhas-resposta {
-  margin-top: 8px;
-  font-size: 13px;
-  color: #666;
 }
 
 .questao-footer {
@@ -782,6 +700,31 @@ export default {
   color: #888;
 }
 
+.estado-disciplina,
+.mensagem-erro {
+  display: block;
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+
+.estado-disciplina {
+  color: #666;
+}
+
+.mensagem-erro {
+  color: #b42318;
+}
+
+.btn-recarregar {
+  margin-top: 8px;
+  padding: 7px 12px;
+  border: 1px solid #00488b;
+  border-radius: 6px;
+  background: transparent;
+  color: #00488b;
+  cursor: pointer;
+}
+
 .radio-group {
   display: flex;
   gap: 30px;
@@ -812,18 +755,13 @@ export default {
   color: #666;
 }
 
-.alternativa-item input[type="text"] {
+.alternativa-item .editor-quill {
   flex: 1;
+  width: 100%;
 }
 
-.select-correta {
-  width: 200px;
-  cursor: pointer;
-}
-
-.input-linhas {
-  width: 200px;
-}
+.titulo-alternativas { font-size: 16px; font-weight: 500; margin: 20px 0 8px; }
+.alternativa-item label { margin-bottom: 0; }
 
 .btn-salvar-questao {
   width: 100%;
@@ -837,8 +775,14 @@ export default {
   cursor: pointer;
 }
 
-.btn-salvar-questao:hover {
+.btn-salvar-questao:hover:not(:disabled) {
   background: #218838;
+}
+
+.btn-salvar-questao:disabled {
+  background: #8a9a8e;
+  cursor: wait;
+  opacity: 0.75;
 }
 
 .sem-resultados, .sem-questoes {
@@ -848,6 +792,14 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .questoes-tabs {
+    flex-wrap: wrap;
+  }
+
+  .tab-btn {
+    padding: 10px 12px;
+  }
+
   .questao-header {
     flex-direction: column;
     gap: 8px;
@@ -872,9 +824,5 @@ export default {
     width: auto;
   }
   
-  .select-correta, 
-  .input-linhas {
-    width: 100%;
-  }
 }
 </style>

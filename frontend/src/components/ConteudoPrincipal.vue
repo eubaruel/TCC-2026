@@ -11,48 +11,20 @@
 </template>
 
 <script>
+import { useAuthStore } from "@/stores/auth";
+
 export default {
-  name: 'ConteudoPrincipal',
-  data() {
-    return {
-      nomeProfessor: 'Professor',
-      temaAtual: 'tema-claro'
-    }
+  name: "ConteudoPrincipal",
+  setup() {
+    return { authStore: useAuthStore() };
   },
-  mounted() {
-    this.carregarDadosUsuario()
-    this.carregarTema()
-    
-    window.addEventListener('tema-mudou', this.atualizarTema)
-  },
-  beforeUnmount() {
-    window.removeEventListener('tema-mudou', this.atualizarTema)
-  },
-  methods: {
-    carregarDadosUsuario() {
-      const usuarioSalvo = localStorage.getItem('usuarioLogado')
-      if (usuarioSalvo) {
-        try {
-          const usuario = JSON.parse(usuarioSalvo)
-          this.nomeProfessor = usuario.nome || usuario.email?.split('@')[0] || 'Professor'
-        } catch (error) {
-          console.error('Erro ao carregar dados do usuário:', error)
-        }
-      }
+  data: () => ({ temaAtual: "tema-claro" }),
+  computed: {
+    nomeProfessor() {
+      return this.authStore.user?.nome || "Professor";
     },
-    
-    carregarTema() {
-      const temaSalvo = localStorage.getItem('tema')
-      if (temaSalvo) {
-        this.temaAtual = temaSalvo
-      }
-    },
-    
-    atualizarTema(event) {
-      this.temaAtual = event.detail.tema
-    }
-  }
-}
+  },
+};
 </script>
 
 <style scoped>

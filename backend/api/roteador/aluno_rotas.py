@@ -36,11 +36,12 @@ class Aluno_rotas:
         def ler():
             return self.__aluno_controle.ler()
         
-        @self.__blueprint.route('/',methods=['PUT'])
+        @self.__blueprint.route('/<int:matricula_aluno>',methods=['PUT'])
         #@self.jwt_middleware.validar_token
-        @self.__aluno_middleware.validar_body
-        def alterar():
-            return self.__aluno_controle.alterar()
+        @self.__aluno_middleware.validar_matricula_param
+        @self.__aluno_middleware.validar_body_alterar
+        def alterar(matricula_aluno):
+            return self.__aluno_controle.alterar(matricula_aluno)
         
         @self.__blueprint.route('/<int:matricula_aluno>',methods=['DELETE'])
         #@self.jwt_middleware.validar_token

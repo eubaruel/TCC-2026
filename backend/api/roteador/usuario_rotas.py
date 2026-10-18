@@ -15,6 +15,11 @@ class Usuario_rotas:
     
     def criar_rotas(self):
 
+        @self.__blueprint.route('/<int:registro>/alterar-senha', methods=['PATCH'])
+        @self.__usuario_middleware.validar_alterar_senha
+        def alterar_senha(registro):
+            return self.__usuario_controle.alterar_senha(registro)
+
         @self.__blueprint.route('/login',methods=['POST'])
         @self.__usuario_middleware.validar_login
         def login():
@@ -25,14 +30,20 @@ class Usuario_rotas:
         def cadastrar():
             return self.__usuario_controle.cadastrar()
         
+        @self.__blueprint.route('/excel',methods=['POST'])
+        #@self.jwt_middleware.validar_token
+        def importar():
+            return self.__usuario_controle.importar()
+        
         @self.__blueprint.route('/',methods=['GET'])
         def ler():
             return self.__usuario_controle.ler()
         
-        @self.__blueprint.route('/',methods=['PUT'])
+        @self.__blueprint.route('/<int:registro>',methods=['PUT'])
         @self.__usuario_middleware.validar_body_alterar
-        def alterar():
-            return self.__usuario_controle.alterar()
+        @self.__usuario_middleware.validar_registro_param
+        def alterar(registro):
+            return self.__usuario_controle.alterar(registro)
         
         @self.__blueprint.route('/<int:registro>',methods=['DELETE'])
         @self.__usuario_middleware.validar_registro_param

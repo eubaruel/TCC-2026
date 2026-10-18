@@ -1,0 +1,2 @@
+# Cliente HTTP usado pela API principal; OpenCV permanece no microserviço.
+requests>=2.31,<3

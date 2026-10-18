@@ -1,80 +1,100 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import LoginTelaPrincipal from '@/views/LoginTelaPrincipal.vue'
-import TelaPrincipal from '@/components/TelaPrincipal.vue'
-import ProvasView from '@/views/ProvasView.vue'
-import QuestoesView from '@/views/QuestoesView.vue'
-import AvisosView from '@/views/AvisosView.vue'
-import GestaoUsuarios from '@/views/GestaoUsuarios.vue'
-import ConfiGuracoes from '@/views/ConfiGuracoes.vue'
-import { useAuthStore } from '@/stores/auth'
+import { createRouter, createWebHistory } from "vue-router";
+import LoginTelaPrincipal from "@/views/LoginTelaPrincipal.vue";
+import TelaPrincipal from "@/components/TelaPrincipal.vue";
+import ProvasView from "@/views/ProvasView.vue";
+import QuestoesView from "@/views/QuestoesView.vue";
+import GestaoUsuarios from "@/views/GestaoUsuarios.vue";
+import ConfiGuracoes from "@/views/ConfiGuracoes.vue";
+import CriarProvaView from "@/views/CriarProvaView.vue";
+import { useAuthStore } from "@/stores/auth";
 
 const routes = [
   {
-    path: '/',
-    name: 'Login',
-    component: LoginTelaPrincipal
+    path: "/",
+    name: "Login",
+    component: LoginTelaPrincipal,
   },
   {
-    path: '/',
+    // Tela cheia (fora da TelaPrincipal): sem barra lateral e sem cabeçalho de boas-vindas.
+    path: "/provas/editor/:id",
+    name: "CriarProvaView",
+    component: CriarProvaView,
+    props: true,
+    meta: { requiresAuth: true, requiresProfessor: true },
+  },
+  { path: "/provas/editor", redirect: "/provas" },
+  {
+    path: "/provas/imprimir/:id",
+    name: "ImprimirProvasView",
+    component: () => import("@/views/ImprimirProvasView.vue"),
+    props: true,
+    meta: { requiresAuth: true, requiresProcesso: true },
+  },
+  {
+    path: "/provas/notas/:id",
+    name: "ImprimirNotasView",
+    component: () => import("@/views/ImprimirNotasView.vue"),
+    props: true,
+    meta: { requiresAuth: true, requiresProcesso: true },
+  },
+  {
+    path: "/",
     component: TelaPrincipal,
     meta: { requiresAuth: true },
     children: [
       {
-        path: 'provas',
-        name: 'ProvasView',
-        component: ProvasView
+        path: "provas/corrigir",
+        name: "CorrigirProvasView",
+        component: () => import("@/views/CorrigirProvasView.vue"),
+        meta: { requiresProcesso: true },
       },
       {
-        path: 'questoes',
-        name: 'QuestoesView',
+        path: "provas",
+        name: "ProvasView",
+        component: ProvasView,
+      },
+      {
+        path: "questoes",
+        name: "QuestoesView",
         component: QuestoesView,
-        meta: { requiresProfessor: true }
+        meta: { requiresProfessor: true },
       },
       {
-        path: 'avisos',
-        name: 'AvisosView',
-        component: AvisosView,
-        meta: { requiresProcesso: true }
-      },
-      {
-        path: 'usuarios',
-        name: 'GestaoUsuarios',
+        path: "usuarios",
+        name: "GestaoUsuarios",
         component: GestaoUsuarios,
-        meta: { requiresProcesso: true }
+        meta: { requiresProcesso: true },
       },
       {
-        path: 'configuracoes',
-        name: 'ConfiGuracoes',
-        component: ConfiGuracoes
+        path: "configuracoes",
+        name: "ConfiGuracoes",
+        component: ConfiGuracoes,
       },
       {
-        path: '',
-        redirect: '/provas'
-      }
-    ]
-  }
-]
+        path: "",
+        redirect: "/provas",
+      },
+    ],
+  },
+];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
-})
+  routes,
+});
 
 router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
-  authStore.loadUser()
-  
-  const usuarioLogado = localStorage.getItem('usuarioLogado')
-  
-  if (to.meta.requiresAuth && !usuarioLogado) {
-    next('/')
-  } else if (to.meta.requiresProfessor && !authStore.isProfessor) {
-    next('/provas')
-  } else if (to.meta.requiresProcesso && !authStore.isProcessoPedagogico) {
-    next('/provas')
-  } else {
-    next()
-  }
-})
+  const authStore = useAuthStore();
 
-export default router
+  if (to.meta.requiresAuth && !authStore.isLoggedIn) {
+    next("/");
+  } else if (to.meta.requiresProfessor && !authStore.isProfessor) {
+    next("/provas");
+  } else if (to.meta.requiresProcesso && !authStore.isProcessoPedagogico) {
+    next("/provas");
+  } else {
+    next();
+  }
+});
+
+export default router;
