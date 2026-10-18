@@ -1,15 +1,19 @@
 <template>
-  <div class="preview-prova">
+  <div class="preview-prova" :style="estiloPagina">
     <div v-if="!template" class="preview-carregando">Carregando template da prova...</div>
-    <!-- Conteúdo sanitizado com DOMPurify em utils/html.js -->
-    <!-- eslint-disable-next-line vue/no-v-html -->
-    <div v-else class="folha" v-html="htmlFinal"></div>
+    <div v-else class="folha">
+      <slot name="cabecalho"></slot>
+      <!-- Conteúdo sanitizado com DOMPurify em utils/html.js -->
+      <!-- eslint-disable-next-line vue/no-v-html -->
+      <div class="conteudo-prova texto-questao" v-html="htmlFinal"></div>
+    </div>
   </div>
 </template>
 
 <script>
 import { LETRAS } from "@/stores/provaDraft";
 import { escaparHtml, htmlVazio, sanitizar } from "@/utils/html";
+import { PAGINA_PROVA } from "@/utils/cartaoResposta";
 
 const VAZIO = '<span class="preview-vazio">—</span>';
 
@@ -23,6 +27,15 @@ export default {
     matricula: { type: [String, Number], default: "" },
   },
   computed: {
+    estiloPagina() {
+      const { largura, altura, margemLateral, margemSuperior, margemInferior } = PAGINA_PROVA;
+      // Em tela, a folha reduz proporcionalmente para caber no painel; no papel, usa mm reais.
+      return {
+        "--largura-pagina": `${largura}mm`, "--proporcao-pagina": `${largura} / ${altura}`,
+        "--margens-previa": `${margemSuperior / largura * 100}% ${margemLateral / largura * 100}% ${margemInferior / largura * 100}%`,
+        "--margens-impressao": `${margemSuperior}mm ${margemLateral}mm ${margemInferior}mm`,
+      };
+    },
     htmlQuestoes() {
       if (!this.questoes.length) return '<p class="preview-vazio">Nenhuma questão adicionada.</p>';
       return this.questoes.map((questao, index) => {
@@ -59,7 +72,9 @@ export default {
 
 <style scoped>
 .preview-prova {
-  min-height: 100%;
+  width: var(--largura-pagina);
+  max-width: 100%;
+  margin: 0 auto;
   display: flex;
   justify-content: center;
 }
@@ -71,15 +86,14 @@ export default {
 
 /* A folha simula o papel impresso e permanece clara mesmo no tema escuro. */
 .folha {
+  box-sizing: border-box;
   width: 100%;
-  max-width: 794px;
-  min-height: 1123px;
+  aspect-ratio: var(--proporcao-pagina);
   background: white;
   color: #222;
-  padding: 48px 56px;
+  padding: var(--margens-previa);
   border-radius: 4px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  font-size: 14px;
   line-height: 1.5;
   word-wrap: break-word;
 }
@@ -129,15 +143,9 @@ export default {
   color: #bbb;
 }
 
-@media (max-width: 768px) {
-  .folha {
-    padding: 24px 20px;
-    min-height: auto;
-  }
-}
-
 @media print {
-  .folha { width: 100%; max-width: none; min-height: 0; padding: 0; box-shadow: none; border-radius: 0; }
+  .preview-prova { width: 100%; max-width: none; display: block; }
+  .folha { aspect-ratio: auto; padding: var(--margens-impressao); box-shadow: none; border-radius: 0; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .folha :deep(.preview-questao) { break-inside: avoid; }
 }
 </style>

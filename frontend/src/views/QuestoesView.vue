@@ -51,8 +51,8 @@
               <span class="data-criacao">Criada em: {{ questao.dataCriacao }}</span>
             </div>
             <!-- eslint-disable-next-line vue/no-v-html -->
-            <div class="questao-texto" v-html="sanitizar(questao.texto)"></div>
-            <div class="alternativas">
+            <div class="questao-texto texto-questao" v-html="sanitizar(questao.texto)"></div>
+            <div class="alternativas texto-questao">
               <p><strong>Texto das Alternativas:</strong></p>
               <ul>
                 <li v-for="alt in questao.alternativas" :key="alt.letra" 
@@ -144,36 +144,26 @@
           </div>
           
           <div class="form-group">
-            <label>Enunciado da Questão *</label>
-            <textarea v-model="novaQuestao.texto" rows="5" required placeholder="Digite o enunciado da questão..."></textarea>
+            <label for="enunciado-questao">Enunciado da Questão *</label>
+            <EditorQuill id="enunciado-questao" v-model="novaQuestao.texto" rotulo="Enunciado da questão" obrigatorio placeholder="Digite o enunciado da questão..." />
           </div>
           
           <!-- Campo para questão objetiva -->
           <div class="objetiva-fields">
-            <div class="form-group">
-              <label>Texto das Alternativas</label>
-              <div v-for="(alt, idx) in novaQuestao.alternativas" :key="idx" class="alternativa-item">
-                <span class="letra-alt">{{ alt.letra }})</span>
-                <input 
-                  type="text" 
-                  v-model="alt.texto" 
-                  :placeholder="`Texto da alternativa ${alt.letra}`" 
-                  required
+            <template v-for="(alt, idx) in novaQuestao.alternativas" :key="alt.letra">
+              <h3 v-if="idx === 0" class="titulo-alternativas">Alternativa correta *</h3>
+              <h3 v-else-if="idx === 1" class="titulo-alternativas">Demais alternativas *</h3>
+              <div class="form-group alternativa-item">
+                <label :for="`alternativa-${alt.letra}`" class="letra-alt">{{ alt.letra }})</label>
+                <EditorQuill
+                  :id="`alternativa-${alt.letra}`"
+                  v-model="alt.texto"
+                  :rotulo="`Alternativa ${alt.letra}${idx === 0 ? ' - correta' : ''}`"
+                  :placeholder="`Texto da alternativa ${alt.letra}`"
+                  compacto obrigatorio
                 />
               </div>
-            </div>
-
-            <div class="form-group">
-              <label>Alternativa Correta *</label>
-              <select v-model="novaQuestao.alternativaCorreta" required class="select-correta">
-                <option value="A">Alternativa A</option>
-                <option value="B">Alternativa B</option>
-                <option value="C">Alternativa C</option>
-                <option value="D">Alternativa D</option>
-                <option value="E">Alternativa E</option>
-              </select>
-              <small class="helper-text">Selecione qual alternativa é a correta</small>
-            </div>
+            </template>
           </div>
           
           <div class="form-group">
@@ -218,8 +208,8 @@
               <span class="data-criacao">Criada em: {{ questaoItem.dataCriacao }}</span>
             </div>
             <!-- eslint-disable-next-line vue/no-v-html -->
-            <div class="questao-texto" v-html="sanitizar(questaoItem.texto)"></div>
-            <div class="alternativas">
+            <div class="questao-texto texto-questao" v-html="sanitizar(questaoItem.texto)"></div>
+            <div class="alternativas texto-questao">
               <p><strong>Texto das Alternativas:</strong></p>
               <ul>
                 <li v-for="alt in questaoItem.alternativas" :key="alt.letra" 
@@ -248,7 +238,8 @@ import { useAuthStore } from "@/stores/auth";
 import { useProvaDraftStore } from "@/stores/provaDraft";
 import { listarDisciplinas } from "@/services/disciplinas";
 import { atualizarQuestao, criarQuestao, excluirQuestao, listarQuestoes } from "@/services/questoes";
-import { sanitizar } from "@/utils/html";
+import { htmlVazio, sanitizar } from "@/utils/html";
+import EditorQuill from "@/components/EditorQuill.vue";
 import FiltrosQuestoes from "@/components/FiltrosQuestoes.vue";
 import { filtrarQuestoes, novosFiltrosQuestoes } from "@/utils/filtrosQuestoes";
 
@@ -259,13 +250,12 @@ const novaQuestao = () => ({
   autor: "",
   texto: "",
   alternativas: letras.map((letra) => ({ letra, texto: "" })),
-  alternativaCorreta: "A",
   dificuldade: "Médio",
 });
 
 export default {
   name: "QuestoesView",
-  components: { FiltrosQuestoes },
+  components: { FiltrosQuestoes, EditorQuill },
   setup() {
     return { authStore: useAuthStore(), draftStore: useProvaDraftStore(), router: useRouter() };
   },
@@ -357,17 +347,26 @@ export default {
         disciplina: [...new Set(referenciasDisciplina.filter(Boolean))],
         tipo_questao: "Objetiva",
         dificuldade: this.novaQuestao.dificuldade,
-        enunciado: this.novaQuestao.texto,
+        enunciado: sanitizar(this.novaQuestao.texto),
       };
       if (this.novaQuestao.autor) payload.autor = this.novaQuestao.autor;
-      payload.alternativas = this.novaQuestao.alternativas.map((alternativa) => alternativa.texto);
-      payload.alternativa_correta = this.novaQuestao.alternativas.find((alternativa) => alternativa.letra === this.novaQuestao.alternativaCorreta)?.texto;
+      payload.alternativas = this.novaQuestao.alternativas.map((alternativa) => sanitizar(alternativa.texto));
+      payload.alternativa_correta = payload.alternativas[0];
       return payload;
     },
     async salvarQuestao() {
       try {
         if (!this.novaQuestao.disciplina?.trim()) {
           window.$modal.abrir({ titulo: "Atenção", mensagem: "Informe uma disciplina.", tipo: "alerta" });
+          return;
+        }
+        if (htmlVazio(this.novaQuestao.texto)) {
+          window.$modal.abrir({ titulo: "Atenção", mensagem: "Preencha o enunciado da questão.", tipo: "alerta" });
+          return;
+        }
+        const alternativaVazia = this.novaQuestao.alternativas.find((alternativa) => htmlVazio(alternativa.texto));
+        if (alternativaVazia) {
+          window.$modal.abrir({ titulo: "Atenção", mensagem: `Preencha a alternativa ${alternativaVazia.letra}.`, tipo: "alerta" });
           return;
         }
         const payload = this.payloadQuestao();
@@ -386,6 +385,12 @@ export default {
       this.editandoId = null;
     },
     editarQuestao(questao) {
+      const correta = questao.alternativas.find((alternativa) => alternativa.letra === questao.alternativaCorreta);
+      if (!correta) {
+        window.$modal.abrir({ titulo: "Atenção", mensagem: "Esta questão está sem uma alternativa correta válida. Confira o cadastro antes de editar.", tipo: "alerta" });
+        return;
+      }
+      const alternativas = [correta, ...questao.alternativas.filter((alternativa) => alternativa !== correta)];
       this.editandoId = questao._id;
       const referencias = (questao.disciplinasOriginais || []).map((item) => item.toLowerCase());
       const disciplinaCadastrada = this.disciplinas.find((disciplina) =>
@@ -395,7 +400,7 @@ export default {
       );
       const disciplinaLegada = [...(questao.disciplinasOriginais || [])]
         .sort((primeira, segunda) => segunda.length - primeira.length)[0] || "";
-      this.novaQuestao = { disciplina: disciplinaCadastrada?.nome_disciplina || disciplinaLegada, assunto: questao.assunto, autor: questao.autor, texto: questao.texto, alternativas: questao.alternativas.map((alternativa) => ({ letra: alternativa.letra, texto: alternativa.texto })), alternativaCorreta: questao.alternativaCorreta, dificuldade: questao.dificuldade };
+      this.novaQuestao = { disciplina: disciplinaCadastrada?.nome_disciplina || disciplinaLegada, assunto: questao.assunto, autor: questao.autor, texto: questao.texto, alternativas: alternativas.map((alternativa, index) => ({ letra: letras[index], texto: alternativa.texto })), dificuldade: questao.dificuldade };
       this.abaAtiva = "cadastrar";
     },
     excluirQuestao(id) {
@@ -750,14 +755,13 @@ export default {
   color: #666;
 }
 
-.alternativa-item input[type="text"] {
+.alternativa-item .editor-quill {
   flex: 1;
+  width: 100%;
 }
 
-.select-correta {
-  width: 200px;
-  cursor: pointer;
-}
+.titulo-alternativas { font-size: 16px; font-weight: 500; margin: 20px 0 8px; }
+.alternativa-item label { margin-bottom: 0; }
 
 .btn-salvar-questao {
   width: 100%;
@@ -820,8 +824,5 @@ export default {
     width: auto;
   }
   
-  .select-correta {
-    width: 100%;
-  }
 }
 </style>

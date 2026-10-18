@@ -1,6 +1,6 @@
 <template>
   <!-- O desenho mantém as dez colunas, inclusive quando a prova tem menos questões. -->
-  <svg class="cartao-resposta" :viewBox="`0 0 ${modelo.largura} ${modelo.altura}`" role="img" :aria-label="`Cartão-resposta da matrícula ${matricula}`">
+  <svg class="cartao-resposta" :viewBox="`0 0 ${modelo.largura} ${modelo.altura}`" role="img" :aria-label="matricula ? `Cartão-resposta da matrícula ${matricula}` : 'Cartão-resposta da prova'">
     <rect width="1200" height="286" fill="white" />
     <!-- Recorta apenas os logotipos originais; a grade e os textos são vetoriais. -->
     <svg x="8" y="10" width="144" height="41" viewBox="16 18 288 72" preserveAspectRatio="none">
@@ -40,7 +40,7 @@
       <text x="966" y="192">{{ dataAplicacao }}</text>
     </g>
     <!-- A área de nota é livre no modelo; o QR não invade a região das respostas. -->
-    <image :href="qrCode" :x="modelo.qr.x" :y="modelo.qr.y" :width="modelo.qr.tamanho" :height="modelo.qr.tamanho" />
+    <image v-if="qrCode" :href="qrCode" :x="modelo.qr.x" :y="modelo.qr.y" :width="modelo.qr.tamanho" :height="modelo.qr.tamanho" />
   </svg>
 </template>
 

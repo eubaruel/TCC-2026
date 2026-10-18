@@ -20,10 +20,13 @@
         <ListaTurma :prova="prova" :turma="grupo.turma" :alunos="grupo.alunos" tipo="notas" />
         <ListaTurma :prova="prova" :turma="grupo.turma" :alunos="grupo.alunos" tipo="entrega" />
         <section v-for="versao in grupo.alunos" :key="versao.id_prova_aluno" class="versao-aluno documento-impressao">
-        <CartaoResposta :prova="{ ...prova, id_turma: grupo.turma }" :matricula="versao.matricula_aluno" :nomeAluno="versao.nome_aluno" :qrCode="versao.qrCode" />
-        <p class="orientacao-cartao">Preencha todo o retângulo de uma alternativa em cada questão de 1 a {{ versao.questoes.length }}. Deixe as demais colunas em branco.</p>
         <PreviewProva :template="template" :metadados="metadados" :professor="prova.professor.nome"
-          :matricula="versao.matricula_aluno" :questoes="versao.questoes" />
+          :matricula="versao.matricula_aluno" :questoes="versao.questoes">
+          <template #cabecalho>
+            <CartaoResposta :prova="{ ...prova, id_turma: grupo.turma }" :matricula="versao.matricula_aluno" :nomeAluno="versao.nome_aluno" :qrCode="versao.qrCode" />
+            <p class="orientacao-cartao">Preencha todo o retângulo de uma alternativa em cada questão de 1 a {{ versao.questoes.length }}. Deixe as demais colunas em branco.</p>
+          </template>
+        </PreviewProva>
         </section>
       </template>
     </main>
@@ -107,7 +110,7 @@ export default {
 button:disabled { opacity: .5; cursor: not-allowed; }
 .mensagem { margin: 20px 0; text-align: center; }
 .mensagem-erro { color: #c0392b; }
-.versao-aluno { width: 186mm; max-width: 100%; margin: 20px auto; padding: 12px; background: white; color: #222; box-shadow: 0 4px 20px #0002; }
+.versao-aluno { margin: 20px auto; }
 .orientacao-cartao { font-size: 11px; margin: 8px 0 14px; }
 </style>
 
@@ -122,8 +125,9 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   .conteudo { padding: 0 !important; }
   .impressao-container { padding: 0 !important; }
   .impressao-acoes, .impressao-container > .mensagem { display: none !important; }
-  /* O respiro fica no conteúdo, preservando os 186 mm úteis e cada página da prova. */
+  /* As listas mantêm seu modelo. As margens das provas pertencem à folha compartilhada. */
   .documento-impressao { box-sizing: border-box; width: 100% !important; max-width: none !important; padding: 12mm !important; margin: 0 !important; box-shadow: none !important; -webkit-box-decoration-break: clone; box-decoration-break: clone; break-after: page; }
+  .versao-aluno.documento-impressao { padding: 0 !important; }
   .documento-impressao:last-child { break-after: auto; }
 }
 </style>

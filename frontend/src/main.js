@@ -3,6 +3,7 @@ import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
 import "./assets/css/estilos_globais.css";
+import "./assets/css/texto_questao.css";
 
 const app = createApp(App);
 

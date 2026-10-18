@@ -44,6 +44,29 @@ test("recorte mantém as dez colunas, QR, largura inteira e margem de segurança
   assert.ok(codigo.location.bottomLeftCorner.y < faixa.y + faixa.altura);
 });
 
+test("recorte reconhece o cartão A4 com margens laterais de 16 mm e superior de 13 mm", () => {
+  const { PAGINA_PROVA: pagina, CARTAO_RESPOSTA: cartao } = modelo;
+  const pixelsPorMm = 2;
+  const width = pagina.largura * pixelsPorMm, height = pagina.altura * pixelsPorMm;
+  const imagem = { width, height, data: new Uint8ClampedArray(width * height * 4).fill(255) };
+  const escala = (pagina.largura - 2 * pagina.margemLateral) * pixelsPorMm / cartao.largura;
+  const x = pagina.margemLateral * pixelsPorMm, y = pagina.margemSuperior * pixelsPorMm;
+  const fim = Math.round(y + cartao.altura * escala);
+  for (const linha of [y, fim]) {
+    for (let coluna = x; coluna <= width - x; coluna++) imagem.data.fill(0, (linha * width + coluna) * 4, (linha * width + coluna) * 4 + 3);
+  }
+  const quiet = cartao.qr.tamanho * cartao.qr.margem / 33;
+  const lado = cartao.qr.tamanho * 25 / 33 * escala;
+  const origem = { x: x + (cartao.qr.x + quiet) * escala, y: y + (cartao.qr.y + quiet) * escala };
+  const codigo = { data: "6acecbcd32149b41b3a09574", version: 2, location: {
+    topLeftCorner: origem, topRightCorner: { x: origem.x + lado, y: origem.y }, bottomLeftCorner: { x: origem.x, y: origem.y + lado },
+  } };
+  const faixa = recorte.localizarFaixa(imagem, codigo);
+  assert.ok(faixa);
+  assert.ok(faixa.y < y);
+  assert.ok(faixa.y + faixa.altura > fim);
+});
+
 test("QR ausente, de outro tipo ou sem as duas bordas não permite corte", () => {
   const { imagem, codigo } = imagemComCartao();
   assert.equal(recorte.localizarFaixa(imagem, null), null);
