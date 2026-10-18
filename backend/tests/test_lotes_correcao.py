@@ -91,16 +91,49 @@ class LoteCorrecaoTest(unittest.TestCase):
 
 
 class PersistenciaNotasTest(unittest.TestCase):
+    def test_tentativa_com_falha_e_condicionada_a_mesma_versao_e_preserva_nota(self):
+        colecao = MagicMock()
+        colecao.update_one.return_value.matched_count = 1
+        dao = Prova_x_aluno_dao(SimpleNamespace(get_banco_de_dados=lambda: {"provas_x_alunos": colecao}))
+        registro = {"_id": str(ObjectId()), "id_prova": str(ObjectId()), "questoes": [{"posicao_alternativa_correta": 2}]}
+        tentativa = {"concluida_em": "2026-10-18T21:00:00+00:00", "sucesso": False}
+        self.assertTrue(dao.registrar_tentativa_correcao(registro, tentativa))
+        filtro, alteracao = colecao.update_one.call_args.args
+        self.assertEqual(filtro, {"_id": ObjectId(registro["_id"]), "id_prova": registro["id_prova"], "questoes": registro["questoes"]})
+        self.assertEqual(alteracao, {"$set": {"tentativa_correcao": tentativa}})
+        colecao.update_one.return_value.matched_count = 0
+        self.assertFalse(dao.registrar_tentativa_correcao(registro, tentativa))
+
+    def test_contagem_da_base_nao_inclui_outras_provas_e_trata_ausencia_de_versoes(self):
+        colecao = MagicMock()
+        dao = Prova_x_aluno_dao(SimpleNamespace(get_banco_de_dados=lambda: {"provas_x_alunos": colecao}))
+        id_prova = str(ObjectId())
+        colecao.aggregate.return_value = [{"_id": None, "total": 3, "processadas": 2}]
+        self.assertEqual(dao.contar_correcoes(id_prova), {"total": 3, "processadas": 2})
+        self.assertEqual(colecao.aggregate.call_args.args[0][0], {"$match": {"id_prova": id_prova}})
+        colecao.aggregate.return_value = []
+        self.assertEqual(dao.contar_correcoes(id_prova), {"total": 0, "processadas": 0})
+
+    def test_regeneracao_de_versoes_limpa_correcao_e_contagem_anteriores(self):
+        colecao = MagicMock()
+        dao = Prova_x_aluno_dao(SimpleNamespace(get_banco_de_dados=lambda: {"provas_x_alunos": colecao}))
+        versao = SimpleNamespace(id_prova=str(ObjectId()), matricula_aluno=1, questoes=[{"posicao_alternativa_correta": 2}])
+        self.assertEqual(dao.sincronizar(versao.id_prova, [versao]), 1)
+        operacao = colecao.bulk_write.call_args.args[0][0]
+        self.assertEqual(operacao._doc["$unset"], {"correcao": "", "tentativa_correcao": ""})
+
     def test_dao_grava_resultado_sem_alterar_questoes_e_busca_em_lote(self):
         colecao = MagicMock()
         colecao.update_one.return_value.matched_count = 1
         registro = {"_id": str(ObjectId()), "id_prova": str(ObjectId()), "questoes": [{"id_questao": "q", "posicao_alternativa_correta": 2}]}
         dao = Prova_x_aluno_dao(SimpleNamespace(get_banco_de_dados=lambda: {"provas_x_alunos": colecao}))
-        resultado = {"nota_prova": 0, "id_correcao": "teste"}
+        resultado = {"nota_prova": 0, "id_correcao": "teste", "corrigida_em": "2026-10-18T21:00:00+00:00"}
         self.assertTrue(dao.salvar_correcao(registro, resultado))
         filtro, alteracao = colecao.update_one.call_args.args
         self.assertEqual(filtro["questoes"], registro["questoes"])
-        self.assertEqual(alteracao, {"$set": {"correcao": resultado}})
+        self.assertEqual(alteracao, {"$set": {"correcao": resultado, "tentativa_correcao": {
+            "concluida_em": resultado["corrigida_em"], "sucesso": True
+        }}})
         colecao.find.return_value = [{"_id": ObjectId(registro["_id"]), "correcao": resultado}]
         self.assertEqual(dao.buscar_por_ids([registro["_id"]])[0]["_id"], registro["_id"])
 

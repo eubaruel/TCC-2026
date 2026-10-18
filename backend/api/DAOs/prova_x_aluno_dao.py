@@ -33,7 +33,7 @@ class Prova_x_aluno_dao:
                         "id_prova": documento["id_prova"],
                         "matricula_aluno": documento["matricula_aluno"]
                     },
-                    {"$set": documento},
+                    {"$set": documento, "$unset": {"correcao": "", "tentativa_correcao": ""}},
                     upsert=True
                 )
                 for documento in documentos
@@ -81,9 +81,36 @@ class Prova_x_aluno_dao:
     def salvar_correcao(self, registro, correcao) -> bool:
         resultado = self.__colecao.update_one(
             {"_id": ObjectId(registro["_id"]), "id_prova": registro["id_prova"], "questoes": registro["questoes"]},
-            {"$set": {"correcao": correcao}}
+            {"$set": {"correcao": correcao, "tentativa_correcao": {
+                "concluida_em": correcao["corrigida_em"], "sucesso": True
+            }}}
         )
         return resultado.matched_count > 0
+
+    def registrar_tentativa_correcao(self, registro, tentativa) -> bool:
+        resultado = self.__colecao.update_one(
+            {"_id": ObjectId(registro["_id"]), "id_prova": registro["id_prova"], "questoes": registro["questoes"]},
+            {"$set": {"tentativa_correcao": tentativa}}
+        )
+        return resultado.matched_count > 0
+
+    def contar_correcoes(self, id_prova):
+        # Um documento conta uma única vez, inclusive após reenvios ou tentativas com falha.
+        contagens = list(self.__colecao.aggregate([
+            {"$match": {"id_prova": id_prova}},
+            {"$group": {
+                "_id": None,
+                "total": {"$sum": 1},
+                "processadas": {"$sum": {"$cond": [{"$or": [
+                    {"$ne": [{"$ifNull": ["$tentativa_correcao", None]}, None]},
+                    # Resultados anteriores à introdução do contador continuam válidos.
+                    {"$ne": [{"$ifNull": ["$correcao.id_correcao", None]}, None]}
+                ]}, 1, 0]}}
+            }}
+        ]))
+        if not contagens:
+            return {"total": 0, "processadas": 0}
+        return {campo: contagens[0][campo] for campo in ("total", "processadas")}
 
     def buscar_por_ids(self, ids):
         registros = list(self.__colecao.find({"_id": {"$in": [ObjectId(id_) for id_ in ids]}}))

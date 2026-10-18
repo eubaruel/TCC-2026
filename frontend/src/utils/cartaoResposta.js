@@ -7,4 +7,4 @@ export const CARTAO_RESPOSTA = {
 };
 
 // Medidas em milímetros, compartilhadas pela prévia, impressão da prova e da nota.
-export const PAGINA_PROVA = { largura: 210, altura: 297, margemLateral: 16, margemSuperior: 13, margemInferior: 12 };
+export const PAGINA_PROVA = { largura: 210, altura: 297, margemLateral: 6.3, margemSuperior: 6.27, margemInferior: 5.7 };

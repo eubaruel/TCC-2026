@@ -154,7 +154,8 @@ class RotaCorrecaoTest(unittest.TestCase):
         registro = {"_id": id_aluno, "id_prova": str(id_base), "matricula_aluno": 123,
                     "questoes": [{"posicao_alternativa_correta": 1}]}
         versoes = SimpleNamespace(buscar_por_id=lambda id_: dict(registro) if id_ == id_aluno else None,
-                                  salvar_correcao=lambda *_: True)
+                                  salvar_correcao=lambda *_: True,
+                                  contar_correcoes=lambda _: {"total": 1, "processadas": 1})
         correcoes = Correcao_service(
             SimpleNamespace(fechar=lambda: None, processar=lambda _: {"qrcode": id_aluno, "respostas": {"1": "A"}}),
             versoes, SimpleNamespace(buscar_por_matricula=lambda _: {"nome_aluno": "Carlos Silva"}),

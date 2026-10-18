@@ -5,10 +5,21 @@
       <div class="header-line"></div>
     </div>
 
-    <!-- Tabs -->
-    <div v-if="authStore.isProcessoPedagogico" class="actions-bar">
-      <button class="btn-criar-prova btn-corrigir" @click="$router.push('/provas/corrigir')">Corrigir provas</button>
+    <div v-if="authStore.isProcessoPedagogico" class="acoes-principais" role="group" aria-label="Ações de provas">
+      <button type="button" class="acao-prova acao-criar" @click="mostrarCriacaoBase = true">
+        <span class="acao-icone" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg>
+        </span>
+        <span class="acao-texto"><strong>Criar prova-base</strong><span>Defina a prova e atribua ao professor</span></span>
+      </button>
+      <button type="button" class="acao-prova acao-corrigir" @click="$router.push('/provas/corrigir')">
+        <span class="acao-icone" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6m-12 6 3 3 5-6" /></svg>
+        </span>
+        <span class="acao-texto"><strong>Corrigir provas</strong><span>Envie imagens e confira os resultados</span></span>
+      </button>
     </div>
+    <!-- Tabs -->
     <div class="provas-tabs">
       <button
         @click="abaAtiva = 'minhas'"
@@ -40,22 +51,6 @@
         :class="{ ativo: abaAtiva === 'corrigidas' }"
       >
         Provas Corrigidas ({{ provasCorrigidas.length }})
-      </button>
-    </div>
-
-    <div v-if="abaAtiva === 'minhas' && authStore.isProcessoPedagogico" class="actions-bar">
-      <button @click="mostrarCriacaoBase = true" class="btn-criar-prova">
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path d="M12 5V19M5 12H19" stroke="white" stroke-width="2" />
-        </svg>
-        Criar Prova-base
       </button>
     </div>
 
@@ -141,6 +136,16 @@
                   }}
                 </span>
               </div>
+              <div v-if="authStore.isProcessoPedagogico && prova.status === 'Impressa'" class="progresso-correcao">
+                <span v-if="contagemCorrecaoValida(prova)" class="contador-correcao" title="Cada versão conta uma vez, incluindo tentativas com sucesso ou falha.">
+                  Corrigidas: <strong>{{ prova.progresso_correcao.processadas }} / {{ prova.progresso_correcao.total }}</strong>
+                </span>
+                <span v-else class="contador-correcao">Contagem indisponível</span>
+                <button v-if="podeIgnorarProvas(prova)" type="button" class="btn-ignorar-provas"
+                  :disabled="ignorandoProvaId !== null" @click="solicitarIgnorarProvas(prova)">
+                  {{ ignorandoProvaId === prova.id ? 'Confirmando...' : 'Ignorar provas não corrigidas' }}
+                </button>
+              </div>
             </div>
           </div>
           <div class="prova-actions">
@@ -192,7 +197,7 @@
 
 <script>
 import { useAuthStore } from "@/stores/auth";
-import { excluirProva as excluirProvaApi, listarProvas, provaEditavel, confirmarImpressao as confirmarImpressaoApi } from "@/services/provas";
+import { excluirProva as excluirProvaApi, listarProvas, provaEditavel, confirmarImpressao as confirmarImpressaoApi, ignorarProvasNaoCorrigidas as ignorarProvasNaoCorrigidasApi } from "@/services/provas";
 import CriarProvaBase from "@/components/CriarProvaBase.vue";
 
 export default {
@@ -210,6 +215,7 @@ export default {
     carregando: true,
     excluindoId: null,
     confirmandoImpressaoId: null,
+    ignorandoProvaId: null,
     mostrarCriacaoBase: false,
   }),
   computed: {
@@ -324,6 +330,37 @@ export default {
         window.$modal.abrir({ titulo: "Não foi possível confirmar a impressão", mensagem: this.mensagemErro(error), tipo: "alerta" });
       } finally { this.confirmandoImpressaoId = null; }
     },
+    contagemCorrecaoValida(prova) {
+      const contagem = prova.progresso_correcao;
+      return Boolean(contagem && Number.isInteger(contagem.total) && Number.isInteger(contagem.processadas)
+        && contagem.total >= 0 && contagem.processadas >= 0 && contagem.processadas <= contagem.total);
+    },
+    podeIgnorarProvas(prova) {
+      return this.authStore.isProcessoPedagogico && prova.status === "Impressa" && this.contagemCorrecaoValida(prova)
+        && prova.progresso_correcao.total > 0 && prova.progresso_correcao.processadas * 2 > prova.progresso_correcao.total;
+    },
+    solicitarIgnorarProvas(prova) {
+      if (!this.podeIgnorarProvas(prova) || this.ignorandoProvaId !== null) return;
+      const { processadas, total } = prova.progresso_correcao;
+      const restantes = total - processadas;
+      window.$modal.abrir({
+        titulo: "Ignorar provas não corrigidas",
+        mensagem: `${processadas} de ${total} versões de ${prova.titulo} já tiveram uma tentativa de correção. Deseja ignorar ${restantes} ${restantes === 1 ? 'versão restante' : 'versões restantes'} e marcar a prova como Corrigida? Esta ação não atribui notas às versões restantes.`,
+        tipo: "confirmacao",
+        onConfirm: () => this.ignorarProvasNaoCorrigidas(prova),
+      });
+    },
+    async ignorarProvasNaoCorrigidas(prova) {
+      if (!this.podeIgnorarProvas(prova) || this.ignorandoProvaId !== null) return;
+      this.ignorandoProvaId = prova.id;
+      try {
+        const resposta = await ignorarProvasNaoCorrigidasApi(prova.id);
+        if (resposta.prova?.status !== "Corrigida") throw new Error("O servidor não confirmou a alteração do status. Tente novamente.");
+        Object.assign(prova, this.adaptarProva(resposta.prova));
+      } catch (error) {
+        window.$modal.abrir({ titulo: "Não foi possível concluir a correção", mensagem: this.mensagemErro(error), tipo: "alerta" });
+      } finally { this.ignorandoProvaId = null; }
+    },
     excluirProva(id) {
       if (!this.authStore.isProcessoPedagogico) return;
       window.$modal.abrir({ titulo: "Excluir prova", mensagem: "Deseja excluir esta prova?", tipo: "confirmacao", onConfirm: async () => { try { this.excluindoId = id; await excluirProvaApi(id); await this.carregarProvas(); } catch (error) { this.erro = this.mensagemErro(error); } finally { this.excluindoId = null; } } });
@@ -388,12 +425,6 @@ export default {
   border-bottom-color: #0066cc;
 }
 
-.actions-bar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 24px;
-}
-
 .btn-criar-prova {
   display: flex;
   align-items: center;
@@ -414,17 +445,26 @@ export default {
   transform: scale(1.02);
 }
 
-.btn-corrigir {
-  width: 100%;
-  justify-content: center;
-  padding: 16px 24px;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.btn-corrigir:hover {
-  transform: none;
-}
+.acoes-principais { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+.acao-prova { display: flex; align-items: center; gap: 16px; min-height: 88px; padding: 20px; border: 1px solid #00488b; border-radius: 12px; font: inherit; text-align: left; cursor: pointer; transition: background .2s, border-color .2s; }
+.acao-icone { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 44px; height: 44px; border-radius: 10px; }
+.acao-texto { display: flex; flex-direction: column; gap: 5px; }
+.acao-texto strong { font-size: 16px; font-weight: 600; }
+.acao-texto > span { font-size: 13px; line-height: 1.4; }
+.acao-criar { background: #00488b; color: #fff; }
+.acao-criar .acao-icone { background: #ffffff26; }
+.acao-criar .acao-texto > span { color: #ffffffd6; }
+.acao-criar:hover { background: #0066cc; border-color: #0066cc; }
+.acao-corrigir { background: #fff; color: #00488b; border-color: #a9c2dc; }
+.acao-corrigir .acao-icone { background: #edf4fb; }
+.acao-corrigir .acao-texto > span { color: #596b7b; }
+.acao-corrigir:hover { background: #edf4fb; border-color: #00488b; }
+.acao-prova:focus-visible { outline: 3px solid #0066cc; outline-offset: 3px; }
+.tema-escuro .acao-corrigir { background: #2a2a2a; color: #8ac4ff; border-color: #526a82; }
+.tema-escuro .acao-corrigir .acao-icone { background: #20364c; }
+.tema-escuro .acao-corrigir .acao-texto > span { color: #b5b5b5; }
+.tema-escuro .acao-corrigir:hover { background: #20364c; border-color: #8ac4ff; }
+@media (prefers-reduced-motion: reduce) { .acao-prova { transition: none; } }
 
 .lista-provas {
   display: flex;
@@ -545,6 +585,16 @@ export default {
   transform: scale(1.05);
 }
 
+.progresso-correcao { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.contador-correcao { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px; background: #edf4fb; color: #00488b; font-size: 12px; }
+.contador-correcao strong { font-variant-numeric: tabular-nums; }
+.btn-ignorar-provas { padding: 6px 10px; border: 1px solid #bdcfe2; border-radius: 6px; background: transparent; color: #00488b; font-size: 12px; cursor: pointer; }
+.btn-ignorar-provas:hover:not(:disabled) { background: #edf4fb; }
+.btn-ignorar-provas:focus-visible { outline: 2px solid #00488b; outline-offset: 3px; }
+.btn-ignorar-provas:disabled { opacity: .5; cursor: wait; }
+:global(.tema-escuro .progresso-correcao .contador-correcao) { background: #20364c; color: #8ac4ff; }
+:global(.tema-escuro .progresso-correcao .btn-ignorar-provas) { color: #8ac4ff; border-color: #4c6682; }
+:global(.tema-escuro .progresso-correcao .btn-ignorar-provas:hover:not(:disabled)) { background: #20364c; }
 .prova-actions .btn-confirmar-impressao { color: #00488b; display: inline-flex; align-items: center; justify-content: center; }
 .tema-escuro .prova-actions .btn-confirmar-impressao { color: #7bbcff; }
 .prova-actions button:disabled { opacity: .5; cursor: wait; transform: none; }
@@ -621,6 +671,7 @@ export default {
 @media print { .toast-aviso { display: none !important; } }
 
 @media (max-width: 768px) {
+  .acoes-principais { grid-template-columns: 1fr; gap: 12px; }
   .toast-aviso { top: 16px; right: 16px; }
   .prova-card {
     flex-direction: column;

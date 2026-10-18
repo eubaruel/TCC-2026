@@ -21,6 +21,7 @@ function ambiente(larguraEditor = 800) {
   const codigo = transformSync(fonte, { babelrc: false, configFile: false, plugins: ["@babel/plugin-transform-modules-commonjs"] }).code;
   const modulos = {
     "quill-resize-module": ResizeSimulado, "quill-resize-module/dist/resize.css": {},
+    "./imagensQuestao": { ALTURA_MAXIMA_IMAGEM_PX: Math.floor(45 * 96 / 25.4) },
   };
   const contexto = { exports: {}, document: eventos, window: eventos,
     getComputedStyle: () => ({ paddingLeft: "15px", paddingRight: "15px" }),

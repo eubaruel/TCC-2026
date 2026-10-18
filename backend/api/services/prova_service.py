@@ -116,6 +116,19 @@ class Prova_service:
                 prova["status"] = Prova.STATUS_IMPRESSA
             return {"prova": prova}
 
+    def ignorar_provas_nao_corrigidas(self, id_hash):
+        with self._operacao_exclusiva(id_hash):
+            prova = self._buscar_prova(id_hash)
+            if prova.get("status") != Prova.STATUS_IMPRESSA:
+                raise resposta_erro_http(409, "Somente provas impressas podem ter as versões restantes ignoradas")
+            contagem = self.__prova_x_aluno_service.contar_correcoes(id_hash)
+            if contagem["total"] == 0 or contagem["processadas"] * 2 <= contagem["total"]:
+                raise resposta_erro_http(409, "É necessário corrigir mais da metade das versões para ignorar as restantes")
+            if not self.__prova_dao.marcar_corrigida(id_hash):
+                raise resposta_erro_http(409, "A prova mudou durante a confirmação. Atualize a tela e tente novamente")
+            prova.update(status=Prova.STATUS_CORRIGIDA, progresso_correcao=contagem)
+            return {"prova": prova}
+
     @contextmanager
     def _operacao_exclusiva(self, id_hash):
         # Reserva no banco: protege também requisições atendidas por processos distintos.
@@ -141,7 +154,11 @@ class Prova_service:
 
     def consulta(self, filtro) -> list[dict]:
         print("🟣 prova_service.consulta()")
-        return self.__prova_dao.consulta(filtro)
+        provas = self.__prova_dao.consulta(filtro)
+        for prova in provas:
+            if prova.get("status") == Prova.STATUS_IMPRESSA:
+                prova["progresso_correcao"] = self.__prova_x_aluno_service.contar_correcoes(prova["_id"])
+        return provas
 
     def imprimir_provas(self, id_hash: str) -> list[dict]:
         print("🟣 prova_service.imprimir_provas()")

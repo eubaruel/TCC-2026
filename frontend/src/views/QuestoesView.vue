@@ -137,15 +137,21 @@
               Se foi você que escreveu, deixe em branco.
             </small>
           </div>
-          
+
           <div class="form-group">
-            <label>Tipo de Questão</label>
-            <input type="text" value="Objetiva" readonly />
+            <label>Dificuldade *</label>
+            <select v-model="novaQuestao.dificuldade">
+              <option value="Muito Fácil">Muito Fácil</option>
+              <option value="Fácil">Fácil</option>
+              <option value="Médio">Médio</option>
+              <option value="Difícil">Difícil</option>
+              <option value="Muito Difícil">Muito Difícil</option>
+            </select>
           </div>
           
           <div class="form-group">
             <label for="enunciado-questao">Enunciado da Questão *</label>
-            <EditorQuill id="enunciado-questao" v-model="novaQuestao.texto" rotulo="Enunciado da questão" obrigatorio placeholder="Digite o enunciado da questão..." />
+            <EditorQuill id="enunciado-questao" v-model="novaQuestao.texto" rotulo="Enunciado da questão" :limite-caracteres="limitesCaracteres.enunciado" obrigatorio placeholder="Digite o enunciado da questão..." />
           </div>
           
           <!-- Campo para questão objetiva -->
@@ -160,21 +166,11 @@
                   v-model="alt.texto"
                   :rotulo="`Alternativa ${alt.letra}${idx === 0 ? ' - correta' : ''}`"
                   :placeholder="`Texto da alternativa ${alt.letra}`"
+                  :limite-caracteres="limitesCaracteres.alternativa"
                   compacto obrigatorio
                 />
               </div>
             </template>
-          </div>
-          
-          <div class="form-group">
-            <label>Dificuldade *</label>
-            <select v-model="novaQuestao.dificuldade">
-              <option value="Muito Fácil">Muito Fácil</option>
-              <option value="Fácil">Fácil</option>
-              <option value="Médio">Médio</option>
-              <option value="Difícil">Difícil</option>
-              <option value="Muito Difícil">Muito Difícil</option>
-            </select>
           </div>
           
           <button
@@ -238,12 +234,14 @@ import { useAuthStore } from "@/stores/auth";
 import { useProvaDraftStore } from "@/stores/provaDraft";
 import { listarDisciplinas } from "@/services/disciplinas";
 import { atualizarQuestao, criarQuestao, excluirQuestao, listarQuestoes } from "@/services/questoes";
-import { htmlVazio, sanitizar } from "@/utils/html";
+import { contarCaracteres, contarImagens, htmlVazio, sanitizar } from "@/utils/html";
+import { LIMITE_IMAGENS } from "@/utils/imagensQuestao";
 import EditorQuill from "@/components/EditorQuill.vue";
 import FiltrosQuestoes from "@/components/FiltrosQuestoes.vue";
 import { filtrarQuestoes, novosFiltrosQuestoes } from "@/utils/filtrosQuestoes";
 
 const letras = ["A", "B", "C", "D", "E"];
+const LIMITES_CARACTERES = { enunciado: 7000, alternativa: 2000 };
 const novaQuestao = () => ({
   disciplina: "",
   assunto: "",
@@ -268,6 +266,7 @@ export default {
     carregandoDisciplinas: true,
     erroDisciplinas: "",
     novaQuestao: novaQuestao(),
+    limitesCaracteres: LIMITES_CARACTERES,
     editandoId: null,
     erro: "",
   }),
@@ -369,7 +368,22 @@ export default {
           window.$modal.abrir({ titulo: "Atenção", mensagem: `Preencha a alternativa ${alternativaVazia.letra}.`, tipo: "alerta" });
           return;
         }
+        if (contarCaracteres(this.novaQuestao.texto) > LIMITES_CARACTERES.enunciado) {
+          window.$modal.abrir({ titulo: "Atenção", mensagem: "O enunciado deve ter no máximo 7.000 caracteres de texto, incluindo espaços e pontuação.", tipo: "alerta" });
+          return;
+        }
+        const alternativaLonga = this.novaQuestao.alternativas.find((alternativa) => contarCaracteres(alternativa.texto) > LIMITES_CARACTERES.alternativa);
+        if (alternativaLonga) {
+          window.$modal.abrir({ titulo: "Atenção", mensagem: `A alternativa ${alternativaLonga.letra} deve ter no máximo 2.000 caracteres de texto, incluindo espaços e pontuação.`, tipo: "alerta" });
+          return;
+        }
         const payload = this.payloadQuestao();
+        const campos = [{ nome: "O enunciado", texto: payload.enunciado }, ...payload.alternativas.map((texto, i) => ({ nome: `A alternativa ${letras[i]}`, texto }))];
+        const excessoImagens = campos.find(campo => contarImagens(campo.texto) > LIMITE_IMAGENS);
+        if (excessoImagens) {
+          window.$modal.abrir({ titulo: "Atenção", mensagem: `${excessoImagens.nome} deve ter no máximo 3 imagens. Exclua as imagens excedentes para salvar.`, tipo: "alerta" });
+          return;
+        }
         if (this.editandoId) await atualizarQuestao(this.editandoId, payload);
         else await criarQuestao(payload);
         await this.carregarQuestoes();

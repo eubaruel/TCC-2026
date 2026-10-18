@@ -54,10 +54,10 @@ class Correcao_service:
                     resultado = futuro.result()
                     resultados.append({"indice": indice, "arquivo": imagem["arquivo"], **resultado})
                 except resposta_erro_http as erro:
-                    erros.append(self._erro(indice, imagem, erro.httpCode, erro.mensagem))
+                    erros.append(self._erro(indice, imagem, erro.httpCode, erro.mensagem, registrar_tentativa=erro.httpCode != 409))
                 except Exception:
                     logging.exception("Falha ao corrigir arquivo do lote")
-                    erros.append(self._erro(indice, imagem, 500, "Falha interna na correção"))
+                    erros.append(self._erro(indice, imagem, 500, "Falha interna na correção", registrar_tentativa=True))
 
         return {
             "resultados": sorted(resultados, key=lambda item: item["indice"]),
@@ -65,6 +65,7 @@ class Correcao_service:
         }
 
     def _corrigir_imagem(self, imagem):
+        imagem.pop("_registro_correcao", None)
         dados = self.cliente.processar(imagem)
         id_prova_aluno = dados.get("qrcode")
         if not isinstance(id_prova_aluno, str) or not id_prova_aluno.strip() or id_prova_aluno.strip() == "NÃO ENCONTRADO":
@@ -74,6 +75,8 @@ class Correcao_service:
         registro = self.prova_x_aluno_dao.buscar_por_id(id_prova_aluno.strip())
         if not registro:
             raise resposta_erro_http(404, "ProvaXAluno não encontrada")
+        # A falha só pode ser associada à mesma versão que foi efetivamente lida.
+        imagem["_registro_correcao"] = registro
 
         id_prova = registro.get("id_prova")
         prova = self.prova_dao.buscar_por_id(id_prova.strip()) if isinstance(id_prova, str) and id_prova.strip() else None
@@ -124,10 +127,16 @@ class Correcao_service:
         }
         if not self.prova_x_aluno_dao.salvar_correcao(registro, resultado):
             raise resposta_erro_http(409, "A versão individual mudou durante a correção. Envie a imagem novamente")
-        if prova.get("status") == Prova.STATUS_IMPRESSA:
-            # O filtro do DAO só altera esta base se ela ainda estiver impressa.
-            self.prova_dao.marcar_corrigida(id_prova.strip())
+        self._atualizar_status_correcao(id_prova.strip(), prova)
         return resultado
+
+    def _atualizar_status_correcao(self, id_prova, prova):
+        if prova.get("status") != Prova.STATUS_IMPRESSA:
+            return
+        contagem = self.prova_x_aluno_dao.contar_correcoes(id_prova)
+        if contagem["total"] > 0 and contagem["processadas"] == contagem["total"]:
+            # A contagem considera todas as versões da base, não só o envio atual.
+            self.prova_dao.marcar_corrigida(id_prova)
 
     def criar_lote(self, entradas):
         if not isinstance(entradas, list) or not entradas:
@@ -170,14 +179,15 @@ class Correcao_service:
             raise resposta_erro_http(404, "Lote de correção não encontrado")
         return lote
 
-    def _erro(self, indice, imagem, codigo, mensagem):
+    def _erro(self, indice, imagem, codigo, mensagem, registrar_tentativa=False):
         erro = {"indice": indice, "arquivo": imagem["arquivo"], "codigo": codigo, "mensagem": mensagem,
                 "matricula": None, "nome": None, "turma": None}
         id_ = imagem.get("id_prova_aluno")
         if not isinstance(id_, str) or not ObjectId.is_valid(id_):
             return erro
+        registro = None
         try:
-            registro = self.prova_x_aluno_dao.buscar_por_id(id_)
+            registro = imagem.get("_registro_correcao") or self.prova_x_aluno_dao.buscar_por_id(id_)
             if registro:
                 erro["matricula"] = registro.get("matricula_aluno")
                 aluno = self.aluno_dao.buscar_por_matricula(erro["matricula"])
@@ -186,6 +196,17 @@ class Correcao_service:
         except Exception:
             # A consulta de identificação não pode interromper as outras correções.
             logging.exception("Falha ao identificar aluno de uma correção pendente")
+        if registrar_tentativa and registro:
+            try:
+                id_prova = registro.get("id_prova")
+                prova = self.prova_dao.buscar_por_id(id_prova) if isinstance(id_prova, str) and id_prova.strip() else None
+                if prova and self.prova_x_aluno_dao.registrar_tentativa_correcao(registro, {
+                    "concluida_em": datetime.now(timezone.utc).isoformat(), "sucesso": False
+                }):
+                    self._atualizar_status_correcao(id_prova, prova)
+            except Exception:
+                # Uma falha de persistência não pode contar como uma tentativa registrada.
+                logging.exception("Falha ao registrar tentativa de correção")
         return erro
 
     def fechar(self):

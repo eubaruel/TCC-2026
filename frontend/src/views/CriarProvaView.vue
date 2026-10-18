@@ -26,7 +26,6 @@
             <p v-if="!editavel" class="mensagem-info">Prova concluída: somente visualização. A edição não é mais permitida.</p>
             <div class="bloco">
               <h3>Questões ({{ questoes.length }})</h3>
-              <p v-if="prova.quantidade_questoes" class="mensagem-info">Quantidade definida pelo processo pedagógico: {{ prova.quantidade_questoes }} questões.</p>
               <p v-if="editavel && questoes.length > limiteQuestoes" class="mensagem-erro" role="alert">Remova as questões excedentes antes de salvar ou enviar.</p>
               <div v-if="editavel" class="banco-questoes">
                 <h4>Banco de questões</h4>
