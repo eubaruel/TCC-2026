@@ -125,7 +125,7 @@
               </svg>
             </div>
             <div class="prova-detalhes">
-              <h4>{{ prova.titulo || "Prova sem título" }}</h4>
+              <h4>{{ (authStore.isProfessor ? prova.tituloProfessor : '') || prova.titulo || "Prova sem título" }}</h4>
               <div class="prova-metadata">
                 <span>📅 {{ formatarData(prova.criadaEm) }}</span>
                 <span v-if="authStore.isProcessoPedagogico">Professor: {{ prova.professor.nome }}</span>
@@ -136,6 +136,13 @@
                   }}
                 </span>
               </div>
+              <details v-if="authStore.isProfessor && prova.turmas?.length" class="turmas-prova">
+                <summary>{{ prova.turmas.length }} {{ prova.turmas.length === 1 ? 'turma' : 'turmas' }}</summary>
+                <ul class="lista-turmas" aria-label="Turmas que farão a prova">
+                  <li v-for="turma in prova.turmas" :key="turma">{{ turma }}</li>
+                </ul>
+              </details>
+              <p v-else-if="authStore.isProfessor" class="turmas-ausentes">Nenhuma turma informada</p>
               <div v-if="authStore.isProcessoPedagogico && prova.status === 'Impressa'" class="progresso-correcao">
                 <span v-if="contagemCorrecaoValida(prova)" class="contador-correcao" title="Cada versão conta uma vez, incluindo tentativas com sucesso ou falha.">
                   Corrigidas: <strong>{{ prova.progresso_correcao.processadas }} / {{ prova.progresso_correcao.total }}</strong>
@@ -278,6 +285,9 @@ export default {
         ...prova,
         id: prova._id,
         titulo: `${prova.disciplina.nome_disciplina} - ${Array.isArray(prova.id_turma) ? prova.id_turma.join(", ") : prova.id_turma}`,
+        tituloProfessor: `${prova.disciplina.nome_disciplina} - ${prova.periodo_letivo || "Período letivo não informado"}`,
+        turmas: [...new Set((Array.isArray(prova.id_turma) ? prova.id_turma : [prova.id_turma])
+          .map((turma) => String(turma ?? "").trim()).filter(Boolean))],
         criadaEm: prova.data_de_aplicacao,
       };
     },
@@ -525,10 +535,25 @@ export default {
 
 .prova-metadata {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   font-size: 12px;
   color: #888;
 }
+
+.prova-info, .prova-detalhes { min-width: 0; }
+.prova-icon { flex-shrink: 0; }
+.prova-detalhes h4 { overflow-wrap: anywhere; }
+.turmas-prova { margin-top: 10px; font-size: 12px; }
+.turmas-prova summary { width: fit-content; color: #00488b; cursor: pointer; border-radius: 4px; }
+.turmas-prova summary:hover { text-decoration: underline; }
+.turmas-prova summary:focus-visible { outline: 2px solid #00488b; outline-offset: 4px; }
+.lista-turmas { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0; margin: 8px 0 0; }
+.lista-turmas li { padding: 4px 8px; border-radius: 6px; background: #edf4fb; color: #00488b; overflow-wrap: anywhere; }
+.turmas-ausentes { margin: 10px 0 0; font-size: 12px; color: #888; }
+:global(.tema-escuro .turmas-prova summary) { color: #8ac4ff; }
+:global(.tema-escuro .turmas-prova summary:focus-visible) { outline-color: #8ac4ff; }
+:global(.tema-escuro .lista-turmas li) { background: #20364c; color: #8ac4ff; }
 
 .status {
   padding: 2px 10px;

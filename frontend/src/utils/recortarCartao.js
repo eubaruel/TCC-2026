@@ -49,7 +49,7 @@ export function localizarFaixa(imagem, codigo) {
   return { y, altura: fim - y };
 }
 
-export async function recortarCartao(arquivo) {
+export async function recortarCartao(arquivo, { permitirRecorte = true } = {}) {
   let bitmap, analise, alinhada, saida, id_prova_aluno = null;
   try {
     bitmap = await createImageBitmap(arquivo);
@@ -60,6 +60,8 @@ export async function recortarCartao(arquivo) {
     const codigo = jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: "dontInvert" });
     if (!codigo || !/^[a-f\d]{24}$/i.test(codigo.data)) return { arquivo, recortada: false };
     id_prova_aluno = codigo.data;
+    // A identificação do QR não exige alterar a imagem enviada ao leitor.
+    if (!permitirRecorte) return { arquivo, recortada: false, id_prova_aluno };
 
     const { topLeftCorner: origem, topRightCorner: direita } = codigo.location;
     const angulo = Math.atan2(direita.y - origem.y, direita.x - origem.x);

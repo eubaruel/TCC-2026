@@ -22,6 +22,10 @@
           <span>Escolha uma ou mais páginas no seu computador</span>
         </label>
         <p id="orientacao-imagens" class="orientacao-imagens">PNG ou JPEG · Uma página por imagem · Cartão-resposta e QR Code legíveis</p>
+        <div class="opcao-recorte">
+          <label for="recortar-paginas"><input id="recortar-paginas" v-model="recortarPaginas" type="checkbox" :disabled="processando || salvandoLote" aria-describedby="orientacao-recorte" /> Recortar automaticamente páginas inteiras</label>
+          <p id="orientacao-recorte">Se a imagem já contém apenas o cartão-resposta, mantenha desativado. Por padrão, a imagem original é enviada sem alterações.</p>
+        </div>
         <ul v-if="arquivos.length" class="arquivos-selecionados" aria-label="Arquivos selecionados">
           <li v-for="(arquivo, indice) in arquivos.slice(0, 3)" :key="indice" :title="arquivo.name">{{ arquivo.name }}</li>
           <li v-if="arquivos.length > 3" class="arquivos-restantes">+ {{ arquivos.length - 3 }} imagem(ns)</li>
@@ -63,6 +67,7 @@
               <strong>{{ item.nome || (item.matricula != null ? 'Nome não disponível' : 'Aluno não identificado') }}</strong>
               <span>Matrícula: {{ item.matricula ?? 'Não identificada' }}</span>
               <span>Turma: {{ item.turma || 'Não identificada' }}</span>
+              <span class="pendente-motivo">Motivo: {{ item.mensagem || 'Não foi possível confirmar a correção desta imagem.' }}</span>
               <template v-if="item.matricula == null">
                 <span class="pendente-arquivo">Arquivo: {{ item.arquivo }}</span>
                 <a v-if="item.imagemOriginal && !item.previaIndisponivel" class="pendente-original" :href="item.imagemOriginal" target="_blank" rel="noopener noreferrer" :aria-label="`Visualizar página original da imagem ${item.indice + 1}`">
@@ -100,6 +105,7 @@ import { entradasDoLote } from "@/utils/impressaoNotas";
 export default {
   name: "CorrigirProvasView",
   data: () => ({ arquivos: [], resultados: [], erros: [], erro: "", processando: false, finalizado: false, idLote: "", erroLote: "", salvandoLote: false,
+    recortarPaginas: false,
     progresso: { preparadas: 0, processadas: 0, recortadas: 0 } }),
   beforeRouteLeave() { return !this.processando && !this.salvandoLote; },
   mounted() {
@@ -129,7 +135,7 @@ export default {
       this.resultados = []; this.erros = []; this.progresso = { preparadas: 0, processadas: 0, recortadas: 0 };
       this.idLote = ""; this.erroLote = "";
       try {
-        const dados = await corrigirImagens(this.arquivos, (progresso) => { this.progresso = progresso; });
+        const dados = await corrigirImagens(this.arquivos, (progresso) => { this.progresso = progresso; }, { recortar: this.recortarPaginas });
         this.resultados = dados.resultados;
         this.erros = dados.erros.map((item) => {
           const original = this.arquivos[item.indice];
@@ -171,6 +177,11 @@ p { line-height: 1.6; }
 h3 { margin: 0; font-size: 18px; font-weight: 600; }
 .painel-titulo p { margin-top: 6px; font-size: 14px; color: var(--texto-suave); }
 .selecao-imagens { position: relative; }
+.opcao-recorte { margin: 16px 0; color: var(--texto-suave); font-size: 13px; }
+.opcao-recorte label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.opcao-recorte input { accent-color: var(--azul-texto); }
+.opcao-recorte p { margin: 6px 0 0; font-size: 12px; }
+.pendente-motivo { overflow-wrap: anywhere; }
 .input-arquivos { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .seletor-arquivos { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 168px; padding: 24px; border: 1px dashed #9cb9d5; border-radius: 10px; background: var(--fundo-suave); text-align: center; cursor: pointer; transition: background .2s, border-color .2s; }
 .seletor-arquivos svg, .seletor-arquivos strong { color: var(--azul-texto); }

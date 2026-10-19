@@ -6,6 +6,39 @@ criado antes da primeira inicialização. A resolução das dependências foi
 verificada para Python 3.13; a execução completa depende da instalação dos
 pacotes e da configuração do MongoDB.
 
+## Inicializar tudo com um arquivo (Windows)
+
+Dê um duplo clique em `INICIAR.cmd`, na raiz do projeto, ou execute:
+
+```powershell
+.\INICIAR.cmd
+```
+
+O arquivo prepara os dois ambientes Python e instala as dependências do
+frontend na primeira execução, ou quando os arquivos de dependências mudarem.
+Depois inicia o leitor de gabaritos, a API e o frontend, aguarda os serviços
+ficarem prontos e abre `http://localhost:8081` no navegador.
+
+É necessário ter Python e Node.js com npm instalados e configurar `URI_BD`
+e `NOME_BD` em `backend/.env` (ou no ambiente), como explicado abaixo.
+O MongoDB configurado precisa estar acessível; o script não instala um banco.
+A instalação das dependências precisa de internet.
+
+Mantenha a janela aberta e pressione **Ctrl+C** nela para encerrar os três
+serviços. Se uma porta estiver ocupada, o inicializador avisa antes de iniciar.
+Os logs ficam em `backend/.venv-correcao/logs-inicializacao/`, separados
+por execução e serviço.
+
+Opções disponíveis:
+
+- `.\INICIAR.cmd --verificar`: confere caminhos, configuração e portas sem
+  instalar dependências nem iniciar serviços. Requer os ambientes já criados
+  e não testa a conexão de rede com o MongoDB.
+- `.\INICIAR.cmd --reinstalar`: executa novamente a instalação das dependências.
+- `.\INICIAR.cmd --sem-navegador`: inicia tudo sem abrir o navegador.
+
+As instruções a seguir permitem iniciar cada serviço manualmente.
+
 ## Backend (PowerShell, dentro de backend)
 
 Se o ambiente não existir, crie-o com o Python instalado no computador:

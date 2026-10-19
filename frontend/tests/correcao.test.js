@@ -128,10 +128,24 @@ test("400 imagens são enviadas automaticamente em oito lotes de 50", async () =
 
 test("recorta antes do envio e mantém nome original nos resultados", async () => {
   const nova = { name: "recorte.png", type: "image/png", size: 50 };
-  const { servico, chamadas, arquivos } = ambiente({ recortar: async () => ({ arquivo: nova, recortada: true }) });
-  const originais = arquivos(1); const dados = await servico.corrigirImagens(originais);
+  const { servico, chamadas, arquivos } = ambiente({ recortar: async (_, opcoes) => {
+    assert.equal(opcoes.permitirRecorte, true);
+    return { arquivo: nova, recortada: true };
+  } });
+  const originais = arquivos(1); const dados = await servico.corrigirImagens(originais, undefined, { recortar: true });
   assert.equal(chamadas[0][0], nova); assert.equal(originais[0].name, "pagina-0.jpg");
   assert.equal(dados.resultados[0].arquivo, "pagina-0.jpg"); assert.equal(dados.recortadas, 1);
+});
+
+test("envio padrão preserva o arquivo original e desabilita o recorte", async () => {
+  const { servico, chamadas, arquivos } = ambiente({ recortar: async (arquivo, opcoes) => {
+    assert.equal(opcoes.permitirRecorte, false);
+    return { arquivo, recortada: false };
+  } });
+  const originais = arquivos(1);
+  const dados = await servico.corrigirImagens(originais);
+  assert.equal(chamadas[0][0], originais[0]);
+  assert.equal(dados.recortadas, 0);
 });
 
 test("respeita limite de bytes por lote e de 5 MiB por imagem", async () => {
@@ -193,10 +207,10 @@ async function renderizarCorrecao(dados) {
   }));
 }
 
-test("área de não corrigidas mostra nome, matrícula e turma sem nome do arquivo ou motivo", async () => {
+test("área de não corrigidas mostra identificação e motivo retornado pela API", async () => {
   const html = await renderizarCorrecao({
     resultados: [{ indice: 0, arquivo: "corrigida.png", matricula: 1, nome: "Aluno Teste", nota_prova: 10 }],
-    erros: [{ indice: 1, arquivo: "sem-leitura.png", mensagem: "Detalhe técnico privado",
+    erros: [{ indice: 1, arquivo: "sem-leitura.png", mensagem: "QR Code não encontrado ou inválido",
       matricula: 20260002, nome: "Bruno Teste", turma: "Turma A" }],
   });
   assert.match(html, /Provas não corrigidas/);
@@ -207,7 +221,8 @@ test("área de não corrigidas mostra nome, matrícula e turma sem nome do arqui
   assert.match(html, /Turma: Turma A/);
   assert.match(html, /Não corrigida/);
   assert.ok(html.indexOf("Provas não corrigidas") < html.indexOf("<table"));
-  assert.doesNotMatch(html, /sem-leitura\.png|Detalhe técnico privado|Não há provas pendentes/);
+  assert.match(html, /Motivo: QR Code não encontrado ou inválido/);
+  assert.doesNotMatch(html, /sem-leitura\.png|Não há provas pendentes/);
 });
 
 test("todos os arquivos com falha são identificados mesmo com nomes repetidos", async () => {
@@ -216,7 +231,7 @@ test("todos os arquivos com falha são identificados mesmo com nomes repetidos",
   assert.equal((html.match(/class="pendente-aluno"/g) || []).length, 400);
   assert.match(html, /400 prova\(s\)/);
   assert.ok(html.indexOf("#1<") < html.indexOf("#400<"));
-  assert.doesNotMatch(html, /Erro oculto|<table/);
+  assert.doesNotMatch(html, /<table/);
 });
 
 test("envio sem falhas mostra confirmação e não exibe área de pendências", async () => {
@@ -285,6 +300,27 @@ test("QR identificado é preservado mesmo sem bordas que autorizem um recorte", 
   assert.equal(resultado.arquivo, original);
   assert.equal(resultado.recortada, false);
   assert.equal(resultado.id_prova_aluno, codigo.data);
+});
+
+test("sem permissão de recorte preserva a imagem mesmo com bordas detectáveis e identifica QR", async () => {
+  const { imagem, codigo } = imagemComCartao();
+  assert.ok(recorte.localizarFaixa(imagem, codigo));
+  let canvases = 0, fechado = false;
+  const util = carregar("utils/recortarCartao.js", { jsqr: () => codigo, "./cartaoResposta": modelo }, {
+    createImageBitmap: async () => ({ width: imagem.width, height: imagem.height, close() { fechado = true; } }),
+    document: { createElement: () => {
+      canvases++;
+      return { getContext: () => ({ drawImage() {}, getImageData: () => imagem }),
+        toBlob() { throw new Error("Não deve reprocessar a imagem original"); } };
+    } },
+  });
+  const original = { name: "cartao.png", size: 1234 };
+  const resultado = await util.recortarCartao(original, { permitirRecorte: false });
+  assert.equal(resultado.arquivo, original);
+  assert.equal(resultado.recortada, false);
+  assert.equal(resultado.id_prova_aluno, codigo.data);
+  assert.equal(canvases, 1);
+  assert.equal(fechado, true);
 });
 
 test("sem aluno identificado, mostra arquivo, posição e miniatura da página original", async () => {

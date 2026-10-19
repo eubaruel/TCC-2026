@@ -38,8 +38,15 @@
         </a>
       </div>
 
-      <button type="submit" class="botao_entrar">
-        Entrar
+      <button
+        type="submit"
+        class="botao_entrar"
+        :disabled="authStore.loading"
+        :aria-busy="authStore.loading"
+        :aria-label="authStore.loading ? 'Entrando' : 'Entrar'"
+      >
+        <span v-if="authStore.loading" class="indicador-carregamento" aria-hidden="true"></span>
+        <span v-else>Entrar</span>
       </button>
     </form>
 
@@ -82,6 +89,7 @@ export default {
       this.erroRegistro = "";
     },
     async processarLogin() {
+      if (this.authStore.loading) return;
       this.erroRegistro = "";
       if (!this.registro_usuario) {
         this.erroRegistro = "Informe o registro.";
@@ -203,8 +211,29 @@ input::placeholder {
   margin-top: 10px;
 }
 
-.botao_entrar:hover {
+.botao_entrar:hover:not(:disabled) {
   background-color: #002d58;
+}
+
+.botao_entrar:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.indicador-carregamento {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  box-sizing: border-box;
+  vertical-align: middle;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: girar-carregamento 0.8s linear infinite;
+}
+
+@keyframes girar-carregamento {
+  to { transform: rotate(360deg); }
 }
 
 /* Modal styles */
