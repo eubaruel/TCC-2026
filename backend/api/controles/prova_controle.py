@@ -104,6 +104,12 @@ class Prova_controle:
             data=self.__prova_service.confirmar_impressao(_id), codigo=200
         )
 
+    def ignorar_provas_nao_corrigidas(self, _id):
+        return Resposta_json.sucesso(
+            mensagem="Prova marcada como corrigida; versões restantes ignoradas",
+            data=self.__prova_service.ignorar_provas_nao_corrigidas(_id), codigo=200
+        )
+
     def ler(self):
         print("🔵 prova_controle.ler()")
 

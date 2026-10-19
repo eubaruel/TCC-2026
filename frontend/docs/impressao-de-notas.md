@@ -28,7 +28,12 @@ impressora imprimiu. Não há novo status de impressão de notas.
   suas imagens, sem recriar as provas ou regenerar gabaritos.
 - Um resultado só retorna como sucesso após salvar a correção; cada tentativa
   tem seu próprio `id_correcao`. O status existente `Corrigida` continua sendo
-  aplicado às bases que estavam impressas.
+  aplicado automaticamente às bases que estavam impressas quando todas as versões em
+  `provas_x_alunos` tiverem uma tentativa de correção registrada, com sucesso ou falha.
+  O processo pedagógico também pode confirmar o encerramento ignorando as versões
+  restantes na aba de impressas, desde que mais da metade já tenha tentativa registrada.
+  Reenvios da mesma versão não duplicam essa contagem; falhas continuam bloqueando
+  a impressão das notas do lote.
 - `lotes_correcao` preserva uma cópia das notas e da identificação naquela
   sequência. Reabrir/reimprimir o endereço não usa notas de uma tentativa posterior.
 - O frontend não escolhe a nota ao criar o lote: envia somente referências
@@ -72,11 +77,12 @@ impressora imprimiu. Não há novo status de impressão de notas.
   Bruno: notas 3,33; 10,00; 6,67. O lote persistiu nessa ordem e reabriu por GET.
   Outro lote com Ana e um cartão sem QR preservou a segunda posição como pendente
   e manteve impressão/teste desabilitados. Nenhuma impressão física foi realizada.
-- O padrão atual é A4 com 16 mm nas laterais, 13 mm no topo e 12 mm na base.
-  O cartão ocupa 178 mm de largura, sem deformação, e as questões usam as mesmas
+- O padrão atual é A4 com 6,3 mm nas laterais, 6,27 mm no topo e 5,7 mm na base.
+  O cartão ocupa 197,4 mm de largura, sem deformação, e as questões usam as mesmas
   margens laterais. `PreviewProva.vue` compartilha a folha entre a seleção do
   professor, a visualização individual e a impressão; em telas menores, a folha
-  e suas margens reduzem proporcionalmente. As listas de turma mantêm seu modelo.
+  e suas margens reduzem proporcionalmente. As listas de turma usam 9,5 mm de margem
+  em todos os lados, ampliando as tabelas e os campos de assinatura.
 - A nota acompanha essas medidas pelo centro do campo: aproximadamente
-  X=24,27 mm e Y=29,98 mm. Folhas do modelo anterior exigem novo teste e calibração.
+  X=15,47 mm e Y=25,11 mm. Folhas do modelo anterior exigem novo teste e calibração.
   Capturas de tela redimensionadas não servem como medida da impressão física.

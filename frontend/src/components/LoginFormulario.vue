@@ -51,15 +51,10 @@
           <button @click="fecharModal" class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
-          <p>Digite seu email para receber instruções de recuperação de senha.</p>
-          <div class="form-group-modal">
-            <label>Email</label>
-            <input type="email" v-model="recuperarEmail" placeholder="Digite seu email cadastrado" />
-          </div>
+          <p>Para recuperar sua senha, procure o processo pedagógico e solicite a recuperação do seu acesso.</p>
         </div>
         <div class="modal-footer">
-          <button @click="enviarRecuperacao" class="btn-modal-enviar">Enviar</button>
-          <button @click="fecharModal" class="btn-modal-cancelar">Cancelar</button>
+          <button @click="fecharModal" class="btn-modal-fechar">Entendi</button>
         </div>
       </div>
     </div>
@@ -80,7 +75,6 @@ export default {
     senha_usuario: "",
     erroRegistro: "",
     modalEsqueciSenha: false,
-    recuperarEmail: "",
   }),
   methods: {
     validarRegistro() {
@@ -105,10 +99,6 @@ export default {
     },
     fecharModal() {
       this.modalEsqueciSenha = false;
-      this.recuperarEmail = "";
-    },
-    enviarRecuperacao() {
-      // A API não disponibiliza endpoint para recuperação de senha.
     },
   },
 };
@@ -122,7 +112,6 @@ export default {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   width: 100%;
   max-width: 400px;
-  border: 2px solid #000000;
   overflow: hidden;
 }
 
@@ -203,7 +192,7 @@ input::placeholder {
 .botao_entrar {
   width: 100%;
   padding: 16px;
-  background-color: #000000;
+  background-color: #00488b;
   color: white;
   border: none;
   border-radius: 8px;
@@ -215,7 +204,7 @@ input::placeholder {
 }
 
 .botao_entrar:hover {
-  background-color: #00488b;
+  background-color: #002d58;
 }
 
 /* Modal styles */
@@ -266,25 +255,6 @@ input::placeholder {
   padding: 24px;
 }
 
-.form-group-modal {
-  margin-bottom: 16px;
-}
-
-.form-group-modal label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  font-size: 14px;
-}
-
-.form-group-modal input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 14px;
-}
-
 .modal-footer {
   display: flex;
   gap: 12px;
@@ -293,19 +263,11 @@ input::placeholder {
   justify-content: flex-end;
 }
 
-.btn-modal-enviar {
+.btn-modal-fechar {
   padding: 10px 20px;
   background: #00488b;
   color: white;
   border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.btn-modal-cancelar {
-  padding: 10px 20px;
-  background: transparent;
-  border: 1px solid #ddd;
   border-radius: 6px;
   cursor: pointer;
 }

@@ -38,6 +38,9 @@ class Prova_x_aluno_service:
 
         return self.__prova_x_aluno_dao.sincronizar(id_prova, provas_x_alunos)
 
+    def contar_correcoes(self, id_prova: str):
+        return self.__prova_x_aluno_dao.contar_correcoes(id_prova)
+
     def montar_para_impressao(self, id_prova: str) -> list[dict]:
         print("🟣 prova_x_aluno_service.montar_para_impressao()")
 

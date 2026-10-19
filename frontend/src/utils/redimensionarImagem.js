@@ -1,8 +1,6 @@
 import QuillResize from "quill-resize-module";
 import "quill-resize-module/dist/resize.css";
-
-// CSS usa 45 mm; os atributos da imagem e o arraste trabalham com pixels.
-export const ALTURA_MAXIMA_IMAGEM_PX = Math.floor(45 * 96 / 25.4);
+import { ALTURA_MAXIMA_IMAGEM_PX } from "./imagensQuestao";
 
 // O módulo fornece as quatro alças; esta extensão também encerra um arraste interrompido.
 class AlcasImagem extends QuillResize.Modules.Resize {

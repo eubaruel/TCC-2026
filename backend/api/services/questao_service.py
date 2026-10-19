@@ -6,6 +6,7 @@ from api.modelos.usuario import Usuario
 from api.DAOs.questao_dao import Questao_dao
 
 from api.utils.resposta_erro_http import resposta_erro_http
+from api.utils.texto_questao import LIMITE_ALTERNATIVA, LIMITE_ENUNCIADO, validar_conteudo_questao
 
 
 class Questao_service:
@@ -73,6 +74,7 @@ class Questao_service:
     def _setar_modelo_questao(self, obj_questao, json_questao):
         for campo in self._CAMPOS_QUESTAO:
             setattr(obj_questao, campo, json_questao.get(campo))
+        validar_conteudo_questao(obj_questao.enunciado, LIMITE_ENUNCIADO, "Enunciado")
 
         dados_professor = json_questao.get("professor")
         professor = Usuario()
@@ -84,9 +86,10 @@ class Questao_service:
             raise TypeError("Alternativas devem ser uma lista")
 
         alternativas = []
-        for texto in textos_alternativas:
+        for indice, texto in enumerate(textos_alternativas, start=1):
             if not isinstance(texto, str):
                 raise TypeError("Cada alternativa deve ser uma string")
+            validar_conteudo_questao(texto, LIMITE_ALTERNATIVA, f"Alternativa {indice}")
             texto = texto.strip()
             if not texto:
                 raise ValueError("Texto da alternativa não pode ser vazio")

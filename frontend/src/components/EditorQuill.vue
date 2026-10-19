@@ -1,6 +1,11 @@
 <template>
   <div class="editor-quill" :class="{ compacto }" :style="expandido ? { minHeight: `${alturaOriginal}px` } : undefined">
     <dialog ref="modal" class="editor-modal" :aria-label="rotulo || 'Editor de texto'" @cancel.prevent="alternarExpansao" @click.self="alternarExpansao"></dialog>
+    <dialog ref="avisoImagem" class="editor-modal editor-aviso" role="alertdialog" aria-label="Aviso sobre imagens" @close="restaurarSelecaoImagem">
+      <h3>Aviso sobre imagens</h3>
+      <p>{{ mensagemImagem }}</p>
+      <button type="button" class="editor-expandir" @click="$refs.avisoImagem.close()">OK</button>
+    </dialog>
     <Teleport :to="expandido ? $refs.modal : 'body'" :disabled="!expandido">
       <div ref="painel" class="editor-painel" :class="{ expandido }">
         <div class="editor-acoes">
@@ -22,6 +27,15 @@
           </button>
         </div>
         <div ref="editor"></div>
+        <div v-if="limiteCaracteres" :id="id ? `${id}-contador` : undefined" class="editor-contador"
+          :class="{ 'proximo-limite': quantidadeCaracteres >= limiteCaracteres * 0.9, 'limite-excedido': limiteExcedido }">
+          <span v-if="quantidadeCaracteres >= limiteCaracteres * 0.9" role="status">{{ limiteExcedido ? 'Limite excedido. Reduza o texto para salvar.' : 'Atenção: próximo do limite.' }}</span>
+          <span class="contador-total">Caracteres de texto: {{ quantidadeCaracteres.toLocaleString('pt-BR') }} / {{ limiteCaracteres.toLocaleString('pt-BR') }}</span>
+        </div>
+        <div class="editor-imagens" :class="{ 'imagens-excedidas': quantidadeImagens > limiteImagens }">
+          <span v-if="processandoImagens" role="status">Processando imagens...</span>
+          <span>Imagens: {{ quantidadeImagens }} / {{ limiteImagens }}</span>
+        </div>
       </div>
     </Teleport>
   </div>
@@ -30,13 +44,14 @@
 <script>
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
-import { sanitizar } from "@/utils/html";
-import RedimensionarImagem, { ALTURA_MAXIMA_IMAGEM_PX } from "@/utils/redimensionarImagem";
+import { contarCaracteres, contarImagens, sanitizar } from "@/utils/html";
+import RedimensionarImagem from "@/utils/redimensionarImagem";
+import ClipboardQuestao from "@/utils/clipboardQuestao";
+import { LIMITE_IMAGENS, prepararImagem } from "@/utils/imagensQuestao";
 
 Quill.register("modules/redimensionarImagem", RedimensionarImagem);
-
-const LARGURA_MAXIMA_IMAGEM = 1000;
-const QUALIDADE_IMAGEM = 0.8;
+Quill.register("modules/clipboard", ClipboardQuestao, true);
+const Delta = Quill.import("delta");
 
 const toolbarCompleta = [
   ["bold", "italic", "underline", "strike"],
@@ -54,37 +69,6 @@ const toolbarCompacta = [
   ["clean"],
 ];
 
-// Redimensiona a imagem antes de embuti-la em base64: o backend não possui upload
-// e cada questão é salva como um único documento no MongoDB (limite de 16 MB).
-const lerImagemRedimensionada = (arquivo) =>
-  new Promise((resolve, reject) => {
-    const leitor = new FileReader();
-    leitor.onerror = () => reject(new Error("Não foi possível ler a imagem."));
-    leitor.onload = () => {
-      const imagem = new Image();
-      imagem.onerror = () => reject(new Error("Arquivo de imagem inválido."));
-      imagem.onload = () => {
-        const escala = Math.min(1, LARGURA_MAXIMA_IMAGEM / imagem.width);
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(imagem.width * escala);
-        canvas.height = Math.round(imagem.height * escala);
-        const contexto = canvas.getContext("2d");
-        contexto.fillStyle = "#ffffff";
-        contexto.fillRect(0, 0, canvas.width, canvas.height);
-        contexto.drawImage(imagem, 0, 0, canvas.width, canvas.height);
-        // Limita a exibição sem reduzir a resolução do arquivo para apenas 96 dpi.
-        const escalaExibicao = Math.min(1, ALTURA_MAXIMA_IMAGEM_PX / canvas.height);
-        resolve({
-          dataUrl: canvas.toDataURL("image/jpeg", QUALIDADE_IMAGEM),
-          largura: Math.max(1, Math.floor(canvas.width * escalaExibicao)),
-          altura: Math.max(1, Math.floor(canvas.height * escalaExibicao)),
-        });
-      };
-      imagem.src = leitor.result;
-    };
-    leitor.readAsDataURL(arquivo);
-  });
-
 export default {
   name: "EditorQuill",
   props: {
@@ -94,15 +78,26 @@ export default {
     id: { type: String, default: "" },
     rotulo: { type: String, default: "" },
     obrigatorio: { type: Boolean, default: false },
+    limiteCaracteres: { type: Number, default: 0 },
   },
   emits: ["update:modelValue"],
-  data: () => ({ expandido: false, alturaOriginal: 0 }),
+  data: () => ({ expandido: false, alturaOriginal: 0, limiteImagens: LIMITE_IMAGENS, processandoImagens: false, mensagemImagem: "" }),
+  computed: {
+    quantidadeImagens() { return contarImagens(this.modelValue); },
+    quantidadeCaracteres() { return contarCaracteres(this.modelValue); },
+    limiteExcedido() { return this.limiteCaracteres > 0 && this.quantidadeCaracteres > this.limiteCaracteres; },
+  },
   mounted() {
     // Mantido fora de data() para que a instância do Quill não se torne reativa.
     this.quill = new Quill(this.$refs.editor, {
       theme: "snow",
       placeholder: this.placeholder,
       modules: {
+        clipboard: { inserirImagens: this.inserirImagens },
+        uploader: {
+          mimetypes: ["image/png", "image/jpeg", "image/gif", "image/webp"],
+          handler: (selecao, arquivos) => this.inserirImagens(selecao, { arquivos }),
+        },
         redimensionarImagem: true,
         toolbar: {
           container: this.compacto ? toolbarCompacta : toolbarCompleta,
@@ -115,16 +110,22 @@ export default {
     this.quill.root.setAttribute("aria-label", this.rotulo);
     this.quill.root.setAttribute("aria-multiline", "true");
     this.quill.root.setAttribute("aria-required", String(this.obrigatorio));
+    this.quill.root.setAttribute("aria-invalid", String(this.limiteExcedido));
+    if (this.id && this.limiteCaracteres) this.quill.root.setAttribute("aria-describedby", `${this.id}-contador`);
     this.definirConteudo(this.modelValue);
     this.quill.on("text-change", this.atualizarConteudo);
   },
   beforeUnmount() {
+    this.$refs.avisoImagem.close();
     this.fecharExpansao();
     this.quill?.getModule("redimensionarImagem")?.destroy();
     this.quill?.off("text-change", this.atualizarConteudo);
     this.quill = null;
   },
   watch: {
+    limiteExcedido(valor) {
+      this.quill?.root.setAttribute("aria-invalid", String(valor));
+    },
     modelValue(valor) {
       if (this.quill && valor !== this.ultimoHtml) this.definirConteudo(valor);
     },
@@ -165,27 +166,84 @@ export default {
       this.quill.history.clear();
     },
     selecionarImagem() {
+      if (this.processandoImagens) return;
+      if (contarImagens(this.quill.getSemanticHTML()) >= LIMITE_IMAGENS) {
+        return this.avisarImagem("Cada campo permite até 3 imagens. Nenhuma imagem nova foi adicionada. Exclua uma imagem deste campo para inserir outra.");
+      }
       const input = document.createElement("input");
       input.type = "file";
       input.accept = "image/png, image/jpeg, image/gif, image/webp";
       input.onchange = async () => {
         const arquivo = input.files?.[0];
-        if (!arquivo) return;
-        try {
-          const { dataUrl, largura, altura } = await lerImagemRedimensionada(arquivo);
-          if (!this.quill) return;
-          const selecao = this.quill.getSelection(true);
-          // Uma única alteração insere a imagem já dimensionada e permite desfazer.
-          this.quill.updateContents([
-            { retain: selecao.index },
-            { insert: { image: dataUrl }, attributes: { width: String(largura), height: String(altura) } },
-          ], "user");
-          this.quill.setSelection(selecao.index + 1, 0, "silent");
-        } catch (error) {
-          window.$modal?.abrir({ titulo: "Erro", mensagem: error.message, tipo: "alerta" });
-        }
+        if (!arquivo || !this.quill) return;
+        await this.inserirImagens(this.quill.getSelection(true), { arquivos: [arquivo] });
       };
       input.click();
+    },
+    async avisarImagem(mensagem) {
+      this.selecaoAntesAviso = this.quill?.getSelection(true);
+      this.mensagemImagem = mensagem;
+      await this.$nextTick();
+      if (this.quill && !this.$refs.avisoImagem.open) this.$refs.avisoImagem.showModal();
+    },
+    restaurarSelecaoImagem() {
+      const selecao = this.selecaoAntesAviso;
+      this.selecaoAntesAviso = null;
+      if (this.quill && selecao) this.quill.setSelection(selecao.index, selecao.length, "silent");
+    },
+    async inserirImagens(selecao, { arquivos = [], html = "", text = "" }) {
+      if (!this.quill || this.processandoImagens) return;
+      const quill = this.quill;
+      const selecionadas = quill.getContents(selecao.index, selecao.length).ops.filter(op => op.insert?.image).length;
+      let vagas = Math.max(0, LIMITE_IMAGENS - contarImagens(quill.getSemanticHTML()) + selecionadas);
+      const trecho = document.createElement("div");
+      trecho.innerHTML = sanitizar(html);
+      const imagens = [...trecho.querySelectorAll("img")];
+      let conteudo = new Delta(), descartadas = 0, falhas = 0;
+      this.processandoImagens = true;
+      quill.getModule("redimensionarImagem")?.hide();
+      quill.disable();
+      try {
+        for (const origem of imagens.length ? imagens : arquivos) {
+          const elemento = imagens.includes(origem) ? origem : null;
+          if (!vagas) {
+            descartadas++;
+            elemento?.remove();
+            continue;
+          }
+          try {
+            const imagem = await prepararImagem(elemento ? elemento.getAttribute("src") || "" : origem);
+            vagas--;
+            const dimensoes = { width: String(imagem.largura), height: String(imagem.altura) };
+            if (elemento) {
+              elemento.removeAttribute("style");
+              elemento.setAttribute("src", imagem.dataUrl);
+              Object.entries(dimensoes).forEach(([nome, valor]) => elemento.setAttribute(nome, valor));
+            } else conteudo = conteudo.insert({ image: imagem.dataUrl }, dimensoes);
+          } catch (_) { falhas++; elemento?.remove(); }
+        }
+        if (html) conteudo = quill.clipboard.convert({ html: trecho.innerHTML, text });
+        if (this.quill !== quill) return;
+        quill.enable();
+        if (conteudo.length()) {
+          quill.history.cutoff();
+          quill.updateContents(new Delta().retain(selecao.index).delete(selecao.length).concat(conteudo), "user");
+          quill.history.cutoff();
+          quill.setSelection(selecao.index + conteudo.length(), 0, "silent");
+        }
+        if (descartadas || falhas) {
+          const aviso = [];
+          if (descartadas) aviso.push(`${descartadas === 1 ? 'Uma imagem excedente foi descartada' : `${descartadas} imagens excedentes foram descartadas`}: cada campo permite até 3 imagens. Somente as imagens excedentes desta inserção foram descartadas.`);
+          if (falhas) aviso.push("Não foi possível ler ou reduzir uma ou mais imagens. Baixe o arquivo e use o botão de imagem do editor.");
+          if (html) aviso.push("O restante do conteúdo colado foi mantido.");
+          await this.avisarImagem(aviso.join(" "));
+        }
+      } catch (_) {
+        if (this.quill === quill) await this.avisarImagem("Não foi possível inserir o conteúdo. As imagens existentes foram preservadas. Tente novamente.");
+      } finally {
+        if (this.quill === quill) quill.enable();
+        this.processandoImagens = false;
+      }
     },
   },
 };
@@ -199,6 +257,17 @@ export default {
 }
 
 .editor-painel { position: relative; min-width: 0; }
+.editor-imagens { display: flex; justify-content: flex-end; gap: 12px; padding: 4px 10px 6px; font-size: 12px; color: #00488b; }
+.editor-imagens.imagens-excedidas { color: #a51f1f; }
+.tema-escuro .editor-imagens { color: #8dc7ff; }
+.tema-escuro .editor-imagens.imagens-excedidas { color: #ffb4b4; }
+.editor-contador { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; padding: 6px 10px; color: #666; font-size: 12px; }
+.contador-total { margin-left: auto; white-space: nowrap; }
+.editor-contador.proximo-limite { color: #805500; background: #fff3cd; }
+.editor-contador.limite-excedido { color: #a51f1f; background: #fde8e8; }
+.tema-escuro .editor-contador { color: #bbb; }
+.tema-escuro .editor-contador.proximo-limite { color: #ffe08a; background: #493b16; }
+.tema-escuro .editor-contador.limite-excedido { color: #ffb4b4; background: #4b2424; }
 .editor-modal {
   width: 92vw;
   max-width: 1200px;
@@ -215,6 +284,10 @@ export default {
 }
 .editor-modal::backdrop { background: #0006; }
 .editor-modal[open] { display: flex; }
+.editor-aviso { width: min(90vw, 440px); height: fit-content; max-height: 80vh; padding: 20px; flex-direction: column; gap: 16px; overflow-y: auto; }
+.editor-aviso h3, .editor-aviso p { margin: 0; }
+.editor-aviso p { line-height: 1.5; }
+.editor-aviso .editor-expandir { position: static; align-self: flex-end; }
 .editor-painel.expandido { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .expandido .editor-acoes { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid #e0e0e0; }
 .editor-acoes h3 { margin: 0; font-size: 18px; font-weight: 600; }

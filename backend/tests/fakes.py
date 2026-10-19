@@ -339,6 +339,13 @@ class FakeProvaDao:
         doc["status"] = Prova.STATUS_IMPRESSA
         return True
 
+    def marcar_corrigida(self, id_prova):
+        doc = self.documentos.get(id_prova)
+        if not doc or not doc["ativo"] or doc["status"] != Prova.STATUS_IMPRESSA:
+            return False
+        doc["status"] = Prova.STATUS_CORRIGIDA
+        return True
+
     def atualizar(self, prova, token=None):
         doc = self.documentos.get(prova.id_hash)
         if not self._pode_alterar(doc, token):
@@ -378,6 +385,13 @@ class FakeProvaDao:
 class FakeProvaXAlunoDao:
     def __init__(self):
         self.documentos = {}
+
+    def contar_correcoes(self, id_prova):
+        versoes = [doc for doc in self.documentos.values() if doc["id_prova"] == id_prova]
+        return {"total": len(versoes), "processadas": sum(
+            doc.get("tentativa_correcao") is not None or doc.get("correcao", {}).get("id_correcao") is not None
+            for doc in versoes
+        )}
 
     def sincronizar(self, id_prova, provas_x_alunos):
         matriculas_atuais = {

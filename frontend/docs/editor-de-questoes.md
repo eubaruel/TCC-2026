@@ -25,6 +25,22 @@ instalada; a integração inicial não precisou de outro componente de edição.
 
 ## Configuração
 
+O enunciado permite até **7.000 caracteres** e cada alternativa até **2.000**,
+sem limite total adicional por questão. O contador aparece no campo e no modal,
+fica amarelo a partir de 90% e vermelho acima do limite, com orientação para
+reduzir o texto. Não impede digitar, colar ou desfazer, e nunca corta o conteúdo.
+O salvamento de cadastro/edição é bloqueado com aviso enquanto houver excesso;
+a API também valida POST/PUT e retorna HTTP 400 antes de gravar.
+
+A contagem considera o texto dos nós HTML, sem remover nem agrupar espaços, e
+inclui pontuação. Tags, atributos, comentários e dados base64 das imagens não
+contam; entidades como `&amp;` representam um caractere. Usa caracteres Unicode
+(um emoji simples conta como um), não bytes nem unidades UTF-16. Quebras escritas
+no texto contam, com CRLF/CR normalizados para LF; tags de parágrafo e `<br>` não
+acrescentam caracteres. Imagens continuam com o limite de altura independente.
+Registros antigos não são truncados nem migrados: ao editar, devem respeitar os
+limites para salvar. Isso não garante que a questão caiba em uma única página.
+
 Cada um dos seis campos tem o botão **Expandir**, à direita da barra de edição.
 Ele abre um modal centralizado, com 92% da largura e 88% da altura da tela
 (máximo 1200 × 900 px), fundo levemente escurecido e área de texto com rolagem.
@@ -45,8 +61,8 @@ cartão-resposta, que mantém suas medidas e tipografia próprias.
 As barras já existentes em `EditorQuill.vue` foram mantidas: completa para o
 enunciado e compacta nas alternativas, com tema Snow e integração visual ao CSS
 do projeto. A seleção definitiva de ferramentas e formatos fica para a próxima
-etapa, concentrada nesse mesmo componente. O tratamento de imagens já existente
-também foi preservado; não foi criado serviço de upload nem alterada a API.
+etapa, concentrada nesse mesmo componente. Não foi criado serviço de upload:
+as imagens continuam embutidas no HTML, e a API valida os limites antes de salvar.
 
 ## Redimensionamento de imagens
 
@@ -58,12 +74,36 @@ preservada, sem cortar a imagem. Não há um limite fixo de largura: permanece
 somente a contenção ao espaço disponível para não ultrapassar as margens.
 As alças usam o mesmo limite de altura, convertido para pixels.
 
-Ao escolher um arquivo no botão de imagem, o editor verifica as dimensões e já
+Ao inserir uma imagem, o editor verifica as dimensões e já
 insere `width`/`height` reduzidos proporcionalmente quando a altura ultrapassa
 45 mm (170 px, arredondados para baixo). Imagens menores não são ampliadas.
 A inserção e as dimensões entram juntas no histórico e no HTML emitido pelo
-Quill. O arquivo mantém a resolução do tratamento anterior (até 1000 px de
-largura), evitando descartar qualidade de impressão só para limitar a exibição.
+Quill. Antes da inserção, `utils/imagensQuestao.js` reduz o arquivo para caber em
+**800 × 600 px**, proporcionalmente, sem ampliar imagens pequenas. O canvas usa
+JPEG com qualidade **0,75** e fundo branco. Esse limite de resolução é diferente
+dos 45 mm de exibição: não se reduz o arquivo a apenas 170 px de altura.
+
+Cada campo aceita **até três imagens**, com contador no formulário e no modal.
+Com três imagens, clicar no botão mostra um aviso sem abrir o seletor. Imagens
+coladas ou arrastadas usam o mesmo processamento; na colagem múltipla, entram
+somente as que couberem, mantendo o texto e sua formatação e avisando sobre as
+excedentes descartadas. Substituir uma imagem selecionada libera sua vaga.
+Falhas de leitura ou CORS descartam só a imagem nova inválida e exibem orientação;
+imagens remotas precisam permitir leitura pelo canvas, ou devem ser baixadas e
+inseridas como arquivo. GIF é convertido como imagem estática.
+
+`utils/clipboardQuestao.js` estende apenas a colagem HTML com imagens; texto sem
+imagens mantém o fluxo nativo do Quill. O uploader nativo também reutiliza a
+inserção central para arquivos colados/arrastados. A edição do campo fica bloqueada
+durante o processamento para evitar concorrência, e a inserção completa entra
+como uma única ação desfazível. O aviso usa um diálogo próprio para aparecer
+acima do editor expandido, sem ficar escondido atrás dele.
+
+Cadastro e atualização validam três imagens por campo no frontend e na API.
+Questões antigas acima da cota não são truncadas ao abrir: é necessário excluir
+as excedentes para salvar. Imagens já cadastradas não são recomprimidas nem
+migradas automaticamente. A API valida a quantidade; a compressão ocorre no
+navegador. Não há novas dependências ou alteração do contrato de HTML/base64.
 
 `quill-resize-module` 2.1.3 fornece as alças e o indicador de tamanho, sem ativar
 ferramentas de alinhamento, vídeos ou atalhos adicionais. A integração fica em

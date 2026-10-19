@@ -44,7 +44,7 @@ test("recorte mantém as dez colunas, QR, largura inteira e margem de segurança
   assert.ok(codigo.location.bottomLeftCorner.y < faixa.y + faixa.altura);
 });
 
-test("recorte reconhece o cartão A4 com margens laterais de 16 mm e superior de 13 mm", () => {
+test("recorte reconhece o cartão A4 com as margens atuais da prova", () => {
   const { PAGINA_PROVA: pagina, CARTAO_RESPOSTA: cartao } = modelo;
   const pixelsPorMm = 2;
   const width = pagina.largura * pixelsPorMm, height = pagina.altura * pixelsPorMm;
@@ -52,8 +52,8 @@ test("recorte reconhece o cartão A4 com margens laterais de 16 mm e superior de
   const escala = (pagina.largura - 2 * pagina.margemLateral) * pixelsPorMm / cartao.largura;
   const x = pagina.margemLateral * pixelsPorMm, y = pagina.margemSuperior * pixelsPorMm;
   const fim = Math.round(y + cartao.altura * escala);
-  for (const linha of [y, fim]) {
-    for (let coluna = x; coluna <= width - x; coluna++) imagem.data.fill(0, (linha * width + coluna) * 4, (linha * width + coluna) * 4 + 3);
+  for (const linha of [Math.round(y), fim]) {
+    for (let coluna = Math.round(x); coluna <= Math.round(width - x); coluna++) imagem.data.fill(0, (linha * width + coluna) * 4, (linha * width + coluna) * 4 + 3);
   }
   const quiet = cartao.qr.tamanho * cartao.qr.margem / 33;
   const lado = cartao.qr.tamanho * 25 / 33 * escala;
@@ -224,8 +224,8 @@ test("envio sem falhas mostra confirmação e não exibe área de pendências", 
   assert.match(html, /Não há provas pendentes neste envio/);
   assert.doesNotMatch(html, /Provas não corrigidas|pendentes-lista/);
   assert.match(html, /resultados confirmados foram salvos no banco/);
-  assert.match(html, /impressas passam para o status Corrigida/);
-  assert.match(html, /mesmo que ainda existam cartões pendentes/);
+  assert.match(html, /automaticamente para o status Corrigida quando todas as versões dos alunos/);
+  assert.match(html, /tentativa de correção registrada, com sucesso ou falha/);
   assert.doesNotMatch(html, /status das provas não foi alterado|Prova Corrigida/);
 });
 

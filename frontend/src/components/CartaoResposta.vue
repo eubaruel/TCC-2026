@@ -36,8 +36,8 @@
       <text x="705" y="107" :textLength="nomeAluno.length > 50 ? 480 : undefined" lengthAdjust="spacingAndGlyphs">{{ nomeAluno }}</text>
       <text x="744" y="136">{{ matricula }}</text>
       <text x="744" y="164">{{ prova.professor.nome }}</text>
-      <text x="705" y="192">{{ turmas }}</text>
-      <text x="966" y="192">{{ dataAplicacao }}</text>
+      <text x="711" y="192">{{ turmas }}</text>
+      <text x="973" y="192">{{ dataAplicacao }}</text>
     </g>
     <!-- A área de nota é livre no modelo; o QR não invade a região das respostas. -->
     <image v-if="qrCode" :href="qrCode" :x="modelo.qr.x" :y="modelo.qr.y" :width="modelo.qr.tamanho" :height="modelo.qr.tamanho" />
@@ -67,8 +67,8 @@ export default {
 <style scoped>
 .cartao-resposta { display: block; width: 100%; background: white; color: black; break-inside: avoid; }
 text { fill: black; font-family: Arial, sans-serif; }
-.rotulos { font-size: 15px; font-weight: 700; }
+.rotulos { font-size: 16px; font-weight: 700; }
 .indice { font-weight: 400; }
-.legenda { font-size: 13px; }
-.dados { font-size: 16px; }
+.legenda { font-size: 14px; }
+.dados { font-size: 17px; }
 </style>

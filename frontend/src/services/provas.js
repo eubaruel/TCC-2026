@@ -24,4 +24,6 @@ export const imprimirProvas = (id) => api(`/provas/imprimir-provas/${id}`);
 
 export const confirmarImpressao = (id) => api(`/provas/${id}/confirmar-impressao`, { method: "PATCH" });
 
+export const ignorarProvasNaoCorrigidas = (id) => api(`/provas/${id}/ignorar-provas-nao-corrigidas`, { method: "PATCH" });
+
 export const provaEditavel = (prova) => ["Aguardando questões", "Em elaboração"].includes(prova.status);
