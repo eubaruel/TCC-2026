@@ -53,6 +53,11 @@ class Prova_rotas:
         def confirmar_impressao(_id):
             return self.__prova_controle.confirmar_impressao(_id)
 
+        @self.__blueprint.route('/<string:_id>/ignorar-provas-nao-corrigidas', methods=['PATCH'])
+        @self.__prova_middleware.validar_id_prova
+        def ignorar_provas_nao_corrigidas(_id):
+            return self.__prova_controle.ignorar_provas_nao_corrigidas(_id)
+
         @self.__blueprint.route('/',methods=['GET'])
         def ler():
             return self.__prova_controle.ler()

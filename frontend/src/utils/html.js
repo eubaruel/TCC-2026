@@ -14,6 +14,19 @@ const configuracao = {
 
 export const sanitizar = (html) => DOMPurify.sanitize(html || "", configuracao);
 
+export const contarImagens = (html) => {
+  const div = document.createElement("div");
+  div.innerHTML = sanitizar(html);
+  return div.querySelectorAll("img").length;
+};
+
+// Diferente do resumo, não remove nem agrupa espaços. Entidades HTML contam como texto.
+export const contarCaracteres = (html) => {
+  const div = document.createElement("div");
+  div.innerHTML = sanitizar(html);
+  return Array.from(div.textContent || "").length;
+};
+
 export const textoPuro = (html) => {
   const div = document.createElement("div");
   div.innerHTML = sanitizar(html);

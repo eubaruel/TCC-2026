@@ -23,6 +23,7 @@ Atualmente, as rotas de provas não exigem token JWT.
 | `PATCH` | `/api/v1/provas/{_id}/enviar` | Concluir a prova, enviar ao pedagógico e encerrar a edição |
 | `GET` | `/api/v1/provas/imprimir-provas/{_id}` | Montar as versões completas para impressão |
 | `PATCH` | `/api/v1/provas/{_id}/confirmar-impressao` | Registrar a confirmação de impressão e definir o status Impressa |
+| `PATCH` | `/api/v1/provas/{_id}/ignorar-provas-nao-corrigidas` | Encerrar a correção após mais da metade das versões terem uma tentativa registrada |
 | `POST` | `/api/v1/provas/lotes-correcao` | Salvar a ordem e a cópia das notas confirmadas para sobreposição |
 | `GET` | `/api/v1/provas/lotes-correcao/{_id}` | Reabrir o lote sem recalcular suas notas |
 | `POST` | `/api/v1/provas/corrigir-provas` | Corrigir cartões-resposta em lote |
@@ -886,6 +887,29 @@ entregar provas incompletas.
 
 ---
 
+# Ignorar provas não corrigidas
+
+`PATCH /api/v1/provas/{_id}/ignorar-provas-nao-corrigidas`
+
+Sem corpo. Na aba **Provas Impressas**, cada cartão mostra **Corrigidas: X / Y**,
+usando `progresso_correcao: { processadas, total }` retornado pela consulta das
+bases impressas. A contagem segue a regra de tentativas persistidas, incluindo
+sucesso ou falha, sem duplicar reenvios da mesma versão.
+
+O botão **Ignorar provas não corrigidas** aparece para o processo pedagógico
+somente quando `processadas * 2 > total` e `total > 0`. Abre o modal global de
+confirmação; cancelar não envia uma requisição. Ao confirmar, o servidor reserva
+a operação, exige uma base ainda `Impressa` e consulta novamente os registros.
+Metade exata, menos da metade, ausência de versões ou status incompatível
+retornam `409`. Base inexistente retorna `404`. A contagem do navegador não é usada.
+
+Sucesso: `200`, com `data.prova` contendo `status: "Corrigida"` e
+`progresso_correcao`. A base sai da aba de impressas e entra na de corrigidas.
+Somente o status muda: nenhuma versão recebe tentativa ou nota fictícia e
+os lotes com falhas continuam sem autorização de impressão das notas.
+
+---
+
 # Corrigir provas
 
 `POST /api/v1/provas/corrigir-provas`
@@ -932,7 +956,11 @@ No Windows, utilize `curl.exe` para evitar o alias do PowerShell.
    `id_correcao` único por tentativa, data UTC, identificação do aluno e prova,
    turma, nota e ambos os gabaritos. O update exige que a versão ainda contenha
    as mesmas questões. Falha de gravação não retorna o cartão como sucesso.
-6. Depois de salvar o resultado, se a base estava
+6. Registra uma tentativa em `provas_x_alunos.tentativa_correcao`, com data UTC
+   e `sucesso`, tanto para correções confirmadas quanto para falhas identificadas.
+   Conta o total de versões do mesmo `id_prova` e quantas têm uma tentativa
+   registrada ou uma correção anterior salva. Só quando esse total é maior que
+   zero e as duas contagens são iguais, se a base estava
    `Impressa`, atualiza somente seu status para `Corrigida`. O filtro do update
    usa o `id_prova` da versão individual e exige uma base ativa, objetiva e ainda
    `Impressa`. Não usa o ID individual como ID da prova-base nem altera outras
@@ -940,11 +968,13 @@ No Windows, utilize `curl.exe` para evitar o alias do PowerShell.
    uma base já corrigida. Falha de banco gera erro individual, sem anunciar
    sucesso para esse cartão.
 
-A regra é por correção bem-sucedida: ao menos um cartão válido já pode mover a
-base para `Corrigida`, mesmo havendo outros cartões pendentes ou com falha. Um
-lote composto somente por falhas não altera o status. A seção de não corrigidas
-continua sendo exibida normalmente; o status da base não comprova que todos os
-alunos foram corrigidos.
+A contagem é por registro individual, persistente e independente do lote:
+reenviar a mesma folha não incrementa o total processado. A base permanece
+`Impressa` enquanto faltar uma versão; todas as versões podem ter tentativas
+com sucesso ou falha. Falhas sem versão identificada, fila ocupada, falhas de
+persistência e conflitos de versão não preenchem registros por suposição.
+Regenerar versões remove os resultados e tentativas anteriores. As falhas
+continuam na seção de não corrigidas e bloqueiam a impressão das notas do lote.
 
 O leitor atual possui dez posições. A correção aceita provas de 1 a 10 questões,
 ignora posições excedentes em provas menores e rejeita provas maiores. As rotas
@@ -998,7 +1028,8 @@ Cada falha inclui `matricula`, `nome` e `turma`, obtidos pela versão individual
 e pelo cadastro do aluno. Campos indisponíveis são `null`; os dados não são
 inferidos pelo nome do arquivo. A API usa primeiro o QR devolvido pelo leitor;
 quando a leitura falha ou o leitor está indisponível, pode usar o ID auxiliar
-recebido do frontend **somente para identificar a pendência**. Isso não substitui
+recebido do frontend **somente para identificar a pendência e registrar a tentativa
+com falha na versão correspondente**. Isso não substitui
 a leitura do QR/respostas pelo microserviço nem autoriza atribuir uma nota.
 Uma falha na consulta desses dados não interrompe o restante do lote.
 O frontend exibe esses dados do aluno nas provas não corrigidas, sem mostrar

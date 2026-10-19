@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { parse, compileStyle } = require("@vue/compiler-sfc");
 const { transformSync } = require("@babel/core");
+const { contarCaracteres, contarImagens } = require("./helpers/html");
 
 // Executa as opções dos componentes com serviços simulados, sem servidor ou novas dependências.
 function carregarOpcoes(arquivo, modulos, globais = {}) {
@@ -348,6 +349,7 @@ test("visualização e Minhas Questões compartilham os filtros sem alterar o ba
     { _id: "q3", disciplina: ["HIST"], dificuldade: "Médio", professor: { nome: "Ana" }, enunciado: "Brasil", alternativas: [] },
   ];
   const opcoes = carregarOpcoes("views/QuestoesView.vue", {
+    "@/utils/imagensQuestao": { LIMITE_IMAGENS: 3 },
     "@/components/EditorQuill.vue": {},
     "vue-router": {}, "@/stores/auth": {}, "@/stores/provaDraft": {}, "@/components/FiltrosQuestoes.vue": filtrosComponente,
     "@/utils/filtrosQuestoes": filtrosModulo, "@/utils/html": { sanitizar: (valor) => valor },
@@ -370,12 +372,14 @@ test("visualização e Minhas Questões compartilham os filtros sem alterar o ba
 function ambienteCadastroQuestao() {
   const chamadas = [], avisos = [];
   const opcoes = carregarOpcoes("views/QuestoesView.vue", {
+    "@/utils/imagensQuestao": { LIMITE_IMAGENS: 3 },
     "@/components/EditorQuill.vue": {
       props: { id: String, rotulo: String, modelValue: String, obrigatorio: Boolean },
       setup: (props) => () => require("vue").h("div", { id: props.id, role: "textbox", "aria-label": props.rotulo, "aria-required": String(props.obrigatorio), "data-editor-quill": "" }, props.modelValue),
     },
     "vue-router": {}, "@/stores/auth": {}, "@/stores/provaDraft": {}, "@/components/FiltrosQuestoes.vue": filtrosComponente,
     "@/utils/filtrosQuestoes": filtrosModulo, "@/utils/html": {
+      contarCaracteres, contarImagens,
       sanitizar: (valor) => valor,
       htmlVazio: (valor) => !String(valor || "").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim() && !/<img\s/i.test(valor || ""),
     },
@@ -389,6 +393,23 @@ function ambienteCadastroQuestao() {
     disciplinas: [{ codigo_disciplina: "MAT", nome_disciplina: "Matemática" }], carregandoDisciplinas: false });
   return { tela, opcoes, chamadas, avisos };
 }
+
+test("questão antiga com mais de três imagens em qualquer campo não é salva nem truncada", async () => {
+  for (const campo of ["enunciado", "A", "B", "C", "D", "E"]) {
+    const { tela, chamadas, avisos } = ambienteCadastroQuestao();
+    tela.editandoId = "questao-antiga";
+    Object.assign(tela.novaQuestao, { disciplina: "Matemática", assunto: "Teste", texto: "Enunciado" });
+    tela.novaQuestao.alternativas.forEach(alt => { alt.texto = "Resposta"; });
+    const excesso = '<p>Texto<img src="data:image/jpeg;base64,teste">'.repeat(4) + "</p>";
+    if (campo === "enunciado") tela.novaQuestao.texto = excesso;
+    else tela.novaQuestao.alternativas.find(alt => alt.letra === campo).texto = excesso;
+    const antes = JSON.stringify(tela.novaQuestao);
+    await tela.salvarQuestao();
+    assert.equal(chamadas.length, 0);
+    assert.equal(JSON.stringify(tela.novaQuestao), antes);
+    assert.match(avisos.at(-1).mensagem, /no máximo 3 imagens/);
+  }
+});
 
 test("cadastro mostra A como correta, B a E como demais alternativas e remove o seletor de gabarito", async () => {
   const { createSSRApp } = require("vue");
@@ -412,6 +433,34 @@ test("cadastro mostra A como correta, B a E como demais alternativas e remove o 
   assert.match(html, /id="enunciado-questao"[^>]*aria-label="Enunciado da questão"/);
   assert.match(html, /aria-label="Alternativa A - correta"/);
   assert.doesNotMatch(html, /select-correta|Selecione qual alternativa|value="Alternativa [A-E]"/);
+});
+
+test("cadastro e edição bloqueiam excesso de caracteres sem perder dados nem chamar API", async () => {
+  for (const editandoId of [null, "questao-existente"]) {
+    for (const campo of ["enunciado", "A", "B", "C", "D", "E"]) {
+      const { tela, chamadas, avisos } = ambienteCadastroQuestao();
+      tela.editandoId = editandoId;
+      Object.assign(tela.novaQuestao, { disciplina: "Matemática", assunto: "Teste", texto: "<p>Enunciado</p>" });
+      tela.novaQuestao.alternativas.forEach(alt => { alt.texto = `<p>Resposta ${alt.letra}</p>`; });
+      if (campo === "enunciado") tela.novaQuestao.texto = `<p>${"a".repeat(7001)}</p>`;
+      else tela.novaQuestao.alternativas.find(alt => alt.letra === campo).texto = `<p>${"a".repeat(2001)}</p>`;
+      const antes = JSON.stringify(tela.novaQuestao);
+      await tela.salvarQuestao();
+      assert.equal(chamadas.length, 0);
+      assert.equal(JSON.stringify(tela.novaQuestao), antes);
+      assert.match(avisos.at(-1).mensagem, campo === "enunciado" ? /7\.000 caracteres/ : new RegExp(`alternativa ${campo}.*2\\.000 caracteres`));
+    }
+  }
+});
+
+test("aceita exatamente 7000 e 2000 caracteres de texto mesmo com HTML e imagem grandes", async () => {
+  const { tela, chamadas } = ambienteCadastroQuestao();
+  Object.assign(tela.novaQuestao, { disciplina: "Matemática", assunto: "Teste", texto: `<p>${"á".repeat(7000)}<img src="data:image/png;base64,${"a".repeat(20000)}"></p>` });
+  tela.novaQuestao.alternativas.forEach(alt => { alt.texto = `<p><strong>${"&amp;".repeat(2000)}</strong></p>`; });
+  await tela.salvarQuestao();
+  assert.equal(chamadas.length, 1);
+  assert.ok(chamadas[0].payload.enunciado.length > 7000);
+  assert.ok(chamadas[0].payload.alternativas[0].length > 2000);
 });
 
 test("editores vazios ou com apenas espaços não enviam questões, mas conteúdo HTML preenchido é preservado", async () => {
@@ -655,7 +704,7 @@ test("professor mantém suas abas; pedagógico vê recebidas, impressas e corrig
   }
 });
 
-test("botão de correção aparece apenas para o processo pedagógico", async () => {
+test("ações de criar e corrigir aparecem em todas as abas apenas para o processo pedagógico", async () => {
   const { createSSRApp } = require("vue");
   const { renderToString } = require("@vue/server-renderer");
   const opcoes = carregarOpcoes("views/ProvasView.vue", {
@@ -664,10 +713,14 @@ test("botão de correção aparece apenas para o processo pedagógico", async ()
   const fonte = fs.readFileSync(path.join(__dirname, "../src/views/ProvasView.vue"), "utf8");
   const template = parse(fonte).descriptor.template.content;
   for (const processo of [false, true]) {
-    const html = await renderToString(createSSRApp({ ...opcoes, template,
-      setup: () => ({ authStore: { isProfessor: !processo, isProcessoPedagogico: processo } }),
-    }));
-    assert.equal(html.includes("btn-corrigir"), processo);
+    for (const abaAtiva of ["minhas", "impressas", "corrigidas"]) {
+      const html = await renderToString(createSSRApp({ ...opcoes, template,
+        setup: () => ({ authStore: { isProfessor: !processo, isProcessoPedagogico: processo } }),
+        data: () => ({ ...opcoes.data(), abaAtiva }),
+      }));
+      assert.equal(html.includes("acao-corrigir"), processo);
+      assert.equal(html.includes("acao-criar"), processo);
+    }
   }
 });
 
@@ -800,7 +853,7 @@ test("cartão vetorial preserva dez colunas, cinco alternativas e geometria do Q
   assert.match(html, />NOME DO ALUNO POR EXTENSO<\/text>/);
 });
 
-test("folha A4 compartilha margens de 16 mm nas laterais e 13 mm no topo em tela e na impressão", () => {
+test("folha A4 compartilha margens de 6,3 mm nas laterais, 6,27 mm no topo e 5,7 mm na base em tela e na impressão", () => {
   const modelo = carregarOpcoes("utils/cartaoResposta.js", {});
   const opcoes = carregarOpcoes("components/PreviewProva.vue", {
     "@/utils/cartaoResposta": modelo, "@/stores/provaDraft": {}, "@/utils/html": {},
@@ -808,11 +861,11 @@ test("folha A4 compartilha margens de 16 mm nas laterais e 13 mm no topo em tela
   const estilo = opcoes.computed.estiloPagina();
   assert.equal(estilo["--largura-pagina"], "210mm");
   assert.equal(estilo["--proporcao-pagina"], "210 / 297");
-  assert.equal(estilo["--margens-impressao"], "13mm 16mm 12mm");
+  assert.equal(estilo["--margens-impressao"], "6.27mm 6.3mm 5.7mm");
   const margens = estilo["--margens-previa"].split(" ").map(parseFloat);
-  assert.ok(Math.abs(margens[0] / 100 * 210 - 13) < 1e-10);
-  assert.ok(Math.abs(margens[1] / 100 * 210 - 16) < 1e-10);
-  assert.equal(210 - 2 * modelo.PAGINA_PROVA.margemLateral, 178);
+  assert.ok(Math.abs(margens[0] / 100 * 210 - 6.27) < 1e-10);
+  assert.ok(Math.abs(margens[1] / 100 * 210 - 6.3) < 1e-10);
+  assert.equal(210 - 2 * modelo.PAGINA_PROVA.margemLateral, 197.4);
   const fonte = parse(fs.readFileSync(path.join(__dirname, "../src/components/PreviewProva.vue"), "utf8")).descriptor;
   const css = compileStyle({ source: fonte.styles[0].content, id: "data-v-previa", scoped: true });
   assert.deepEqual(css.errors, []);
@@ -1018,6 +1071,110 @@ test("botão de confirmação fica ao lado da impressora só para pedagógico e 
   assert.doesNotMatch(fonte, /Confirmar impressão realizada|confirmando|confirmarImpressao/);
 });
 
+function ambienteIgnorarProvas(responder) {
+  const chamadas = [], modais = [];
+  const card = { id: "base-ignorar", status: "Impressa", titulo: "Matemática - Turma A", disciplina: { nome_disciplina: "Matemática" },
+    id_turma: "Turma A", professor: { nome: "Professor Teste" }, progresso_correcao: { processadas: 3, total: 4 } };
+  const opcoes = carregarOpcoes("views/ProvasView.vue", {
+    "@/stores/auth": {}, "@/components/CriarProvaBase.vue": {},
+    "@/services/provas": { provaEditavel: () => false, ignorarProvasNaoCorrigidas: async id => {
+      chamadas.push(id);
+      return responder ? responder() : { prova: { ...card, _id: card.id, status: "Corrigida" } };
+    } },
+  }, { window: { $modal: { abrir: modal => modais.push(modal) } } }).default;
+  const tela = instancia(opcoes, { authStore: { isProcessoPedagogico: true, isProfessor: false }, minhasProvas: [card], abaAtiva: "impressas", carregando: false });
+  return { tela, card, chamadas, modais, opcoes };
+}
+
+test("ignorar versões exige mais da metade, contagem válida e perfil pedagógico", () => {
+  const { tela, card } = ambienteIgnorarProvas();
+  for (const [processadas, total, esperado] of [[0, 0, false], [0, 4, false], [1, 4, false], [2, 4, false], [3, 4, true], [2, 3, true], [1, 2, false], [5, 4, false], ["3", 4, false]]) {
+    card.progresso_correcao = { processadas, total };
+    assert.equal(tela.podeIgnorarProvas(card), esperado);
+  }
+  card.progresso_correcao = { processadas: 3, total: 4 };
+  tela.authStore.isProcessoPedagogico = false;
+  assert.equal(tela.podeIgnorarProvas(card), false);
+  tela.authStore.isProcessoPedagogico = true;
+  card.status = "Corrigida";
+  assert.equal(tela.podeIgnorarProvas(card), false);
+  card.status = "Impressa"; delete card.progresso_correcao;
+  assert.equal(tela.podeIgnorarProvas(card), false);
+});
+
+test("ignorar só altera o status após confirmar o modal e receber resposta da API", async () => {
+  const { tela, card, chamadas, modais } = ambienteIgnorarProvas();
+  tela.solicitarIgnorarProvas(card);
+  assert.equal(modais[0].tipo, "confirmacao");
+  assert.match(modais[0].mensagem, /3 de 4/);
+  assert.match(modais[0].mensagem, /ignorar 1 versão restante/);
+  assert.equal(chamadas.length, 0);
+  assert.equal(card.status, "Impressa");
+  assert.equal(tela.provasImpressas.length, 1);
+  await modais[0].onConfirm();
+  assert.deepEqual(chamadas, [card.id]);
+  assert.equal(card.status, "Corrigida");
+  assert.equal(tela.provasImpressas.length, 0);
+  assert.equal(tela.provasCorrigidas.length, 1);
+  assert.equal(tela.ignorandoProvaId, null);
+});
+
+test("ignorar impede chamadas por professor, abaixo do limite e cliques repetidos", async () => {
+  let resolver;
+  const { tela, card, chamadas, modais } = ambienteIgnorarProvas(() => new Promise(resolve => { resolver = resolve; }));
+  tela.authStore.isProcessoPedagogico = false;
+  tela.solicitarIgnorarProvas(card); await tela.ignorarProvasNaoCorrigidas(card);
+  assert.equal(modais.length, 0); assert.equal(chamadas.length, 0);
+  tela.authStore.isProcessoPedagogico = true;
+  card.progresso_correcao.processadas = 2;
+  tela.solicitarIgnorarProvas(card); await tela.ignorarProvasNaoCorrigidas(card);
+  assert.equal(modais.length, 0); assert.equal(chamadas.length, 0);
+  card.progresso_correcao.processadas = 3;
+  const pendente = tela.ignorarProvasNaoCorrigidas(card);
+  assert.equal(tela.ignorandoProvaId, card.id);
+  tela.solicitarIgnorarProvas(card); await tela.ignorarProvasNaoCorrigidas(card);
+  assert.equal(modais.length, 0); assert.equal(chamadas.length, 1);
+  assert.equal(card.status, "Impressa");
+  resolver({ prova: { ...card, _id: card.id, status: "Corrigida" } }); await pendente;
+  assert.equal(tela.ignorandoProvaId, null);
+});
+
+test("falha ao ignorar conserva a prova impressa e libera nova tentativa", async () => {
+  for (const responder of [() => { throw new Error("A contagem mudou"); }, () => ({ prova: { status: "Impressa" } })]) {
+    const { tela, card, modais } = ambienteIgnorarProvas(responder);
+    await tela.ignorarProvasNaoCorrigidas(card);
+    assert.equal(card.status, "Impressa");
+    assert.equal(tela.ignorandoProvaId, null);
+    assert.equal(modais[0].tipo, "alerta");
+    assert.match(modais[0].mensagem, /contagem mudou|servidor não confirmou/);
+  }
+});
+
+test("contador aparece em impressas e opção de ignorar fica ao lado só acima de 50%", async () => {
+  const { createSSRApp } = require("vue"), { renderToString } = require("@vue/server-renderer");
+  const { opcoes, card } = ambienteIgnorarProvas();
+  const template = parse(fs.readFileSync(path.join(__dirname, "../src/views/ProvasView.vue"), "utf8")).descriptor.template.content;
+  for (const [pedagogico, status, processadas, contador, botao] of [[true,"Impressa",3,true,true], [true,"Impressa",2,true,false], [true,"Corrigida",3,false,false], [false,"Impressa",3,false,false]]) {
+    const html = await renderToString(createSSRApp({ ...opcoes, template,
+      setup: () => ({ authStore: { isProcessoPedagogico: pedagogico, isProfessor: !pedagogico } }),
+      data: () => ({ ...opcoes.data(), carregando: false, abaAtiva: pedagogico ? (status === "Corrigida" ? "corrigidas" : "impressas") : "enviadas",
+        minhasProvas: [{ ...card, status, progresso_correcao: { processadas, total: 4 } }] }),
+    }));
+    assert.equal(html.includes('class="contador-correcao"'), contador);
+    assert.equal(html.includes('class="btn-ignorar-provas"'), botao);
+    if (contador) assert.match(html, new RegExp(`Corrigidas: <strong>${processadas} / 4`));
+  }
+});
+
+test("serviço ignora provas por PATCH dedicado sem enviar contagem do navegador", async () => {
+  const chamadas = [];
+  const servicos = carregarOpcoes("services/provas.js", { "./api": { api: async (...args) => { chamadas.push(args); return {}; } } });
+  await servicos.ignorarProvasNaoCorrigidas("base-1");
+  assert.equal(chamadas[0][0], "/provas/base-1/ignorar-provas-nao-corrigidas");
+  assert.equal(chamadas[0][1].method, "PATCH");
+  assert.equal(chamadas[0][1].body, undefined);
+});
+
 test("serviço confirma impressão por PATCH dedicado", async () => {
   const chamadas = [];
   const servicos = carregarOpcoes("services/provas.js", { "./api": { api: async (...args) => { chamadas.push(args); return {}; } } });
@@ -1045,7 +1202,7 @@ test("impressão remove contagem e reserva as margens dentro da prova, sem URL o
   assert.doesNotMatch(descriptor.template.content, /\{\{\s*versoes.length\s*\}\}/);
   const css = descriptor.styles.find((estilo) => !estilo.scoped).content;
   assert.match(css, /@page\s*\{[^}]*margin:\s*0\s*;/);
-  assert.match(css, /\.documento-impressao\s*\{[^}]*padding:\s*12mm\s*!important/);
+  assert.match(css, /\.documento-impressao\s*\{[^}]*padding:\s*9\.5mm\s*!important/);
   assert.match(css, /\.versao-aluno\.documento-impressao\s*\{ padding: 0 !important/);
   assert.match(css, /box-decoration-break:\s*clone/);
   assert.match(css, /\.sidebar[^}]*display:\s*none\s*!important/);
@@ -1071,7 +1228,7 @@ test("impressão usa a mesma folha da prévia e mantém cartão e questões dent
     },
   }));
   assert.equal((html.match(/class="folha"/g) || []).length, 1);
-  assert.match(html, /--margens-impressao:13mm 16mm 12mm/);
+  assert.match(html, /--margens-impressao:6.27mm 6.3mm 5.7mm/);
   assert.match(html, /class="folha"[^>]*>[\s\S]*class="cartao-teste"[^>]*>20260001/);
   assert.ok(html.indexOf("cartao-teste") < html.indexOf("conteudo-prova"));
   assert.match(html, /class="conteudo-prova texto-questao"[\s\S]*preview-questao/);
