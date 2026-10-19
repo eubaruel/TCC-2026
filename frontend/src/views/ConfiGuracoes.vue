@@ -54,43 +54,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Card de Notificações -->
-      <div class="card-configuracao">
-        <div class="card-header">
-          <div class="card-icon">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.36 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.63 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z"
-                fill="currentColor"
-              />
-            </svg>
-          </div>
-          <h3>Notificações</h3>
-        </div>
-        <div class="card-conteudo">
-          <div class="opcao-config">
-            <label class="switch">
-              <input type="checkbox" v-model="notificacoesEmailSelecionado" />
-              <span class="slider round"></span>
-            </label>
-            <span>Receber notificações por email</span>
-          </div>
-          <div class="opcao-config">
-            <label class="switch">
-              <input type="checkbox" v-model="notificacoesSistemaSelecionado" />
-              <span class="slider round"></span>
-            </label>
-            <span>Notificações do sistema</span>
-          </div>
-        </div>
-      </div>
     </div>
 
     <div class="acoes-container">

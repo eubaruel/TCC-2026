@@ -4,7 +4,7 @@ import { recortarCartao } from "@/utils/recortarCartao";
 export const criarLoteCorrecao = (entradas) => api("/provas/lotes-correcao", { method: "POST", body: { entradas } });
 export const buscarLoteCorrecao = (id) => api(`/provas/lotes-correcao/${id}`);
 
-export async function corrigirImagens(arquivos, atualizar = () => {}) {
+export async function corrigirImagens(arquivos, atualizar = () => {}, { recortar = false } = {}) {
   const resultados = [], erros = [];
   let lote = [], bytes = 0, preparadas = 0, processadas = 0, recortadas = 0;
   const progresso = () => atualizar({ preparadas, processadas, recortadas, total: arquivos.length });
@@ -33,10 +33,10 @@ export async function corrigirImagens(arquivos, atualizar = () => {}) {
       erros.push({ indice, arquivo: original.name, mensagem: "Selecione uma imagem válida e não vazia." });
       processadas++; preparadas++; progresso(); continue;
     }
-    const { arquivo: imagem, recortada, id_prova_aluno } = await recortarCartao(original);
+    const { arquivo: imagem, recortada, id_prova_aluno } = await recortarCartao(original, { permitirRecorte: recortar });
     preparadas++; if (recortada) recortadas++;
     if (imagem.size > 5 * 1024 * 1024) {
-      erros.push({ indice, arquivo: original.name, mensagem: "Imagem acima de 5 MiB. Não foi possível reduzi-la com segurança; digitalize em um tamanho menor." });
+      erros.push({ indice, arquivo: original.name, mensagem: "Imagem acima de 5 MiB. Digitalize em um tamanho menor ou, para folhas completas, ative o recorte automático." });
       processadas++; progresso(); continue;
     }
     // A API aceita 50 arquivos; reserva espaço para o multipart dentro do limite de 50 MiB.
