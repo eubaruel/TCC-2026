@@ -13,6 +13,7 @@ from api.utils.resposta_erro_http import resposta_erro_http
 from api.utils.usuarios_teste import inserir_usuarios_teste
 
 from api.middlewares.aluno_middleware import Aluno_middleware
+from api.middlewares.rate_limit import configurar_rate_limit
 from api.controles.aluno_controle import Aluno_controle
 from api.services.aluno_service import Aluno_service
 from api.DAOs.aluno_dao import Aluno_dao
@@ -67,7 +68,8 @@ class Servidor:
         # 🔹 Configuração de CORS (Cross-Origin Resource Sharing)
         #    Permite que clientes de outros domínios/portas acessem sua API
         #    Exemplo: permitir todos os domínios (somente para desenvolvimento)
-        CORS(self.__app, resources={r"/*": {"origins": "*"}})
+        CORS(self.__app, resources={r"/*": {"origins": "*"}},
+             expose_headers=["Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"])
 
         # 🔹 Middlewares
 
@@ -125,6 +127,8 @@ class Servidor:
         self.__setup_questao()
 
         self.__setup_prova()
+
+        configurar_rate_limit(self.__app)
 
 
     def __setup_aluno(self):

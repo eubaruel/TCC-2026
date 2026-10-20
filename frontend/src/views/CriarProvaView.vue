@@ -75,7 +75,7 @@
       <section class="painel painel-preview">
         <PreviewProva :template="template" :metadados="metadados" :questoes="questoes" :professor="prova?.professor.nome || ''">
           <template #cabecalho>
-            <CartaoResposta v-if="prova && !carregando && !erroCarregamento" class="cabecalho-preview" :prova="prova" matricula="" qrCode="" />
+            <CartaoResposta v-if="prova && !carregando && !erroCarregamento" class="cabecalho-preview" :prova="prova" :exibir-turma="false" matricula="" qrCode="" />
           </template>
         </PreviewProva>
       </section>
