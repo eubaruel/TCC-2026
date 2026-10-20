@@ -906,7 +906,8 @@ test("prévia do professor inclui o cartão real antes das questões, sem identi
     const previa = html.slice(html.indexOf('class="painel painel-preview"'));
     assert.equal((previa.match(/class="cartao-resposta/g) || []).length, 1);
     assert.match(previa, /aria-label="Cartão-resposta da prova"/);
-    for (const dado of ["Matemática", "Professor Teste", "Turma A", "3º período letivo", "3ª série", "14/10/2026"]) assert.ok(previa.includes(dado));
+    for (const dado of ["Matemática", "Professor Teste", "3º período letivo", "3ª série", "14/10/2026"]) assert.ok(previa.includes(dado));
+    assert.doesNotMatch(previa, /Turma:|Turma A/);
     assert.match(previa, /x="705" y="107"[^>]*><\/text>/);
     assert.match(previa, /x="744" y="136"><\/text>/);
     assert.equal((previa.match(/<image /g) || []).length, 2); // Somente logotipos; não gera QR fictício.

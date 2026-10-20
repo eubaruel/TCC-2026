@@ -125,7 +125,7 @@
               </svg>
             </div>
             <div class="prova-detalhes">
-              <h4>{{ (authStore.isProfessor ? prova.tituloProfessor : '') || prova.titulo || "Prova sem título" }}</h4>
+              <h4>{{ prova.titulo || "Prova sem título" }}</h4>
               <div class="prova-metadata">
                 <span>📅 {{ formatarData(prova.criadaEm) }}</span>
                 <span v-if="authStore.isProcessoPedagogico">Professor: {{ prova.professor.nome }}</span>
@@ -136,13 +136,13 @@
                   }}
                 </span>
               </div>
-              <details v-if="authStore.isProfessor && prova.turmas?.length" class="turmas-prova">
+              <details v-if="prova.turmas?.length" class="turmas-prova">
                 <summary>{{ prova.turmas.length }} {{ prova.turmas.length === 1 ? 'turma' : 'turmas' }}</summary>
                 <ul class="lista-turmas" aria-label="Turmas que farão a prova">
                   <li v-for="turma in prova.turmas" :key="turma">{{ turma }}</li>
                 </ul>
               </details>
-              <p v-else-if="authStore.isProfessor" class="turmas-ausentes">Nenhuma turma informada</p>
+              <p v-else class="turmas-ausentes">Nenhuma turma informada</p>
               <div v-if="authStore.isProcessoPedagogico && prova.status === 'Impressa'" class="progresso-correcao">
                 <span v-if="contagemCorrecaoValida(prova)" class="contador-correcao" title="Cada versão conta uma vez, incluindo tentativas com sucesso ou falha.">
                   Corrigidas: <strong>{{ prova.progresso_correcao.processadas }} / {{ prova.progresso_correcao.total }}</strong>
@@ -284,8 +284,7 @@ export default {
       return {
         ...prova,
         id: prova._id,
-        titulo: `${prova.disciplina.nome_disciplina} - ${Array.isArray(prova.id_turma) ? prova.id_turma.join(", ") : prova.id_turma}`,
-        tituloProfessor: `${prova.disciplina.nome_disciplina} - ${prova.periodo_letivo || "Período letivo não informado"}`,
+        titulo: `${prova.disciplina.nome_disciplina} - ${prova.periodo_letivo || "Período letivo não informado"}`,
         turmas: [...new Set((Array.isArray(prova.id_turma) ? prova.id_turma : [prova.id_turma])
           .map((turma) => String(turma ?? "").trim()).filter(Boolean))],
         criadaEm: prova.data_de_aplicacao,
