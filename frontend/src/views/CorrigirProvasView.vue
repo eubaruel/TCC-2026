@@ -39,7 +39,6 @@
     <section v-if="processando || finalizado" class="painel progresso-painel" aria-labelledby="titulo-progresso">
       <div class="secao-cabecalho"><h3 id="titulo-progresso">{{ processando ? 'Correção em andamento' : 'Processamento concluído' }}</h3><span class="etiqueta">{{ progresso.processadas }} / {{ arquivos.length }} imagens</span></div>
       <progress :value="progresso.processadas" :max="arquivos.length || 1" aria-label="Imagens processadas"></progress>
-      <p class="progresso-detalhes" role="status">Preparadas: {{ progresso.preparadas }} / {{ arquivos.length }}. Processadas: {{ progresso.processadas }} / {{ arquivos.length }}. Recortadas: {{ progresso.recortadas }}. Preservadas sem recorte: {{ progresso.preparadas - progresso.recortadas }}.</p>
     </section>
     <p v-if="erro" class="erro" role="alert">{{ erro }}</p>
     <div v-if="idLote && !processando" class="lote-salvo">
@@ -212,7 +211,6 @@ progress { display: block; width: 100%; height: 8px; margin-top: 20px; border: 0
 progress::-webkit-progress-bar { background: var(--azul-suave); }
 progress::-webkit-progress-value { background: #00488b; border-radius: 8px; }
 progress::-moz-progress-bar { background: #00488b; border-radius: 8px; }
-.progresso-detalhes { margin-top: 12px; color: var(--texto-suave); font-size: 12px; }
 .lote-salvo { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; margin-bottom: 20px; padding: 20px 24px; background: var(--azul-suave); border: 1px solid var(--borda); border-radius: 12px; }
 .lote-salvo strong { color: var(--azul-texto); font-size: 15px; }
 .lote-salvo p { margin-top: 4px; color: var(--texto-suave); font-size: 13px; }

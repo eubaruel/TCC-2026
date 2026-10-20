@@ -1,290 +1,49 @@
 <template>
-  <div class="configuracoes-container">
-    <div class="config-header">
-      <h2 class="titulo-pagina">Configurações</h2>
+  <div class="informacoes-container">
+    <div class="page-header">
+      <h2>Informações</h2>
       <div class="header-line"></div>
     </div>
-
-    <div class="configuracoes-grid">
-      <!-- Card de Tema -->
-      <div class="card-configuracao">
-        <div class="card-header">
-          <div class="card-icon">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <circle
-                cx="12"
-                cy="12"
-                r="5"
-                stroke="currentColor"
-                stroke-width="2"
-              />
-              <path
-                d="M12 3V1M12 23V21M21 12H23M1 12H3M18.36 5.64L19.78 4.22M4.22 19.78L5.64 18.36M18.36 18.36L19.78 19.78M4.22 4.22L5.64 5.64"
-                stroke="currentColor"
-                stroke-width="2"
-              />
-            </svg>
-          </div>
-          <h3>Aparência</h3>
-        </div>
-        <div class="card-conteudo">
-          <div class="opcoes-tema">
-            <button
-              @click="selecionarTema('tema-claro')"
-              class="botao-tema"
-              :class="{ ativo: temaSelecionado === 'tema-claro' }"
-            >
-              <div class="tema-preview claro"></div>
-              <span>Claro</span>
-            </button>
-            <button
-              @click="selecionarTema('tema-escuro')"
-              class="botao-tema"
-              :class="{ ativo: temaSelecionado === 'tema-escuro' }"
-            >
-              <div class="tema-preview escuro"></div>
-              <span>Escuro</span>
-            </button>
-          </div>
-        </div>
+    <dl class="dados-usuario" aria-label="Dados do usuário">
+      <div class="dado-usuario">
+        <dt>Nome</dt>
+        <dd>{{ authStore.user?.nome || 'Não informado' }}</dd>
       </div>
-    </div>
-
-    <div class="acoes-container">
-      <button @click="salvarConfiguracoes" class="btn-salvar">
-        Salvar Configurações
-      </button>
-      <button @click="cancelarAlteracoes" class="btn-cancelar">Cancelar</button>
-    </div>
+      <div class="dado-usuario">
+        <dt>E-mail</dt>
+        <dd>{{ authStore.user?.email || 'Não informado' }}</dd>
+      </div>
+      <div class="dado-usuario">
+        <dt>Registro</dt>
+        <dd>{{ authStore.user?.registro ?? 'Não informado' }}</dd>
+      </div>
+    </dl>
   </div>
 </template>
 
 <script>
+import { useAuthStore } from "@/stores/auth";
+
 export default {
-  name: "ConfiGuracoes",
-  data: () => ({
-    temaAtual: "tema-claro",
-    temaSelecionado: "tema-claro",
-    notificacoesEmail: true,
-    notificacoesEmailSelecionado: true,
-    notificacoesSistema: true,
-    notificacoesSistemaSelecionado: true,
-  }),
-  methods: {
-    selecionarTema(tema) {
-      this.temaSelecionado = tema;
-    },
-    salvarConfiguracoes() {
-      // A API não disponibiliza endpoint para persistência de configurações.
-    },
-    cancelarAlteracoes() {
-      this.temaSelecionado = this.temaAtual;
-      this.notificacoesEmailSelecionado = this.notificacoesEmail;
-      this.notificacoesSistemaSelecionado = this.notificacoesSistema;
-    },
+  name: "InformacoesView",
+  setup() {
+    return { authStore: useAuthStore() };
   },
 };
 </script>
 
 <style scoped>
-.configuracoes-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-.config-header {
-  margin-bottom: 30px;
-}
-
-.titulo-pagina {
-  font-size: 28px;
-  font-weight: 600;
-  margin-bottom: 15px;
-  margin-top: 20px;
-  color: inherit;
-}
-
-.header-line {
-  height: 2px;
-  background: linear-gradient(90deg, #00488b 0%, #00488b 50%, transparent 100%);
-  width: 100%;
-}
-
-.configuracoes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 24px;
-  margin-bottom: 40px;
-}
-
-.card-configuracao {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid #e0e0e0;
-}
-
-.tema-escuro .card-configuracao {
-  background: #2a2a2a;
-  border-color: #404040;
-  color: #e5e5e5;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 20px 24px;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.card-icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: inherit;
-}
-
-.card-header h3 {
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.card-conteudo {
-  padding: 24px;
-}
-
-.opcoes-tema {
-  display: flex;
-  gap: 20px;
-}
-
-.botao-tema {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background: transparent;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  cursor: pointer;
-  color: inherit;
-}
-
-.botao-tema.ativo {
-  border-color: #00488b;
-  background: rgba(0, 72, 139, 0.1);
-}
-
-.tema-preview {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
-}
-
-.tema-preview.claro {
-  background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
-  border: 1px solid #ddd;
-}
-
-.tema-preview.escuro {
-  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-  border: 1px solid #404040;
-}
-
-.opcao-config {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 24px;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: 0.4s;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  transition: 0.4s;
-}
-
-input:checked + .slider {
-  background-color: #00488b;
-}
-
-input:checked + .slider:before {
-  transform: translateX(26px);
-}
-
-.slider.round {
-  border-radius: 34px;
-}
-
-.slider.round:before {
-  border-radius: 50%;
-}
-
-.acoes-container {
-  display: flex;
-  gap: 16px;
-  justify-content: flex-end;
-  padding: 20px 0;
-  border-top: 1px solid #e0e0e0;
-}
-
-.btn-salvar {
-  padding: 12px 24px;
-  background: #00488b;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.btn-cancelar {
-  padding: 12px 24px;
-  background: transparent;
-  color: inherit;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  cursor: pointer;
-}
+.informacoes-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+.page-header { margin-bottom: 24px; }
+.page-header h2 { margin: 20px 0 15px; font-size: 28px; font-weight: 600; color: inherit; }
+.header-line { height: 2px; background: linear-gradient(90deg, #00488b 0%, #00488b 50%, transparent 100%); }
+.dados-usuario { margin: 0; padding: 8px 24px; border: 1px solid #e0e0e0; border-radius: 12px; background: #fff; }
+.dado-usuario { padding: 20px 0; }
+.dado-usuario + .dado-usuario { border-top: 1px solid #e0e0e0; }
+dt { margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #666; }
+dd { margin: 0; font-size: 16px; line-height: 1.5; color: inherit; overflow-wrap: anywhere; }
+:global(.tema-escuro .dados-usuario) { background: #2a2a2a; border-color: #404040; }
+:global(.tema-escuro .dado-usuario + .dado-usuario) { border-color: #404040; }
+:global(.tema-escuro .dado-usuario dt) { color: #b5b5b5; }
+@media (max-width: 480px) { .dados-usuario { padding: 4px 16px; } }
 </style>
