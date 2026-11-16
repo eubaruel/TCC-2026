@@ -7,11 +7,11 @@ import pandas as pd
 
 class Usuario_controle:
     def __init__(self, usuario_service:Usuario_service):
-        print("⬆️  Usuario_controle.constructor()")
+        print("  Usuario_controle.constructor()")
         self.__usuario_service = usuario_service
 
     def login(self):
-        print("🔵 usuario_controle.login()")
+        print(" usuario_controle.login()")
 
         json_usuario = request.json.get("usuario")
         resultado = self.__usuario_service.login(json_usuario)
@@ -22,7 +22,7 @@ class Usuario_controle:
         )
     
     def cadastrar(self):
-        print("🔵 usuario_controle.cadastrar()")
+        print(" usuario_controle.cadastrar()")
 
         json_usuario = request.json.get("usuario")
         cadastro = self.__usuario_service.criar(json_usuario)
@@ -39,7 +39,7 @@ class Usuario_controle:
         )
     
     def importar(self):
-        print("🔵 aluno_controle.importar()")
+        print(" aluno_controle.importar()")
 
         arquivo = next(request.files.values(), None)
         erro = Arquivo.verificar_integridade(arquivo,".xlsx")
@@ -58,7 +58,7 @@ class Usuario_controle:
     
     
     def ler(self):
-        print("🔵 usuario_controle.ler()")
+        print(" usuario_controle.ler()")
         
         tipos = {
             "registro":int,
@@ -90,7 +90,7 @@ class Usuario_controle:
     
     
     def alterar(self, registro):
-        print("🔵 usuario_controle.alterar()") 
+        print(" usuario_controle.alterar()") 
 
         json_usuario = request.json.get("usuario")
         sucesso = self.__usuario_service.atualizar(json_usuario, registro)
@@ -110,7 +110,7 @@ class Usuario_controle:
 
 
     def deletar(self, registro):
-        print("🔵 usuario_controle.deletar()")
+        print(" usuario_controle.deletar()")
         excluiu = self.__usuario_service.excluir(registro)
         if excluiu:
             return Resposta_json.sucesso(

@@ -4,11 +4,11 @@ from api.utils.resposta_json import Resposta_json
 
 class Questao_controle:
     def __init__(self, questao_service:Questao_service):
-        print("⬆️  Questao_controle.constructor()")
+        print("  Questao_controle.constructor()")
         self.__questao_service = questao_service
 
     def cadastrar(self):
-        print("🔵 questao_controle.cadastrar()")
+        print(" questao_controle.cadastrar()")
 
         json_questao = request.json.get("questao")
         questao_criada = self.__questao_service.criar(json_questao)
@@ -20,7 +20,7 @@ class Questao_controle:
         )
     
     def ler(self):
-        print("🔵 questao_controle.ler()")
+        print(" questao_controle.ler()")
 
         tipos = {"registro":int}
         
@@ -46,7 +46,7 @@ class Questao_controle:
         )
     
     def alterar(self,_id):
-        print("🔵 questao_controle.alterar()")
+        print(" questao_controle.alterar()")
 
         json_questao = request.json.get("questao")
         questao_atualizada = self.__questao_service.atualizar(json_questao, _id)
@@ -64,7 +64,7 @@ class Questao_controle:
             )
         
     def deletar(self, _id):
-        print("🔵 questao_controle.deletar()")
+        print(" questao_controle.deletar()")
         
         excluiu = self.__questao_service.excluir(_id)
         if excluiu:

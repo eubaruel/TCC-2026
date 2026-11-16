@@ -7,7 +7,7 @@ from api.controles.questao_controle import Questao_controle
 class Questao_rotas:
     #def __init__(self, jwt_middleware:Jwt_middleware):
     def __init__(self, questao_middleware:Questao_middleware, questao_controle:Questao_controle):
-        print("⬆️  questao_rotas.__init__()")
+        print("  questao_rotas.__init__()")
 
         #self.jwt_middleware = jwt_middleware
         self.__questao_middleware = questao_middleware

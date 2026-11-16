@@ -6,7 +6,7 @@ import pandas as pd
 
 class Usuario_service:
     def __init__(self, usuario_dao_dependency: Usuario_dao):
-        print("⬆️ usuario_service.__init__()")
+        print(" usuario_service.__init__()")
         self.__usuario_dao = usuario_dao_dependency
 
     _CAMPOS_USUARIO = [
@@ -16,7 +16,7 @@ class Usuario_service:
     ]
 
     def login (self, json_usuario: dict) -> dict:
-        print("🟣 usuario_service.login()")
+        print("usuario_service.login()")
 
         obj_usuario = Usuario()
         obj_usuario.registro = json_usuario.get("registro")
@@ -53,7 +53,7 @@ class Usuario_service:
         }
         
     def importar_excel(self, df) ->int:
-        print("🟣 usuario_service.importar_excel()")
+        print("usuario_service.importar_excel()")
 
         docs = []
         
@@ -61,7 +61,7 @@ class Usuario_service:
 
         for _, linha in df.iterrows():
             if linha.isnull().any():
-                print("❌ Linha com valor nulo:", linha)
+                print(" Linha com valor nulo:", linha)
                 continue
             try:
                 doc = self._ler_linha(linha)
@@ -114,7 +114,7 @@ class Usuario_service:
         return {"registro": registro, "deve_alterar_senha": redefinicao}
     
     def criar(self, json_usuario: dict) -> bool:
-        print("🟣 usuario_service.criar()")
+        print("usuario_service.criar()")
 
         obj_usuario = Usuario()
         self._setar_modelo_usuario(obj_usuario, json_usuario)
@@ -133,12 +133,12 @@ class Usuario_service:
     
     
     def consulta(self, filtro) -> list[dict]:
-        print("🟣 usuario_service.consulta()")
+        print("usuario_service.consulta()")
         return self.__usuario_dao.consulta(filtro)
     
     
     def atualizar(self, json_usuario: dict, registro: int) -> bool:
-        print("🟣 usuario_service.atualizar()")
+        print("usuario_service.atualizar()")
 
         obj_usuario = Usuario()
         self._setar_modelo_usuario(obj_usuario, json_usuario, incluir_ativo=True)
@@ -155,7 +155,7 @@ class Usuario_service:
     
     
     def excluir(self, registro: int) -> bool:
-        print("🟣 usuario_service.excluir()")
+        print("usuario_service.excluir()")
         obj_usuario = Usuario()
         obj_usuario.registro = registro
         return self.__usuario_dao.excluir(obj_usuario.registro)

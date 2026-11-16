@@ -3,13 +3,13 @@ from pymongo import UpdateOne
 
 class Aluno_dao:
     def __init__(self, banco_de_dados_dependency):
-        print("⬆️  aluno_dao.__init__()")
+        print("  aluno_dao.__init__()")
         self.__banco_de_dados = banco_de_dados_dependency.get_banco_de_dados()
         self.__colecao = self.__banco_de_dados["alunos"]
         
 
     def criar(self, obj_aluno: Aluno) -> bool:
-        print("✅ aluno_dao.criar()")
+        print(" aluno_dao.criar()")
         doc = self.set_doc(obj_aluno)
 
         resultado = self.__colecao.insert_one(doc)
@@ -20,7 +20,7 @@ class Aluno_dao:
         return True
     
     def importar_excel(self, docs: list) -> dict:
-        print("✅ aluno_dao.importar_excel()")
+        print(" aluno_dao.importar_excel()")
         operacoes = [
             UpdateOne(
                 {"matricula_aluno": doc["matricula_aluno"]},
@@ -37,7 +37,7 @@ class Aluno_dao:
         }
     
     def consulta(self, filtro=None):
-        print("✅ aluno_dao.consulta()")
+        print(" aluno_dao.consulta()")
         filtro = filtro or {}
         resultado = list(self.__colecao.find(filtro, {"_id": 0, "email_aluno": 0}))
         return resultado
@@ -49,7 +49,7 @@ class Aluno_dao:
         )
 
     def buscar_matriculas_por_turmas(self, turmas: list[str]) -> list[int]:
-        print("✅ aluno_dao.buscar_matriculas_por_turmas()")
+        print(" aluno_dao.buscar_matriculas_por_turmas()")
 
         if not turmas:
             return []
@@ -68,7 +68,7 @@ class Aluno_dao:
         ]
     
     def atualizar(self, obj_aluno: Aluno, filtro=None) -> bool:
-        print("✅ aluno_dao.atualizar()")
+        print(" aluno_dao.atualizar()")
 
         filtro = {"matricula_aluno":obj_aluno.matricula_aluno}
         doc = {
@@ -78,7 +78,7 @@ class Aluno_dao:
         return resultado.matched_count > 0
     
     def excluir(self, matricula_aluno) -> bool:
-        print("✅ aluno_dao.excluir()")
+        print(" aluno_dao.excluir()")
 
         filtro = {"matricula_aluno": int(matricula_aluno)}
 
@@ -96,7 +96,7 @@ class Aluno_dao:
         return resultado.modified_count > 0
     
     def campo_existe(self,campo,valor):
-        print("✅ aluno_dao.campo_existe()")
+        print(" aluno_dao.campo_existe()")
         filtro = {campo:valor}
         resultado = self.__colecao.find_one(filtro)
 

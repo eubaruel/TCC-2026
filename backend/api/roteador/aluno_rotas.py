@@ -8,7 +8,7 @@ from api.controles.aluno_controle import Aluno_controle
 class Aluno_rotas:
     #def __init__(self, jwt_middleware:Jwt_middleware):
     def __init__(self, aluno_middleware:Aluno_middleware, aluno_controle:Aluno_controle):
-        print("⬆️  aluno_rotas.__init__()")
+        print("  aluno_rotas.__init__()")
 
         #self.jwt_middleware = jwt_middleware
         self.__aluno_middleware = aluno_middleware
@@ -18,7 +18,7 @@ class Aluno_rotas:
 
     
     def criar_rotas(self):
-        print("⬆️  aluno_rotas.criar_rotas()")
+        print("  aluno_rotas.criar_rotas()")
         
         @self.__blueprint.route('/',methods=['POST'])
         #@self.jwt_middleware.validar_token

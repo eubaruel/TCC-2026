@@ -39,6 +39,97 @@ Opções disponíveis:
 
 As instruções a seguir permitem iniciar cada serviço manualmente.
 
+## Inicializar com PM2 (Windows)
+
+Em uma máquina Windows 10/11 de 64 bits com acesso à internet, execute na raiz do projeto:
+
+```powershell
+.\INICIAR_PM2.cmd
+```
+
+O comando chama `scripts/iniciar_pm2.ps1`, que:
+
+1. Instala Python 3.13 e Node.js LTS com npm, caso necessário, pelo WinGet.
+   Se o WinGet estiver ausente, tenta prepará-lo com o módulo oficial
+   `Microsoft.WinGet.Client` da PowerShell Gallery.
+2. Instala PM2 com `npm install --global pm2`, caso esteja ausente.
+   Instala também o Visual C++ Redistributable x64 se as DLLs necessárias
+   ao processamento de imagens estiverem ausentes.
+3. Cria os ambientes `backend/.venv-correcao` e `backend/.venv-leitor`,
+   instala seus respectivos requirements e executa `npm ci` no frontend.
+   Instalações já preparadas são reaproveitadas; mudanças nos arquivos de
+   dependências ou pacotes Python ausentes disparam uma nova instalação.
+4. Valida `URI_BD`, `NOME_BD` e `PORTA`, sem instalar MongoDB local.
+5. Exclui as entradas existentes `sistema-correcao`, `frontend` e
+   `api-principal` do PM2, depois inicia os três serviços com a configuração atual.
+
+Configure `backend/.env` com a URL e o nome do banco MongoDB remoto antes
+de iniciar. Se o arquivo não existir e as variáveis não estiverem no ambiente,
+o comando cria uma cópia de `.env.example` e para para você preenchê-la.
+Configurações existentes não são sobrescritas. A validação não testa a
+conectividade com o MongoDB; a API precisa conseguir acessá-lo ao iniciar.
+
+A primeira execução pode solicitar autorização de administrador pelo Windows.
+Se a instalação do WinGet ou das ferramentas falhar por permissões, execute
+o comando em um terminal como administrador. O launcher usa uma política de
+execução temporária apenas no processo PowerShell, sem alterar a política salva.
+Falhas na preparação interrompem a execução antes de excluir serviços existentes.
+
+Para forçar a reinstalação das dependências do projeto:
+
+```powershell
+.\INICIAR_PM2.cmd -Reinstalar
+```
+
+Os serviços ficam sob controle do PM2 após o comando terminar. Use `pm2 status`
+e `pm2 logs` para conferir a inicialização. Este comando não configura início
+automático com o Windows. A opção `INICIAR.cmd --preparar` executa somente a
+preparação das dependências e a validação da configuração, sem iniciar serviços.
+
+## Inicializar com PM2 (Linux)
+
+Em Debian/Ubuntu ou Fedora/RHEL e derivados com glibc, arquitetura x64 ou arm64:
+
+```bash
+bash LINUX_INICIAR_PM2
+```
+
+O comando instala ferramentas de download e bibliotecas nativas do OpenCV
+por `apt` ou `dnf`, solicitando `sudo` quando necessário. Reaproveita Python
+3.13 e Node.js 22 ou superior, quando disponíveis; caso contrário, instala
+Python 3.13 pelo uv e Node.js 24 pelos binários oficiais com verificação SHA-256.
+PM2 e as ferramentas locais ficam na pasta do usuário, sem `sudo npm install`.
+Os dois ambientes Python usam `bin/python` no Linux; a configuração PM2
+seleciona automaticamente os caminhos de Windows ou Linux.
+
+Configure `URI_BD` e `NOME_BD` em `backend/.env` para o MongoDB remoto.
+Se o arquivo estiver ausente e as variáveis não estiverem no ambiente, o
+launcher cria o modelo e para para você preenchê-lo. Não instala banco local.
+Ele prepara os requirements de cada venv e o frontend, confere a importação
+do OpenCV e só então exclui as três entradas anteriores e inicia pelo PM2.
+Não copie ambientes `.venv-*` ou `node_modules` do Windows para o Linux.
+
+Para forçar a reinstalação das dependências:
+
+```bash
+bash LINUX_INICIAR_PM2 --reinstalar
+```
+
+O script mostra ao final o comando `export PATH` para usar as ferramentas
+locais em outros terminais. Para o diretório padrão:
+
+```bash
+export PATH="$HOME/.local/share/tcc/node/bin:$HOME/.local/share/tcc/npm/bin:$HOME/.local/bin:$PATH"
+pm2 status
+pm2 logs
+```
+
+Use o mesmo usuário para iniciar e administrar o PM2. O launcher precisa de
+internet na instalação inicial e não configura início automático após reboot.
+Alpine/musl e outros gerenciadores de pacotes não têm instalação automática.
+O frontend e a API mantêm as opções de execução do `ecosystem.config.js`;
+este comando não configura proxy reverso, HTTPS ou publicação externa.
+
 ## Backend (PowerShell, dentro de backend)
 
 Se o ambiente não existir, crie-o com o Python instalado no computador:

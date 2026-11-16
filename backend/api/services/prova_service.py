@@ -19,7 +19,7 @@ class Prova_service:
         questao_dao_dependency: Questao_dao,
         prova_x_aluno_service_dependency: Prova_x_aluno_service
     ):
-        print("⬆️ prova_service.__init__()")
+        print("prova_service.__init__()")
         self.__prova_dao = prova_dao_dependency
         self.__questao_dao = questao_dao_dependency
         self.__prova_x_aluno_service = prova_x_aluno_service_dependency
@@ -34,7 +34,7 @@ class Prova_service:
 
     def criar_prova(self, json_prova: dict) -> dict:
         """Cria uma prova-base que ainda aguarda a seleção das questões."""
-        print("🟣 prova_service.criar_prova()")
+        print("prova_service.criar_prova()")
 
         obj_prova = Prova()
         self._setar_dados_base(obj_prova, json_prova, exigir_registro=True)
@@ -46,13 +46,13 @@ class Prova_service:
         return self._formatar_prova(obj_prova, id_criado)
 
     def adicionar_questoes(self, id_hash: str, ids_questoes: list) -> dict:
-        print("🟣 prova_service.adicionar_questoes()")
+        print("prova_service.adicionar_questoes()")
         with self._operacao_exclusiva(id_hash) as token:
             prova = self._buscar_prova(id_hash)
             self._exigir_edicao(prova)
             geracao_pendente = prova.pop("geracao_pendente", False)
             ids_normalizados = self._validar_ids_questoes(
-                ids_questoes, prova.get("tipo"), prova.get("disciplina")
+                ids_questoes, prova.get("tipo")
             )
             self._validar_quantidade_questoes(prova, ids_normalizados)
             quantidade = self.__prova_x_aluno_service.quantidade_versoes(id_hash, ids_normalizados, prova["id_turma"])
@@ -85,7 +85,7 @@ class Prova_service:
             if prova.pop("geracao_pendente", False):
                 raise resposta_erro_http(409, "Geração de versões pendente",
                                         {"mensagem": "Salve a seleção novamente para completar a geração antes de enviar"})
-            ids = self._validar_ids_questoes(prova.get("questoes"), prova["tipo"], prova["disciplina"])
+            ids = self._validar_ids_questoes(prova.get("questoes"), prova["tipo"])
             self._validar_quantidade_questoes(prova, ids, completa=True)
             quantidade = self.__prova_x_aluno_service.quantidade_versoes(
                 id_hash, ids, prova["id_turma"] if prova["status"] != Prova.STATUS_ENVIADA else None
@@ -106,7 +106,7 @@ class Prova_service:
                 raise resposta_erro_http(409, "Apenas provas enviadas podem ter a impressão confirmada")
             if prova.get("geracao_pendente"):
                 raise resposta_erro_http(409, "Geração de versões pendente")
-            ids = self._validar_ids_questoes(prova.get("questoes"), prova["tipo"], prova["disciplina"])
+            ids = self._validar_ids_questoes(prova.get("questoes"), prova["tipo"])
             self._validar_quantidade_questoes(prova, ids, completa=True)
             if not self.__prova_x_aluno_service.quantidade_versoes(id_hash, ids):
                 raise resposta_erro_http(409, "Nenhuma versão individual disponível")
@@ -153,7 +153,7 @@ class Prova_service:
             raise resposta_erro_http(409, "Prova concluída não pode ser editada")
 
     def consulta(self, filtro) -> list[dict]:
-        print("🟣 prova_service.consulta()")
+        print("prova_service.consulta()")
         provas = self.__prova_dao.consulta(filtro)
         for prova in provas:
             if prova.get("status") == Prova.STATUS_IMPRESSA:
@@ -161,7 +161,7 @@ class Prova_service:
         return provas
 
     def imprimir_provas(self, id_hash: str) -> list[dict]:
-        print("🟣 prova_service.imprimir_provas()")
+        print("prova_service.imprimir_provas()")
         prova = self._buscar_prova(id_hash)
         if prova.get("status") in Prova.STATUS_EDITAVEIS:
             raise resposta_erro_http(409, "Conclua e envie a prova antes de imprimir")
@@ -172,7 +172,7 @@ class Prova_service:
         return versoes
 
     def atualizar(self, json_prova: dict, id_hash: str) -> bool:
-        print("🟣 prova_service.atualizar()")
+        print("prova_service.atualizar()")
         with self._operacao_exclusiva(id_hash) as token:
             prova = self._buscar_prova(id_hash)
             self._exigir_edicao(prova)
@@ -200,7 +200,7 @@ class Prova_service:
             return self.__prova_dao.atualizar(obj_prova, token=token)
 
     def excluir(self, id_hash: str) -> bool:
-        print("🟣 prova_service.excluir()")
+        print("prova_service.excluir()")
         with self._operacao_exclusiva(id_hash) as token:
             self._exigir_edicao(self._buscar_prova(id_hash))
             obj_prova = Prova()
@@ -268,8 +268,7 @@ class Prova_service:
     def _validar_ids_questoes(
         self,
         ids_questoes,
-        tipo_prova,
-        disciplina_prova
+        tipo_prova
     ):
         if str(tipo_prova).strip().title() != "Objetiva":
             raise resposta_erro_http(
@@ -342,12 +341,6 @@ class Prova_service:
                 {"mensagem": "Uma ou mais questões não existem ou estão inativas"}
             )
 
-        disciplina_prova = disciplina_prova or {}
-        referencias_disciplina = {
-            str(disciplina_prova.get("codigo_disciplina", "")).strip().casefold(),
-            str(disciplina_prova.get("nome_disciplina", "")).strip().casefold()
-        }
-        referencias_disciplina.discard("")
         tipo_prova = str(tipo_prova).strip().title()
 
         for indice, id_questao in enumerate(ids_normalizados, start=1):
@@ -358,17 +351,6 @@ class Prova_service:
                     400,
                     "Tipo de questão incompatível",
                     {"mensagem": f"A questão {indice} não é do tipo {tipo_prova}"}
-                )
-
-            disciplinas_questao = {
-                str(valor).strip().casefold()
-                for valor in questao.get("disciplina", [])
-            }
-            if not referencias_disciplina.intersection(disciplinas_questao):
-                raise resposta_erro_http(
-                    400,
-                    "Disciplina incompatível",
-                    {"mensagem": f"A questão {indice} não pertence à disciplina da prova"}
                 )
 
             alternativas = questao.get("alternativas", [])

@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+# Linux com glibc: Debian/Ubuntu ou Fedora/RHEL e derivados, x64 ou arm64.
+set -Eeuo pipefail
+TCC_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+TCC_TOOLS="${HOME}/.local/share/tcc"
+export PATH="${TCC_TOOLS}/node/bin:${TCC_TOOLS}/npm/bin:${HOME}/.local/bin:${PATH}"
+
+tcc_error() { printf '[ERRO] %s\n' "$*" >&2; return 1; }
+
+tcc_system() {
+    if (( EUID == 0 )); then "$@";
+    elif command -v sudo >/dev/null; then sudo "$@";
+    else tcc_error 'Instale sudo ou solicite ao administrador a instalacao das bibliotecas do sistema.'; fi
+}
+
+tcc_system_dependencies() {
+    local missing=0 tool library cache
+    for tool in curl tar xz sha256sum; do
+        command -v "$tool" >/dev/null || missing=1
+    done
+    [[ -s /etc/ssl/certs/ca-certificates.crt || -s /etc/pki/tls/certs/ca-bundle.crt ]] || missing=1
+    cache="$(/sbin/ldconfig -p 2>/dev/null || true)"
+    for library in libGL.so.1 libglib-2.0.so.0 libgthread-2.0.so.0 libgomp.so.1; do
+        [[ "$cache" == *"$library"* ]] || missing=1
+    done
+    (( missing )) || return 0
+    if command -v apt-get >/dev/null; then
+        tcc_system apt-get update
+        local glib=libglib2.0-0
+        if apt-cache show libglib2.0-0t64 >/dev/null 2>&1; then glib=libglib2.0-0t64; fi
+        tcc_system apt-get install -y ca-certificates curl tar xz-utils libgl1 "$glib" libgomp1
+    elif command -v dnf >/dev/null; then
+        tcc_system dnf install -y ca-certificates curl tar xz mesa-libGL glib2 libgomp
+    else
+        tcc_error 'Instalacao automatica suportada em Debian/Ubuntu (apt) e Fedora/RHEL (dnf).'
+    fi
+}
+
+tcc_python() {
+    if command -v python3.13 >/dev/null && python3.13 -c 'import venv, ensurepip' 2>/dev/null; then
+        TCC_PYTHON="$(command -v python3.13)"
+        return
+    fi
+    if ! command -v uv >/dev/null; then
+        local installer
+        installer="$(mktemp)"
+        curl --fail --show-error --location --proto '=https' --tlsv1.2 https://astral.sh/uv/install.sh -o "$installer"
+        UV_INSTALL_DIR="${HOME}/.local/bin" UV_NO_MODIFY_PATH=1 sh "$installer"
+        rm -f -- "$installer"
+    fi
+    uv python install 3.13
+    TCC_PYTHON="$(uv python find --managed-python 3.13)"
+    "$TCC_PYTHON" -c 'import venv, ensurepip'
+}
+
+tcc_node() (
+    if command -v node >/dev/null && command -v npm >/dev/null &&
+       node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 22 ? 0 : 1)'; then return; fi
+    local arch directory archive temporary
+    case "$(uname -m)" in
+        x86_64) arch=x64 ;;
+        aarch64|arm64) arch=arm64 ;;
+        *) tcc_error 'Arquitetura nao suportada; use Linux x64 ou arm64.'; return 1 ;;
+    esac
+    temporary="$(mktemp -d)"
+    trap 'rm -rf -- "$temporary"' EXIT
+    directory=https://nodejs.org/dist/latest-v24.x
+    curl --fail --show-error --location --proto '=https' --tlsv1.2 "$directory/SHASUMS256.txt" -o "$temporary/SHASUMS256.txt"
+    archive="$(awk -v suffix="-linux-${arch}.tar.xz" 'index($2,suffix) && substr($2,length($2)-length(suffix)+1)==suffix {print $2; exit}' "$temporary/SHASUMS256.txt")"
+    [[ "$archive" =~ ^node-v24\.[0-9]+\.[0-9]+-linux-(x64|arm64)\.tar\.xz$ ]] || { tcc_error 'Arquivo oficial do Node.js nao encontrado.'; return 1; }
+    curl --fail --show-error --location --proto '=https' --tlsv1.2 "$directory/$archive" -o "$temporary/$archive"
+    (cd "$temporary"; awk -v file="$archive" '$2==file' SHASUMS256.txt | sha256sum --check --status)
+    mkdir -p -- "$TCC_TOOLS/node"
+    tar -xJf "$temporary/$archive" -C "$TCC_TOOLS/node" --strip-components=1
+)
+
+tcc_pm2() {
+    if ! command -v pm2 >/dev/null; then
+        npm install --global --prefix "$TCC_TOOLS/npm" pm2
+    fi
+    command -v pm2 >/dev/null || tcc_error 'PM2 nao encontrado apos a instalacao.'
+}
+
+tcc_start() {
+    local reinstall=() argument
+    for argument in "$@"; do
+        case "$argument" in
+            --reinstalar) reinstall=(--reinstalar) ;;
+            -h|--help) printf 'Uso: bash LINUX_INICIAR_PM2 [--reinstalar]\n'; return 0 ;;
+            *) tcc_error "Opcao desconhecida: $argument"; return 1 ;;
+        esac
+    done
+    [[ "$(uname -s)" == Linux ]] || { tcc_error 'Este inicializador requer Linux.'; return 1; }
+    if [[ "$(ldd --version 2>&1 || true)" == *musl* ]]; then
+        tcc_error 'Use uma distribuicao com glibc; Alpine/musl nao e suportado.'; return 1
+    fi
+    cd -- "$TCC_ROOT"
+    tcc_system_dependencies
+    tcc_python
+    tcc_node
+    hash -r
+    tcc_pm2
+    if [[ ! -f backend/.env && ( -z "${URI_BD:-}" || -z "${NOME_BD:-}" ) ]]; then
+        cp -- backend/.env.example backend/.env
+        tcc_error 'Criado backend/.env. Configure URI_BD e NOME_BD do MongoDB remoto e execute novamente.'
+        return 1
+    fi
+    # O modo --preparar compartilha a instalacao/validacao com o launcher Windows.
+    "$TCC_PYTHON" -X utf8 -x INICIAR.cmd --preparar "${reinstall[@]}"
+    # Confere tambem as bibliotecas nativas antes de interromper os servicos.
+    backend/.venv-leitor/bin/python -c 'import cv2, numpy, flask'
+    export PYTHONUNBUFFERED=1 PYTHONUTF8=1
+    pm2 ping
+    local services service
+    # O JSON pode conter variaveis privadas; permanece no pipe, fora dos argumentos.
+    services="$(pm2 jlist | node -e 'const fs=require("fs"); const apps=JSON.parse(fs.readFileSync(0,"utf8")); console.log(["sistema-correcao","frontend","api-principal"].filter(name=>apps.some(p=>p.name===name)).join("\n"))')"
+    while IFS= read -r service; do
+        [[ -z "$service" ]] || pm2 delete "$service"
+    done <<< "$services"
+    pm2 start "$TCC_ROOT/ecosystem.config.js"
+    printf 'Servicos enviados ao PM2. Frontend: http://localhost:8081\n'
+    printf 'Ferramentas locais: export PATH="%s/node/bin:%s/npm/bin:$HOME/.local/bin:$PATH"\n' "$TCC_TOOLS" "$TCC_TOOLS"
+    printf 'Consulte pm2 status e pm2 logs para acompanhar a inicializacao.\n'
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    trap 'printf "[ERRO] Inicializacao interrompida na linha %s (codigo %s).\n" "$LINENO" "$?" >&2' ERR
+    tcc_start "$@"
+fi

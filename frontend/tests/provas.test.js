@@ -56,6 +56,10 @@ function ambiente(quantidade = 3, tamanhoBanco = 3) {
     "@/components/QuestaoEditor.vue": {}, "@/components/PreviewProva.vue": {}, "@/components/CartaoResposta.vue": {}, "@/components/ModalSairEdicao.vue": {},
     "@/components/FiltrosQuestoes.vue": filtrosComponente, "@/utils/filtrosQuestoes": filtrosModulo,
     "@/stores/auth": {}, "@/stores/provaDraft": draftModulo, "@/services/questoes": { listarQuestoes: async () => ({ questoes: banco }) },
+    "@/services/disciplinas": { listarDisciplinas: async () => ({ disciplinas: [
+      { codigo_disciplina: "MAT", nome_disciplina: "Matemática" },
+      { codigo_disciplina: "HIST", nome_disciplina: "História" },
+    ] }) },
     "@/services/provas": servicos, "@/services/templates": { obterTemplateProva: async () => "template" },
     "@/utils/html": { sanitizar: (valor) => valor, textoPuro: (valor) => valor, htmlVazio: (valor) => !valor || valor === "<p><br></p>" },
   }).default;
@@ -259,7 +263,7 @@ test("cards filtram por enunciado, excluem incompatíveis e não duplicam seleç
   assert.deepEqual([...tela.questoesBancoFiltradas.map((questao) => questao._id)], ["q3"]);
   tela.filtrosQuestoes.enunciado = "igualdade";
   assert.deepEqual([...tela.questoesBancoFiltradas.map((questao) => questao._id)], ["q4"]);
-  tela.importarQuestao("q4"); tela.importarQuestao("q4"); tela.importarQuestao("q5");
+  tela.importarQuestao("q4"); tela.importarQuestao("q4"); tela.importarQuestao("q6");
   assert.equal(tela.questoes.length, 3); assert.equal(tela.questoesBancoFiltradas.length, 0);
   tela.removerQuestao(2);
   assert.deepEqual([...tela.questoesBancoFiltradas.map((questao) => questao._id)], ["q4"]);
@@ -328,18 +332,31 @@ test("filtros apresentam disciplina, dificuldade, autor e enunciado por último,
   assert.equal(modelo.autor, ""); assert.equal(emitido.autor, "Ana");
 });
 
-test("filtros do editor não permitem questões de outra disciplina ou já selecionadas", async () => {
+test("editor inicia na disciplina da prova e permite trocar ou remover o filtro sem duplicar questões", async () => {
   const { tela, banco } = ambiente(3, 4);
   banco[2].dificuldade = "Difícil"; banco[2].professor = { nome: "Ana" };
   banco[3].disciplina = ["HIST"]; banco[3].professor = { nome: "Ana" };
   await tela.carregar();
+  assert.equal(tela.filtrosQuestoes.disciplina, "MAT");
+  assert.deepEqual([...tela.questoesBancoFiltradas.map((questao) => questao._id)], ["q3"]);
+  assert.equal(tela.disciplinasFiltro.find((item) => item.codigo_disciplina === "HIST").nome_disciplina, "História");
+  assert.equal(tela.disciplinasDaQuestao(banco[3]), "História");
+  tela.filtrosQuestoes.disciplina = "HIST";
+  assert.deepEqual([...tela.questoesBancoFiltradas.map((questao) => questao._id)], ["q4"]);
+  tela.filtrosQuestoes.disciplina = "";
+  assert.deepEqual([...tela.questoesBancoFiltradas.map((questao) => questao._id)], ["q3", "q4"]);
   tela.filtrosQuestoes = { disciplina: "MAT", dificuldade: "Difícil", autor: "ana", enunciado: "q3" };
   assert.deepEqual([...tela.questoesBancoFiltradas.map((questao) => questao._id)], ["q3"]);
   tela.importarQuestao("q3");
   assert.equal(tela.questoesBancoFiltradas.length, 0);
   tela.filtrosQuestoes.disciplina = "HIST";
   assert.equal(tela.questoesBancoFiltradas.length, 0);
-  tela.importarQuestao("q4"); assert.equal(tela.questoes.length, 3);
+  tela.filtrosQuestoes = { ...filtrosModulo.novosFiltrosQuestoes(), disciplina: "HIST" };
+  tela.importarQuestao("q4"); tela.importarQuestao("q4");
+  assert.equal(tela.questoes.length, 4);
+  assert.equal(tela.questoesBancoFiltradas.length, 0);
+  assert.equal(await tela.salvar(), true);
+  assert.equal(tela.metadados.codigo_disciplina, "MAT");
 });
 
 test("visualização e Minhas Questões compartilham os filtros sem alterar o banco carregado", async () => {

@@ -33,7 +33,7 @@
                 <div v-if="questoesBancoFiltradas.length" class="lista-banco">
                   <article v-for="questao in questoesBancoFiltradas" :key="questao._id" class="questao-card">
                     <div class="questao-header">
-                      <span class="disciplina">{{ metadados.nome_disciplina }}</span>
+                      <span class="disciplina">{{ disciplinasDaQuestao(questao) }}</span>
                       <span class="tipo-questao">Objetiva</span>
                       <span class="dificuldade">{{ questao.dificuldade || 'Médio' }}</span>
                     </div>
@@ -94,10 +94,11 @@ import FiltrosQuestoes from "@/components/FiltrosQuestoes.vue";
 import { useAuthStore } from "@/stores/auth";
 import { LETRAS, questaoDoBanco, useProvaDraftStore } from "@/stores/provaDraft";
 import { listarQuestoes } from "@/services/questoes";
+import { listarDisciplinas } from "@/services/disciplinas";
 import { adicionarQuestoes, buscarProva, enviarProva, provaEditavel } from "@/services/provas";
 import { obterTemplateProva } from "@/services/templates";
 import { htmlVazio, sanitizar, textoPuro } from "@/utils/html";
-import { filtrarQuestoes, novosFiltrosQuestoes } from "@/utils/filtrosQuestoes";
+import { filtrarQuestoes, novosFiltrosQuestoes, opcoesDisciplinas } from "@/utils/filtrosQuestoes";
 
 export default {
   name: "CriarProvaView",
@@ -107,7 +108,7 @@ export default {
     return { authStore: useAuthStore(), draft: useProvaDraftStore() };
   },
   data: () => ({
-    temaAtual: "tema-claro", template: "", prova: null, bancoQuestoes: [],
+    temaAtual: "tema-claro", template: "", prova: null, bancoQuestoes: [], disciplinas: [],
     filtrosQuestoes: novosFiltrosQuestoes(), letras: LETRAS, carregando: true, salvando: false,
     erro: "", erroCarregamento: "", aviso: "", versoes: null,
     mostrarModalSair: false, destinoPendente: null, liberarSaida: false, monitorandoAlteracoes: false,
@@ -120,17 +121,19 @@ export default {
     tituloTela() { return `${this.editavel ? "Selecionar questões" : "Visualizar prova"} · ${this.metadados.nome_disciplina || "Prova"}`; },
     questoesBancoCompativeis() {
       if (!this.prova) return [];
-      const referencias = [this.metadados.codigo_disciplina, this.metadados.nome_disciplina].map((valor) => valor.trim().toLowerCase());
       const selecionadas = new Set(this.questoes.map((questao) => questao._idBanco));
       return this.bancoQuestoes.filter((questao) => !selecionadas.has(questao._id)
-        && questao.tipo_questao === "Objetiva"
-        && questao.disciplina?.some((valor) => referencias.includes(String(valor).trim().toLowerCase())));
+        && questao.tipo_questao === "Objetiva");
     },
     questoesBancoFiltradas() {
       return filtrarQuestoes(this.questoesBancoCompativeis, this.filtrosQuestoes, this.disciplinasFiltro);
     },
     disciplinasFiltro() {
-      return [{ codigo_disciplina: this.metadados.codigo_disciplina, nome_disciplina: this.metadados.nome_disciplina }];
+      const disciplinas = [...this.disciplinas];
+      if (!disciplinas.some((item) => item.codigo_disciplina === this.metadados.codigo_disciplina)) {
+        disciplinas.push({ codigo_disciplina: this.metadados.codigo_disciplina, nome_disciplina: this.metadados.nome_disciplina });
+      }
+      return opcoesDisciplinas(this.bancoQuestoes, disciplinas);
     },
   },
   watch: {
@@ -155,6 +158,15 @@ export default {
   },
   methods: {
     sanitizar,
+    disciplinasDaQuestao(questao) {
+      const referencias = questao.disciplina || [];
+      const normalizar = (valor) => String(valor).trim().toLowerCase();
+      return [...new Set(referencias.map((referencia) => {
+        const disciplina = this.disciplinasFiltro.find((item) => [item.codigo_disciplina, item.nome_disciplina]
+          .some((valor) => normalizar(valor) === normalizar(referencia)));
+        return disciplina?.nome_disciplina || referencia;
+      }))].join(", ");
+    },
     mensagemErro(error) { return error?.details || error?.message || "Não foi possível concluir a operação."; },
     resumo(html) {
       const texto = textoPuro(html) || "[questão com imagem]";
@@ -167,10 +179,11 @@ export default {
       this.versoes = null; this.filtrosQuestoes = novosFiltrosQuestoes();
       this.draft.iniciarNova();
       try {
-        const [template, banco, prova] = await Promise.all([obterTemplateProva(), listarQuestoes(), buscarProva(this.id)]);
+        const [template, banco, prova, disciplinas] = await Promise.all([obterTemplateProva(), listarQuestoes(), buscarProva(this.id), listarDisciplinas()]);
         if (!prova) throw new Error("A prova não foi encontrada ou está inativa.");
         if (prova.professor.registro !== this.authStore.user.registro) throw new Error("Esta prova não está atribuída a você.");
         this.template = template; this.bancoQuestoes = banco.questoes; this.prova = prova;
+        this.disciplinas = disciplinas.disciplinas;
         this.draft.provaId = prova._id;
         Object.assign(this.metadados, {
           turmasTexto: (Array.isArray(prova.id_turma) ? prova.id_turma : [prova.id_turma]).join("\n"),

@@ -6,7 +6,7 @@ import pandas as pd
 
 class Aluno_service:
     def __init__(self, aluno_dao_dependency: Aluno_dao):
-        print("⬆️ aluno_service.__init__()")
+        print(" aluno_service.__init__()")
         self.__aluno_dao = aluno_dao_dependency
 
     _CAMPOS_ALUNO = [
@@ -18,7 +18,7 @@ class Aluno_service:
     ]    
     
     def criar(self, json_aluno: dict) -> bool:
-        print("🟣 aluno_service.criar()")
+        print("aluno_service.criar()")
 
         obj_aluno = Aluno()
         obj_aluno.matricula_aluno = json_aluno.get("matricula_aluno")
@@ -34,7 +34,7 @@ class Aluno_service:
         return self.__aluno_dao.criar(obj_aluno)
     
     def importar_excel(self, df) -> dict:
-        print("🟣 aluno_service.importar_excel()")
+        print("aluno_service.importar_excel()")
 
         colunas_obrigatorias = {
             "matrícula", "nome", "turma", "série", "situação", "email"
@@ -85,12 +85,12 @@ class Aluno_service:
     
     
     def consulta(self, filtro) -> list[dict]:
-        print("🟣 aluno_service.consulta()")
+        print("aluno_service.consulta()")
         return self.__aluno_dao.consulta(filtro)
     
     
     def atualizar(self, json_aluno: dict, matricula_aluno: int) -> bool:
-        print("🟣 aluno_service.atualizar()")
+        print("aluno_service.atualizar()")
 
         obj_aluno = Aluno()
         obj_aluno.matricula_aluno = matricula_aluno
@@ -108,7 +108,7 @@ class Aluno_service:
     
     
     def excluir(self, matricula_aluno: int) -> bool:
-        print("🟣 aluno_service.excluir()")
+        print("aluno_service.excluir()")
         obj_aluno = Aluno()
         obj_aluno.matricula_aluno = matricula_aluno
         return self.__aluno_dao.excluir(obj_aluno.matricula_aluno)

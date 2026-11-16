@@ -255,8 +255,7 @@ class FluxoQuestaoEProvaTest(unittest.TestCase):
         service = Prova_service(prova_dao, self.questao_dao, self.prova_x_aluno_service)
         with self.assertRaises(resposta_erro_http) as resultado:
             service._validar_ids_questoes(
-                [questao["_id"], segunda_questao["_id"]], "Objetiva",
-                {"codigo_disciplina": "MAT", "nome_disciplina": "Matemática"}
+                [questao["_id"], segunda_questao["_id"]], "Objetiva"
             )
         self.assertEqual(resultado.exception.httpCode, 400)
         self.assertEqual(resultado.exception.mensagem, "Tipo de questão incompatível")
@@ -684,6 +683,16 @@ class FluxoSelecaoEEnvioTest(unittest.TestCase):
 
     def enviar(self):
         return self.client.patch(f"/api/v1/provas/{self.id}/enviar")
+
+    def test_salva_envia_e_confirma_impressao_com_questoes_de_varias_disciplinas(self):
+        self.questao_dao.documentos[self.ids[1]]["disciplina"] = ["HIST", "História"]
+        self.questao_dao.documentos[self.ids[2]]["disciplina"] = ["FIS", "Física"]
+        resposta = self.salvar()
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.get_json()["data"]["prova"]["questoes"], self.ids)
+        self.assertEqual(self.enviar().status_code, 200)
+        self.assertEqual(self.client.patch(f"/api/v1/provas/{self.id}/confirmar-impressao").status_code, 200)
+        self.assertEqual(self.prova_dao.documentos[self.id]["disciplina"], self.metadados["disciplina"])
 
     def test_impressao_rejeita_base_excluida_ou_inexistente_sem_apagar_versoes(self):
         self.salvar()

@@ -42,7 +42,7 @@ HTTP_LOCAL = build_opener(ProxyHandler({}))
 
 
 def python_venv(pasta):
-    return pasta / "Scripts" / "python.exe"
+    return pasta / "Scripts" / "python.exe" if os.name == "nt" else pasta / "bin" / "python"
 
 
 def executar(comando, pasta):
@@ -56,7 +56,27 @@ def preparar_python(pasta, requisitos, reinstalar=False):
         executar([sys.executable, "-m", "venv", pasta], BACKEND)
     marca = pasta / ".tcc-requisitos.sha256"
     assinatura = hashlib.sha256(requisitos.read_bytes()).hexdigest()
-    if reinstalar or not marca.is_file() or marca.read_text() != assinatura:
+    # Uma marca antiga nao garante que os pacotes continuem instalados.
+    verificar = """
+import importlib.metadata as metadata, pathlib, sys
+try:
+    conteudo = pathlib.Path(sys.argv[1]).read_bytes()
+    encoding = 'utf-16' if conteudo.startswith((b'\\xff\\xfe', b'\\xfe\\xff')) else 'utf-8-sig'
+    for linha in conteudo.decode(encoding).splitlines():
+        linha = linha.split('#', 1)[0].strip()
+        if not linha:
+            continue
+        nome, separador, versao = linha.partition('==')
+        if not separador or metadata.version(nome.strip()) != versao.strip():
+            sys.exit(1)
+except metadata.PackageNotFoundError:
+    sys.exit(1)
+"""
+    precisa_instalar = reinstalar or not marca.is_file() or marca.read_text() != assinatura
+    if not precisa_instalar:
+        precisa_instalar = subprocess.run([str(interpretador), "-c", verificar, str(requisitos)],
+                                          cwd=BACKEND, check=False).returncode != 0
+    if precisa_instalar:
         print(f"Instalando dependencias de {pasta.name}...", flush=True)
         executar([interpretador, "-m", "pip", "install", "-r", requisitos], BACKEND)
         executar([interpretador, "-m", "pip", "check"], BACKEND)
@@ -71,7 +91,8 @@ def preparar_frontend(reinstalar=False):
                                + (FRONTEND / "package.json").read_bytes()).hexdigest()
     if reinstalar or not cli.is_file() or not marca.is_file() or marca.read_text() != assinatura:
         print("Instalando dependencias do frontend (npm ci)...", flush=True)
-        executar([os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", "npm.cmd", "ci"], FRONTEND)
+        comando = [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", "npm.cmd", "ci"] if os.name == "nt" else ["npm", "ci"]
+        executar(comando, FRONTEND)
         marca.write_text(assinatura)
     return cli
 
@@ -172,15 +193,18 @@ def main():
     parser.add_argument("--verificar", action="store_true", help="Confere configuracao e portas sem instalar ou iniciar servicos.")
     parser.add_argument("--reinstalar", action="store_true", help="Instala novamente as dependencias dos tres servicos.")
     parser.add_argument("--sem-navegador", action="store_true", help="Inicia os servicos sem abrir o navegador.")
+    parser.add_argument("--preparar", action="store_true", help="Prepara dependencias e valida configuracao, sem iniciar servicos nem verificar portas.")
     opcoes = parser.parse_args()
+    if opcoes.preparar and opcoes.verificar:
+        parser.error("--preparar e --verificar nao podem ser usados juntos.")
     servicos = []
     try:
-        if os.name != "nt":
-            raise RuntimeError("Este inicializador foi preparado para Windows.")
+        if os.name != "nt" and not opcoes.preparar:
+            raise RuntimeError("No Linux, use bash LINUX_INICIAR_PM2 para iniciar os servicos.")
         if sys.version_info < (3, 10):
             raise RuntimeError("Use Python 3.10 ou superior; o guia desta maquina utiliza Python 3.13.")
-        node = shutil.which("node.exe")
-        if not node or not shutil.which("npm.cmd"):
+        node = shutil.which("node.exe" if os.name == "nt" else "node")
+        if not node or not shutil.which("npm.cmd" if os.name == "nt" else "npm"):
             raise RuntimeError("Instale Node.js com npm e abra novamente o terminal.")
         for arquivo in (BACKEND / "app.py", BACKEND / "requirements.txt", LEITOR / "app.py",
                         LEITOR / "requirements.txt", FRONTEND / "package-lock.json", FRONTEND / "package.json"):
@@ -196,6 +220,9 @@ def main():
         elif not api_python.is_file() or not leitor_python.is_file():
             raise RuntimeError("Execute INICIAR.cmd sem --verificar para criar os ambientes e instalar as dependencias.")
         dados = configuracao(api_python)
+        if opcoes.preparar:
+            print("[OK] Dependencias e configuracao preparadas para o PM2.", flush=True)
+            return 0
         for porta in (dados["porta"], 5000, 8081):
             exigir_porta_livre(porta)
         if opcoes.verificar:

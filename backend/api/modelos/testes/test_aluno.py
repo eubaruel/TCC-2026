@@ -17,7 +17,7 @@ try:
     aluno.serie = 3
     aluno.situacao = "Ativo"
     aluno.email_aluno = "joao@email.com"
-    print("✔ Teste válido passou")
+    print("Teste válido passou")
 except Exception as e:
     print("✘ Teste válido falhou:", e)
 
@@ -27,7 +27,7 @@ try:
     aluno.matricula_aluno = 123
     print("✘ Falhou: matrícula inválida aceita")
 except:
-    print("✔ Matrícula inválida bloqueada")
+    print("Matrícula inválida bloqueada")
 
 # TESTE 3 - nome inválido
 try:
@@ -35,7 +35,7 @@ try:
     aluno.nome_aluno = "Ana"
     print("✘ Falhou: nome inválido aceito")
 except:
-    print("✔ Nome inválido bloqueado")
+    print("Nome inválido bloqueado")
 
 # TESTE 4 - email inválido
 try:
@@ -43,7 +43,7 @@ try:
     aluno.email_aluno = "email_errado"
     print("✘ Falhou: email inválido aceito")
 except:
-    print("✔ Email inválido bloqueado")
+    print("Email inválido bloqueado")
 
 # TESTE 5 - situação com número
 try:
@@ -51,4 +51,4 @@ try:
     aluno.situacao = "Ativo123"
     print("✘ Falhou: situação inválida aceita")
 except:
-    print("✔ Situação inválida bloqueada")
+    print("Situação inválida bloqueada")

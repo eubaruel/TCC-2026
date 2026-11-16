@@ -5,9 +5,9 @@ const { contarCaracteres, contarImagens } = require("./helpers/html");
 test("contagem inclui espaços e pontuação sem agrupar ou aparar e decodifica entidades", () => {
   for (const [html, texto] of [
     ["  a  \n b! ", "  a  \n b! "],
-    ["<p> A&nbsp; &amp; 😀! </p>", " A\u00a0 & 😀! "],
+    ["<p> A&nbsp; &amp; 𐐀! </p>", " A\u00a0 & 𐐀! "],
     ["<p>um</p><p>dois<br> três</p>", "umdois três"],
-    ["<strong>ação</strong>&#33;&#x1F600;", "ação!😀"],
+    ["<strong>ação</strong>&#33;&#x10400;", "ação!𐐀"],
   ]) assert.equal(contarCaracteres(html), Array.from(texto).length);
 });
 

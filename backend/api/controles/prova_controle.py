@@ -7,7 +7,7 @@ from api.utils.resposta_erro_http import resposta_erro_http
 
 class Prova_controle:
     def __init__(self, prova_service:Prova_service, correcao_service=None):
-        print("⬆️  Prova_controle.constructor()")
+        print("  Prova_controle.constructor()")
         self.__prova_service = prova_service
         self.__correcao_service = correcao_service
 
@@ -42,7 +42,7 @@ class Prova_controle:
         )
 
     def criar_prova(self):
-        print("🔵 prova_controle.criar_prova()")
+        print(" prova_controle.criar_prova()")
         json_prova = request.json.get("prova")
         prova_criada = self.__prova_service.criar_prova(json_prova)
 
@@ -64,7 +64,7 @@ class Prova_controle:
             data={"lote": self.__correcao_service.buscar_lote(_id)}, codigo=200)
 
     def adicionar_questoes(self, _id):
-        print("🔵 prova_controle.adicionar_questoes()")
+        print(" prova_controle.adicionar_questoes()")
 
         json_prova = request.json.get("prova")
         resultado = self.__prova_service.adicionar_questoes(
@@ -79,7 +79,7 @@ class Prova_controle:
         )
 
     def imprimir_provas(self, _id):
-        print("🔵 prova_controle.imprimir_provas()")
+        print(" prova_controle.imprimir_provas()")
 
         provas_alunos = self.__prova_service.imprimir_provas(_id)
         return Resposta_json.sucesso(
@@ -111,7 +111,7 @@ class Prova_controle:
         )
 
     def ler(self):
-        print("🔵 prova_controle.ler()")
+        print(" prova_controle.ler()")
 
         tipos = {
             "serie":int,
@@ -143,7 +143,7 @@ class Prova_controle:
     
     
     def alterar(self,_id):
-        print("🔵 prova_controle.alterar()")
+        print(" prova_controle.alterar()")
 
         json_prova = request.json.get("prova")
         sucesso = self.__prova_service.atualizar(json_prova, _id)
@@ -161,7 +161,7 @@ class Prova_controle:
         
     
     def deletar(self, _id):
-        print("🔵 prova_controle.deletar()")
+        print(" prova_controle.deletar()")
 
         excluiu = self.__prova_service.excluir(_id)
         if excluiu:

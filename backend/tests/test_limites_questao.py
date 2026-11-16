@@ -14,9 +14,9 @@ class ContagemTextoTest(unittest.TestCase):
     def test_texto_entidades_espacos_pontuacao_e_unicode(self):
         for html, texto in [
             ("  a  \n b! ", "  a  \n b! "),
-            ("<p> A&nbsp; &amp; 😀! </p>", " A\u00a0 & 😀! "),
+            ("<p> A&nbsp; &amp; 𐐀! </p>", " A\u00a0 & 𐐀! "),
             ("<p>um</p><p>dois<br> três</p>", "umdois três"),
-            ("<strong>ação</strong>&#33;&#x1F600;", "ação!😀"),
+            ("<strong>ação</strong>&#33;&#x10400;", "ação!𐐀"),
             ("<p>a\r\nb\rc</p>", "a\nb\nc"),
         ]:
             with self.subTest(html=html):
@@ -60,7 +60,7 @@ class LimitesQuestaoHttpTest(unittest.TestCase):
                 payload["questao"]["enunciado"] = f'<p>{"a" * 7001}</p>'
                 limite = "7000"
             else:
-                payload["questao"]["alternativas"][campo] = f'<p>{"😀" * 2001}</p>'
+                payload["questao"]["alternativas"][campo] = f'<p>{"𐐀" * 2001}</p>'
                 payload["questao"]["alternativa_correta"] = payload["questao"]["alternativas"][0]
                 limite = "2000"
             for metodo, rota in [(self.client.post, "/api/v1/questoes/"), (self.client.put, f'/api/v1/questoes/{criado["_id"]}')]:
