@@ -6,7 +6,7 @@ class Questao_middleware:
     def validar_body(self, f):
         @wraps(f)
         def decorated_function(*args,**kwargs):
-            print("🔷 questao_middleware.validar_body()")
+            print(" questao_middleware.validar_body()")
             body = request.get_json()
 
             if not body or 'questao' not in body:
@@ -50,7 +50,7 @@ class Questao_middleware:
     def validar_id_questao(self,f):
         @wraps(f)
         def decorated_function(*args,**kwargs):
-            print("🔷 questao_middleware.validar_id()")
+            print(" questao_middleware.validar_id()")
             if '_id' not in kwargs:
                 raise resposta_erro_http(400, "Erro na validação de dados", {"mensagem": "O parâmetro '_id' é obrigatório!"})
             return f(*args, **kwargs)

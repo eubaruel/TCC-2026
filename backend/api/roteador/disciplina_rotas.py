@@ -7,7 +7,7 @@ from api.controles.disciplina_controle import Disciplina_controle
 class Disciplina_rotas:
     #def __init__(self, jwt_middleware:Jwt_middleware):
     def __init__(self, disciplina_middleware:Disciplina_middleware, disciplina_controle:Disciplina_controle):
-        print("⬆️  disciplina_rotas.__init__()")
+        print("  disciplina_rotas.__init__()")
 
         self.__disciplina_middleware = disciplina_middleware
         self.__disciplina_controle = disciplina_controle

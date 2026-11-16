@@ -27,7 +27,7 @@ class Prova_middleware:
     def validar_criar_prova(self, f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            print("🔷 prova_middleware.validar_criar_prova()")
+            print(" prova_middleware.validar_criar_prova()")
 
             body = request.get_json(silent=True)
             if not isinstance(body, dict) or "prova" not in body:
@@ -112,7 +112,7 @@ class Prova_middleware:
     def validar_adicionar_questoes(self, f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            print("🔷 prova_middleware.validar_adicionar_questoes()")
+            print(" prova_middleware.validar_adicionar_questoes()")
 
             body = request.get_json(silent=True)
             if not isinstance(body, dict) or "prova" not in body:
@@ -154,7 +154,7 @@ class Prova_middleware:
     def validar_id_prova(self, f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            print("🔷 prova_middleware.validar_id()")
+            print(" prova_middleware.validar_id()")
 
             if "_id" not in kwargs:
                 raise resposta_erro_http(

@@ -6,7 +6,7 @@ from api.controles.prova_controle import Prova_controle
 class Prova_rotas:
     #def __init__(self, jwt_middleware:Jwt_middleware):
     def __init__(self, prova_middleware:Prova_middleware, prova_controle:Prova_controle):
-        print("⬆️  prova_rotas.__init__()")
+        print("  prova_rotas.__init__()")
 
         self.__prova_middleware = prova_middleware
         self.__prova_controle = prova_controle
@@ -52,6 +52,11 @@ class Prova_rotas:
         @self.__prova_middleware.validar_id_prova
         def confirmar_impressao(_id):
             return self.__prova_controle.confirmar_impressao(_id)
+
+        @self.__blueprint.route('/<string:_id>/ignorar-provas-nao-corrigidas', methods=['PATCH'])
+        @self.__prova_middleware.validar_id_prova
+        def ignorar_provas_nao_corrigidas(_id):
+            return self.__prova_controle.ignorar_provas_nao_corrigidas(_id)
 
         @self.__blueprint.route('/',methods=['GET'])
         def ler():

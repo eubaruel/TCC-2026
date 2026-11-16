@@ -7,11 +7,11 @@ import pandas as pd
 
 class Aluno_controle:
     def __init__(self, aluno_service:Aluno_service):
-        print("⬆️  Aluno_controle.constructor()")
+        print("  Aluno_controle.constructor()")
         self.__aluno_service = aluno_service
 
     def cadastrar(self):
-        print("🔵 aluno_controle.cadastrar()")
+        print(" aluno_controle.cadastrar()")
 
         json_aluno = request.json.get("aluno")
         cadastro = self.__aluno_service.criar(json_aluno)
@@ -23,7 +23,7 @@ class Aluno_controle:
         )
     
     def importar(self):
-        print("🔵 aluno_controle.importar()")
+        print(" aluno_controle.importar()")
 
         arquivo = next(request.files.values(), None)
 
@@ -43,7 +43,7 @@ class Aluno_controle:
     
     
     def ler(self):
-        print("🔵 aluno_controle.ler()")
+        print(" aluno_controle.ler()")
 
         tipos = {
             "matricula_aluno": int,
@@ -73,7 +73,7 @@ class Aluno_controle:
     
     
     def alterar(self,matricula_aluno):
-        print("🔵 aluno_controle.alterar()")
+        print(" aluno_controle.alterar()")
 
         json_aluno = request.json.get("aluno") 
         sucesso = self.__aluno_service.atualizar(json_aluno, matricula_aluno)
@@ -92,7 +92,7 @@ class Aluno_controle:
             )
     
     def deletar(self, matricula_aluno):
-        print("🔵 aluno_controle.deletar()")
+        print(" aluno_controle.deletar()")
         excluiu = self.__aluno_service.excluir(matricula_aluno)
         if excluiu:
             return Resposta_json.sucesso(

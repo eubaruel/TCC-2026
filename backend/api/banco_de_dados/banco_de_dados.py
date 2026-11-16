@@ -17,10 +17,10 @@ class Banco_de_dados:
                 # Teste de conexão
                 Banco_de_dados.__client.admin.command('ping')
 
-                print("⬆️ Conectado ao MongoDB com sucesso!")
+                print(" Conectado ao MongoDB com sucesso!")
 
             except Exception as error:
-                print(f"❌ Falha ao conectar ao MongoDB: {error}")
+                print(f" Falha ao conectar ao MongoDB: {error}")
                 sys.exit(1)
 
         return Banco_de_dados.__client

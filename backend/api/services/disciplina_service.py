@@ -7,7 +7,7 @@ from api.utils.resposta_erro_http import resposta_erro_http
 
 class Disciplina_service:
     def __init__(self, disciplina_dao_dependency: Disciplina_dao):
-        print("⬆️ disciplina_service.__init__()")
+        print(" disciplina_service.__init__()")
         self.__disciplina_dao = disciplina_dao_dependency
 
     _CAMPOS_DISCIPLINA = ["nome_disciplina",
@@ -19,7 +19,7 @@ class Disciplina_service:
 
     
     def criar(self, json_disciplina: dict) -> bool:
-        print("🟣 disciplina_service.criar()")
+        print("disciplina_service.criar()")
 
         obj_disciplina = Disciplina()
         self.setar_modelo_disciplina(obj_disciplina, json_disciplina)
@@ -36,7 +36,7 @@ class Disciplina_service:
     
     
     def consulta(self, filtro) -> list[dict]:
-        print("🟣 disciplina_service.consulta()")
+        print("disciplina_service.consulta()")
         disciplinas = self.__disciplina_dao.consulta(filtro)
         for disciplina in disciplinas:
             alunos = disciplina.pop("alunos", [])
@@ -46,7 +46,7 @@ class Disciplina_service:
     
 
     def atualizar(self, json_disciplina: dict, codigo_disciplina: str) -> bool:
-        print("🟣 disciplina_service.atualizar()")
+        print("disciplina_service.atualizar()")
 
         obj_disciplina = Disciplina()
         self.setar_modelo_disciplina(obj_disciplina, json_disciplina)
@@ -55,7 +55,7 @@ class Disciplina_service:
     
 
     def excluir(self, codigo_disciplina: str) -> bool:
-        print("🟣 disciplina_service.excluir()")
+        print("disciplina_service.excluir()")
         obj_disciplina = Disciplina()
         obj_disciplina.codigo_disciplina = codigo_disciplina
         return self.__disciplina_dao.excluir(obj_disciplina.codigo_disciplina)

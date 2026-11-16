@@ -13,6 +13,7 @@ from api.utils.resposta_erro_http import resposta_erro_http
 from api.utils.usuarios_teste import inserir_usuarios_teste
 
 from api.middlewares.aluno_middleware import Aluno_middleware
+from api.middlewares.rate_limit import configurar_rate_limit
 from api.controles.aluno_controle import Aluno_controle
 from api.services.aluno_service import Aluno_service
 from api.DAOs.aluno_dao import Aluno_dao
@@ -57,19 +58,20 @@ class Servidor:
     """
 
     def __init__(self, porta):
-        # 🔹 Porta em que o servidor irá rodar
+        # Porta em que o servidor irá rodar
         self.__porta = porta
 
         self.__app = Flask(__name__, static_folder= "static", static_url_path="")
         self.__app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
         self.__correcao_service = None
 
-        # 🔹 Configuração de CORS (Cross-Origin Resource Sharing)
+        # Configuração de CORS (Cross-Origin Resource Sharing)
         #    Permite que clientes de outros domínios/portas acessem sua API
         #    Exemplo: permitir todos os domínios (somente para desenvolvimento)
-        CORS(self.__app, resources={r"/*": {"origins": "*"}})
+        CORS(self.__app, resources={r"/*": {"origins": "*"}},
+             expose_headers=["Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"])
 
-        # 🔹 Middlewares
+        # Middlewares
 
         self.__aluno_middleware = Aluno_middleware()
         self.__aluno_dao = None
@@ -126,10 +128,12 @@ class Servidor:
 
         self.__setup_prova()
 
+        configurar_rate_limit(self.__app)
+
 
     def __setup_aluno(self):
         """Configura o módulo Aluno (DAO, Service, Controle, Rotas)"""
-        print("⬆️  Setup Aluno")
+        print("  Setup Aluno")
 
         # DAO recebe conexão global com o banco (injeção de dependência)
         self.__aluno_dao = Aluno_dao(self.__conexao_db)
@@ -148,11 +152,11 @@ class Servidor:
 
         # Registra rotas da entidade Aluno
         self.__app.register_blueprint(aluno_roteador.criar_rotas(), url_prefix="/api/v1/alunos")
-        print("⬆️  Rotas registradas")
+        print("  Rotas registradas")
 
     def __setup_usuario(self):
         """Configura o módulo Usuário (DAO, Service, Controle, Rotas)"""
-        print("⬆️  Setup usuário")
+        print("  Setup usuário")
 
         # DAO recebe conexão global com o banco (injeção de dependência
         self.__usuario_dao = Usuario_dao(self.__conexao_db)
@@ -171,12 +175,12 @@ class Servidor:
 
         # Registra rotas da entidade Usuário
         self.__app.register_blueprint(usuario_roteador.criar_rotas(), url_prefix="/api/v1/usuarios")
-        print("⬆️  Rotas registradas")
+        print("  Rotas registradas")
 
 
     def __setup_disciplina(self):
         """Configura o módulo Disciplina (DAO, Service, Controle, Rotas)"""
-        print("⬆️  Setup disciplina")
+        print("  Setup disciplina")
 
         self.__disciplina_dao = Disciplina_dao(self.__conexao_db)
         self.__disciplina_service = Disciplina_service(self.__disciplina_dao)
@@ -188,12 +192,12 @@ class Servidor:
         )
 
         self.__app.register_blueprint(disciplina_roteador.criar_rotas(), url_prefix="/api/v1/disciplinas")
-        print("⬆️  Rotas registradas")
+        print("  Rotas registradas")
 
     
     def __setup_questao(self):
         """Configura o módulo Questão (DAO, Service, Controle, Rotas)"""
-        print("⬆️  Setup questão")
+        print("  Setup questão")
 
         self.__questao_dao = Questao_dao(self.__conexao_db)
         self.__questao_service = Questao_service(self.__questao_dao)
@@ -205,12 +209,12 @@ class Servidor:
         )
 
         self.__app.register_blueprint(questao_roteador.criar_rotas(), url_prefix="/api/v1/questoes")
-        print("⬆️  Rotas registradas")
+        print("  Rotas registradas")
 
 
     def __setup_prova(self):
         """Configura o módulo Prova (DAO, Service, Controle, Rotas)"""
-        print("⬆️  Setup prova")
+        print("Setup prova")
 
         self.__prova_dao = Prova_dao(self.__conexao_db)
         self.__prova_x_aluno_dao = Prova_x_aluno_dao(self.__conexao_db)
@@ -244,14 +248,14 @@ class Servidor:
         )
 
         self.__app.register_blueprint(prova_roteador.criar_rotas(), url_prefix="/api/v1/provas")
-        print("⬆️  Rotas registradas")
+        print("  Rotas registradas")
 
     def __error_middleware(self):
         """Middleware global de tratamento de erros"""
         @self.__app.errorhandler(Exception)
         def handle_error(error):
 
-            # 🔹 404 - Rota ou arquivo não encontrado
+            # 404 - Rota ou arquivo não encontrado
             if isinstance(error, HTTPException):
                 return jsonify({
                     "sucesso": False,
@@ -259,9 +263,9 @@ class Servidor:
                     "erro": {"codigo": error.code}
                 }), error.code
 
-            # 🔹 Captura ErrorResponse customizado
+            # Captura ErrorResponse customizado
             if isinstance(error, resposta_erro_http):
-                print("🟡 Server.error_middleware()")
+                print(" Server.error_middleware()")
                 resposta = {
                     "sucesso": False,
                     "mensagem": error.mensagem,
@@ -276,9 +280,9 @@ class Servidor:
                     "erro": {"detalhes": str(error)}
                 }), 400
 
-            # 🔹 Outros erros internos (não tratados)
+            # Outros erros internos (não tratados)
             stack_str = ''.join(traceback.format_exception(type(error), error, error.__traceback__))
-            print("🟡 Server.error_middleware()")
+            print(" Server.error_middleware()")
             print(stack_str)
             resposta = {
                 "sucesso": False,
@@ -295,13 +299,13 @@ class Servidor:
 
     def run(self):
         """Inicia o servidor Flask na porta configurada"""
-        print("✅ Servidor iniciado com sucesso")
-        print(f"🚀 Servidor rodando em: http://127.0.0.1:{self.__porta}")
-        # ⚠️ debug=False é necessário para que o errorhandler global capture exceções
+        print(" Servidor iniciado com sucesso")
+        print(f" Servidor rodando em: http://127.0.0.1:{self.__porta}")
+        #  debug=False é necessário para que o errorhandler global capture exceções
         self.__app.run(port=self.__porta, debug=False)
 
     def close(self):
         if self.__correcao_service is not None:
             self.__correcao_service.fechar()
-        print("❌ Conexão com o servidor encerrada")
+        print(" Conexão com o servidor encerrada")
         self.__conexao_db.fechar_conexao()

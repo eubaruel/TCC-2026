@@ -4,13 +4,13 @@ import re
 
 class Prova_dao:
     def __init__(self, banco_de_dados_dependency):
-        print("⬆️ prova_dao.init()")
+        print("prova_dao.init()")
         self.__banco_de_dados = banco_de_dados_dependency.get_banco_de_dados()
         self.__colecao = self.__banco_de_dados["provas"]
 
 
     def criar(self, obj_prova: Prova) -> str:
-        print("✅ prova_dao.criar()")
+        print("prova_dao.criar()")
         doc = self.set_doc(obj_prova)
         doc["ativo"] = True
         resultado = self.__colecao.insert_one(doc)
@@ -20,7 +20,7 @@ class Prova_dao:
 
 
     def consulta(self, filtro=None) -> list:
-        print("✅ prova_dao.consulta()")
+        print("prova_dao.consulta()")
 
         filtro = (filtro or {}).copy()
         if str(filtro.get("tipo", "Objetiva")).strip().title() != "Objetiva":
@@ -39,7 +39,7 @@ class Prova_dao:
         return resultado
 
     def buscar_por_id(self, _id):
-        print("✅ prova_dao.buscar_por_id()")
+        print("prova_dao.buscar_por_id()")
 
         try:
             object_id = ObjectId(_id)
@@ -82,7 +82,7 @@ class Prova_dao:
         return resultado.matched_count > 0
 
     def atualizar_questoes(self, _id, ids_questoes, token=None, geracao_pendente=False) -> bool:
-        print("✅ prova_dao.atualizar_questoes()")
+        print("prova_dao.atualizar_questoes()")
 
         try:
             object_id = ObjectId(_id)
@@ -129,7 +129,7 @@ class Prova_dao:
         return resultado.matched_count > 0
 
     def atualizar(self, obj_prova: Prova, token=None) -> bool:
-        print("✅ prova_dao.atualizar()")
+        print("prova_dao.atualizar()")
 
         _id = obj_prova.id_hash
         try:
@@ -148,7 +148,7 @@ class Prova_dao:
 
 
     def excluir(self, _id, token=None) -> bool:
-        print("✅ prova_dao.excluir()")
+        print("prova_dao.excluir()")
 
         try:
             object_id = ObjectId(_id)
@@ -166,7 +166,7 @@ class Prova_dao:
 
 
     def campo_existe(self, campo, valor):
-        print("✅ prova_dao.campo_existe()")
+        print("prova_dao.campo_existe()")
 
         if campo == "_id":
             try:

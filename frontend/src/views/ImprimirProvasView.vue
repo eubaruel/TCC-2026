@@ -10,11 +10,6 @@
     <p v-if="carregando" class="mensagem">Carregando versões individuais...</p>
     <p v-if="erro" class="mensagem mensagem-erro" role="alert">{{ erro }}</p>
     <p v-if="!carregando && !erro && !versoes.length" class="mensagem">Nenhuma versão individual disponível. Confira os alunos vinculados à prova.</p>
-    <p v-if="versoes.length" class="mensagem instrucoes">
-      Imprima em A4, escala 100%, sem cabeçalhos e rodapés do navegador.
-      Cada turma inclui Planilha de notas e Relatório de entrega, com os campos de preenchimento em branco.
-      Para corrigir, digitalize a página inteira com o cartão e o QR Code legíveis. O frontend fará o recorte automático antes do envio.
-    </p>
     <main class="versoes">
       <template v-for="grupo in turmas" :key="grupo.turma">
         <ListaTurma :prova="prova" :turma="grupo.turma" :alunos="grupo.alunos" tipo="notas" />
@@ -112,6 +107,9 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .mensagem-erro { color: #c0392b; }
 .versao-aluno { margin: 20px auto; }
 .orientacao-cartao { font-size: 11px; margin: 8px 0 14px; }
+@media screen {
+  .versao-aluno :deep(.cartao-resposta) { width: 98%; height: auto; }
+}
 </style>
 
 <style>
@@ -126,7 +124,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   .impressao-container { padding: 0 !important; }
   .impressao-acoes, .impressao-container > .mensagem { display: none !important; }
   /* As listas mantêm seu modelo. As margens das provas pertencem à folha compartilhada. */
-  .documento-impressao { box-sizing: border-box; width: 100% !important; max-width: none !important; padding: 12mm !important; margin: 0 !important; box-shadow: none !important; -webkit-box-decoration-break: clone; box-decoration-break: clone; break-after: page; }
+  .documento-impressao { box-sizing: border-box; width: 100% !important; max-width: none !important; padding: 9.5mm !important; margin: 0 !important; box-shadow: none !important; -webkit-box-decoration-break: clone; box-decoration-break: clone; break-after: page; }
   .versao-aluno.documento-impressao { padding: 0 !important; }
   .documento-impressao:last-child { break-after: auto; }
 }

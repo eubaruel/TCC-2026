@@ -16,14 +16,14 @@ class Prova_x_aluno_service:
         questao_dao_dependency: Questao_dao,
         gerador_aleatorio_dependency=None
     ):
-        print("⬆️ prova_x_aluno_service.__init__()")
+        print(" prova_x_aluno_service.__init__()")
         self.__aluno_dao = aluno_dao_dependency
         self.__prova_x_aluno_dao = prova_x_aluno_dao_dependency
         self.__questao_dao = questao_dao_dependency
         self.__gerador_aleatorio = gerador_aleatorio_dependency or random.SystemRandom()
 
     def gerar(self, id_prova: str, id_turma, ids_questoes: list[str]) -> int:
-        print("🟣 prova_x_aluno_service.gerar()")
+        print("prova_x_aluno_service.gerar()")
 
         turmas = self._normalizar_turmas(id_turma)
         matriculas = self.__aluno_dao.buscar_matriculas_por_turmas(turmas)
@@ -38,8 +38,11 @@ class Prova_x_aluno_service:
 
         return self.__prova_x_aluno_dao.sincronizar(id_prova, provas_x_alunos)
 
+    def contar_correcoes(self, id_prova: str):
+        return self.__prova_x_aluno_dao.contar_correcoes(id_prova)
+
     def montar_para_impressao(self, id_prova: str) -> list[dict]:
-        print("🟣 prova_x_aluno_service.montar_para_impressao()")
+        print("prova_x_aluno_service.montar_para_impressao()")
 
         registros = self.__prova_x_aluno_dao.buscar_por_id_prova(id_prova)
         if not registros:

@@ -99,7 +99,7 @@ if MODO_TESTE == 'direto':
     print(f"{Fore.CYAN}{'='*60}\n")
 
     # Exibição de configuração
-    print(f"{Fore.YELLOW}📊 Configuração:")
+    print(f"{Fore.YELLOW}Configuração:")
     print(f"{Fore.WHITE}   • Requisições: {Fore.GREEN}{QUANTIDADE_REQUISICOES}")
     print(f"{Fore.WHITE}   • Arquivo: {Fore.GREEN}{ARQUIVO_IMAGEM}")
     print(f"{Fore.WHITE}   • Modo: {Fore.MAGENTA}Direto (sem HTTP)\n")
@@ -113,7 +113,7 @@ if MODO_TESTE == 'direto':
     sucessos = 0
     erros = 0
 
-    print(f"{Fore.YELLOW}🚀 Iniciando testes...\n")
+    print(f"{Fore.YELLOW}Iniciando testes...\n")
 
     # Loop principal: N iterações de processamento
     for i in range(1, QUANTIDADE_REQUISICOES + 1):
@@ -176,7 +176,7 @@ else:
     print(f"{Fore.CYAN}{'='*60}\n")
 
     # Exibição de configuração
-    print(f"{Fore.YELLOW}📊 Configuração:")
+    print(f"{Fore.YELLOW}Configuração:")
     print(f"{Fore.WHITE}   • Requisições: {Fore.GREEN}{QUANTIDADE_REQUISICOES}")
     print(f"{Fore.WHITE}   • Threads paralelas: {Fore.GREEN}{THREADS_PARALELAS}")
     print(f"{Fore.WHITE}   • URL: {Fore.GREEN}{URL_API}\n")
@@ -214,7 +214,7 @@ else:
     tempo_inicio = time.time()
     sucessos = 0
 
-    print(f"{Fore.YELLOW}🚀 Iniciando requisições paralelas...\n")
+    print(f"{Fore.YELLOW}Iniciando requisições paralelas...\n")
 
     # Execução paralela com ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=THREADS_PARALELAS) as executor:
@@ -278,5 +278,5 @@ if sucessos > 0:
     
     # Exibição de destaque (resumo executivo)
     print(f"\n{Fore.CYAN}{'='*60}")
-    print(f"{Fore.GREEN}{Back.BLACK}  ✨ PERFORMANCE: {requisicoes_por_segundo:.2f} gabaritos/segundo  ✨")
+    print(f"{Fore.GREEN}{Back.BLACK}  PERFORMANCE: {requisicoes_por_segundo:.2f} gabaritos/segundo  ")
     print(f"{Fore.CYAN}{'='*60}\n")

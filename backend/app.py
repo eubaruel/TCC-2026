@@ -31,7 +31,7 @@ def main():
         # Fecha a conexão com o banco de dados após encerrar o servidor
         servidor.close()
     except Exception as error:
-        print("❌ Erro ao iniciar o servidor:", error)
+        print("Erro ao iniciar o servidor:", error)
 
 if __name__ == "__main__":
     main()

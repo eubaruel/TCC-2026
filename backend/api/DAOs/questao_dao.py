@@ -5,7 +5,7 @@ import re
 
 class Questao_dao:
     def __init__(self, banco_de_dados_dependency):
-        print("⬆️  questao_dao.__init__()")
+        print("  questao_dao.__init__()")
         self.__banco_de_dados = banco_de_dados_dependency.get_banco_de_dados()
         self.__colecao = self.__banco_de_dados["questoes"]
 
@@ -16,7 +16,7 @@ class Questao_dao:
 
 
     def criar(self, obj_questao: Questao) -> str:
-        print("✅ questao_dao.criar()")
+        print(" questao_dao.criar()")
         doc = self.set_doc(obj_questao)
         doc["ativo"] = True
         resultado = self.__colecao.insert_one(doc)
@@ -26,7 +26,7 @@ class Questao_dao:
 
     
     def consulta(self, filtro=None) -> list:
-        print("✅ questao_dao.consulta()")
+        print(" questao_dao.consulta()")
 
         filtro = (filtro or {}).copy()
         if str(filtro.get("tipo_questao", "Objetiva")).strip().title() != "Objetiva":
@@ -80,7 +80,7 @@ class Questao_dao:
     
     
     def atualizar(self, obj_questao: Questao) -> bool:
-        print("✅ questao_dao.atualizar()")
+        print(" questao_dao.atualizar()")
 
         _id = obj_questao.id_hash
 
@@ -99,7 +99,7 @@ class Questao_dao:
     
     
     def excluir(self, _id) -> bool:
-        print("✅ questao_dao.excluir()")
+        print(" questao_dao.excluir()")
 
         try:
             object_id = ObjectId(_id)
@@ -112,7 +112,7 @@ class Questao_dao:
         return resultado.modified_count > 0
 
     def campo_existe(self,campo,valor):
-        print("✅ questao_dao.campo_existe()")
+        print(" questao_dao.campo_existe()")
         filtro = {
             campo: {
                 "$regex": f"^{re.escape(valor)}$",

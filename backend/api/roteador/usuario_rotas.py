@@ -5,7 +5,7 @@ from api.middlewares.usuario_middleware import Usuario_middleware
 
 class Usuario_rotas:
     def __init__(self,usuario_middleware:Usuario_middleware, usuario_controle:Usuario_controle):
-        print("⬆️  usuario_rotas.__init__()")
+        print("  usuario_rotas.__init__()")
         
         self.__usuario_middleware = usuario_middleware
         self.__usuario_controle = usuario_controle

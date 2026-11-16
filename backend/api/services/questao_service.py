@@ -6,11 +6,12 @@ from api.modelos.usuario import Usuario
 from api.DAOs.questao_dao import Questao_dao
 
 from api.utils.resposta_erro_http import resposta_erro_http
+from api.utils.texto_questao import LIMITE_ALTERNATIVA, LIMITE_ENUNCIADO, validar_conteudo_questao
 
 
 class Questao_service:
     def __init__(self, questao_dao_dependency: Questao_dao):
-        print("⬆️ questao_service.__init__()")
+        print(" questao_service.__init__()")
         self.__questao_dao = questao_dao_dependency
 
     _CAMPOS_QUESTAO = [
@@ -22,7 +23,7 @@ class Questao_service:
     ]
 
     def criar(self, json_questao: dict):
-        print("🟣 questao_service.criar()")
+        print("questao_service.criar()")
 
         obj_questao = Questao()
         self._setar_modelo_questao(obj_questao, json_questao)
@@ -38,11 +39,11 @@ class Questao_service:
         return self._formatar_questao(obj_questao, id_hash)
 
     def consulta(self, filtro) -> list[dict]:
-        print("🟣 questao_service.consulta()")
+        print("questao_service.consulta()")
         return self.__questao_dao.consulta(filtro)
 
     def atualizar(self, json_questao: dict, id_hash: str) -> dict:
-        print("🟣 questao_service.atualizar()")
+        print("questao_service.atualizar()")
 
         obj_questao = Questao()
         self._setar_modelo_questao(obj_questao, json_questao)
@@ -60,7 +61,7 @@ class Questao_service:
         return self._formatar_questao(obj_questao, id_hash)
 
     def excluir(self, id_hash: str) -> bool:
-        print("🟣 questao_service.excluir()")
+        print("questao_service.excluir()")
         obj_questao = Questao()
         obj_questao.id_hash = id_hash
         self._exigir_edicao(id_hash)
@@ -73,6 +74,7 @@ class Questao_service:
     def _setar_modelo_questao(self, obj_questao, json_questao):
         for campo in self._CAMPOS_QUESTAO:
             setattr(obj_questao, campo, json_questao.get(campo))
+        validar_conteudo_questao(obj_questao.enunciado, LIMITE_ENUNCIADO, "Enunciado")
 
         dados_professor = json_questao.get("professor")
         professor = Usuario()
@@ -84,9 +86,10 @@ class Questao_service:
             raise TypeError("Alternativas devem ser uma lista")
 
         alternativas = []
-        for texto in textos_alternativas:
+        for indice, texto in enumerate(textos_alternativas, start=1):
             if not isinstance(texto, str):
                 raise TypeError("Cada alternativa deve ser uma string")
+            validar_conteudo_questao(texto, LIMITE_ALTERNATIVA, f"Alternativa {indice}")
             texto = texto.strip()
             if not texto:
                 raise ValueError("Texto da alternativa não pode ser vazio")

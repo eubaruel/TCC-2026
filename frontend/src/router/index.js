@@ -66,10 +66,11 @@ const routes = [
         meta: { requiresProcesso: true },
       },
       {
-        path: "configuracoes",
-        name: "ConfiGuracoes",
+        path: "informacoes",
+        name: "Informacoes",
         component: ConfiGuracoes,
       },
+      { path: "configuracoes", redirect: "/informacoes" },
       {
         path: "",
         redirect: "/provas",

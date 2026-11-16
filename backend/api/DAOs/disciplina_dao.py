@@ -2,12 +2,12 @@ from api.modelos.disciplina import Disciplina
 
 class Disciplina_dao:
     def __init__(self, banco_de_dados_dependency):
-        print("⬆️  disciplina_dao.__init__()")
+        print("  disciplina_dao.__init__()")
         self.__banco_de_dados = banco_de_dados_dependency.get_banco_de_dados()
         self.__colecao = self.__banco_de_dados["disciplinas"]
 
     def criar(self, obj_disciplina: Disciplina) -> bool:
-        print("✅ disciplina_dao.criar()")
+        print(" disciplina_dao.criar()")
         doc = self.set_doc(obj_disciplina)
         doc["ativo"] = True
 
@@ -20,7 +20,7 @@ class Disciplina_dao:
     
 
     def consulta(self, filtro=None):
-        print("✅ disciplina_dao.consulta()")
+        print(" disciplina_dao.consulta()")
         filtro = (filtro or {}).copy()
         filtro.setdefault("ativo", {"$ne": False})
         resultado = list(self.__colecao.find(filtro, {"_id": 0}))
@@ -28,7 +28,7 @@ class Disciplina_dao:
     
 
     def atualizar(self, obj_disciplina: Disciplina) -> bool:
-        print("✅ disciplina_dao.atualizar()")
+        print(" disciplina_dao.atualizar()")
 
         codigo_disciplina = obj_disciplina.codigo_disciplina
         filtro = {"codigo_disciplina":codigo_disciplina, "ativo": {"$ne": False}}
@@ -42,7 +42,7 @@ class Disciplina_dao:
     
 
     def excluir(self, codigo_disciplina) -> bool:
-        print("✅ disciplina_dao.excluir()")
+        print(" disciplina_dao.excluir()")
 
         filtro = {"codigo_disciplina": codigo_disciplina}
 
@@ -54,7 +54,7 @@ class Disciplina_dao:
         return resultado.modified_count > 0
     
     def campo_existe(self, campo, valor):
-        print("✅ disciplina_dao.campo_existe()")
+        print(" disciplina_dao.campo_existe()")
         filtro = {campo:valor}
         resultado = self.__colecao.find_one(filtro)
 

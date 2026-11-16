@@ -4,11 +4,11 @@ from api.utils.resposta_json import Resposta_json
 
 class Disciplina_controle:
     def __init__(self, disciplina_service:Disciplina_service):
-        print("⬆️  Disciplina_controle.constructor()")
+        print("  Disciplina_controle.constructor()")
         self.__disciplina_service = disciplina_service
 
     def cadastrar(self):
-        print("🔵 disciplina_controle.cadastrar()")
+        print(" disciplina_controle.cadastrar()")
 
         json_disciplina = request.json.get("disciplina")
         cadastro = self.__disciplina_service.criar(json_disciplina)
@@ -19,7 +19,7 @@ class Disciplina_controle:
         )
     
     def ler(self):
-        print("🔵 disciplina_controle.ler()")
+        print(" disciplina_controle.ler()")
 
         tipos = {
             "registro":int,
@@ -47,7 +47,7 @@ class Disciplina_controle:
         )
     
     def alterar(self,codigo_disciplina):
-        print("🔵 disciplina_controle.alterar()")
+        print(" disciplina_controle.alterar()")
 
         json_disciplina = request.json.get("disciplina")
         sucesso = self.__disciplina_service.atualizar(json_disciplina, codigo_disciplina)
@@ -66,7 +66,7 @@ class Disciplina_controle:
             )
         
     def deletar(self, codigo_disciplina):
-        print("🔵 disciplina_controle.deletar()")
+        print(" disciplina_controle.deletar()")
         excluiu = self.__disciplina_service.excluir(codigo_disciplina)
         if excluiu:
             return Resposta_json.sucesso(

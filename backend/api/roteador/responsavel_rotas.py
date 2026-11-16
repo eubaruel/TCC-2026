@@ -4,7 +4,7 @@ from functools import wraps
 class Responsavel_rotas:
 
     def __init__(self):
-        print("⬆️  responsavel_rotas.__init__()")
+        print("  responsavel_rotas.__init__()")
 
         self.blueprint = Blueprint('responsaveis',__name__)
 
