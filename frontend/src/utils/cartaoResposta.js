@@ -1,9 +1,11 @@
 // Geometria compartilhada pela impressão e pelo recorte; mantém as dez colunas do leitor.
+// O QR ocupa a largura do quadro abaixo de "NOTA" (x 0–111,5; y 143–286), centralizado na vertical,
+// com folga de ~4 unidades para não encostar nas bordas do quadro.
 export const CARTAO_RESPOSTA = {
   largura: 1200,
   altura: 286,
   nota: { x: 0, y: 86, largura: 111.5, altura: 57 },
-  qr: { x: 9, y: 168, tamanho: 94, margem: 4 },
+  qr: { x: 4, y: 162, tamanho: 104, margem: 2 },
 };
 
 // Medidas em milímetros, compartilhadas pela prévia, impressão da prova e da nota.

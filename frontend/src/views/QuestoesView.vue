@@ -583,10 +583,27 @@ export default {
   color: #8b0000;
 }
 
+.questao-card {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
 .questao-texto {
   font-size: 14px;
   line-height: 1.5;
   margin-bottom: 16px;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.questao-texto :deep(table),
+.texto-alternativa :deep(table) {
+  max-width: 100%;
+}
+
+.questao-texto :deep(pre),
+.texto-alternativa :deep(pre) {
+  white-space: pre-wrap;
 }
 
 .questao-texto :deep(img),

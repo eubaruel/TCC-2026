@@ -11,8 +11,9 @@ export const buscarProva = async (id) => (await listarProvas({ id })).provas?.[0
 
 export const criarProva = (prova) => api("/provas/criar-prova", { method: "POST", body: { prova } });
 
-export const adicionarQuestoes = (id, questoes) =>
-  api(`/provas/${id}/adicionar-questoes`, { method: "PATCH", body: { prova: { questoes } } });
+// informacoes: { conteudo, observacao } opcionais, impressos junto ao cartão-resposta.
+export const adicionarQuestoes = (id, questoes, informacoes = {}) =>
+  api(`/provas/${id}/adicionar-questoes`, { method: "PATCH", body: { prova: { questoes, ...informacoes } } });
 
 export const atualizarProva = (id, prova) => api(`/provas/${id}`, { method: "PUT", body: { prova } });
 

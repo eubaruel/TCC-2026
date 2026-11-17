@@ -12,6 +12,9 @@ class Prova_dao:
     def criar(self, obj_prova: Prova) -> str:
         print("prova_dao.criar()")
         doc = self.set_doc(obj_prova)
+        # Preenchidos depois pelo professor (adicionar-questoes); o PUT não os sobrescreve.
+        doc["conteudo"] = obj_prova.conteudo
+        doc["observacao"] = obj_prova.observacao
         doc["ativo"] = True
         resultado = self.__colecao.insert_one(doc)
         if not resultado.inserted_id:
@@ -92,6 +95,20 @@ class Prova_dao:
         campos = {"questoes": ids_questoes, "status": "Em elaboração"}
         if geracao_pendente:
             campos["geracao_pendente"] = True
+        resultado = self.__colecao.update_one(
+            {"_id": object_id, "ativo": {"$ne": False}, "tipo": "Objetiva",
+             "status": {"$in": list(Prova.STATUS_EDITAVEIS)},
+             "operacao_em_andamento": token if token else {"$exists": False}},
+            {"$set": campos}
+        )
+        return resultado.matched_count > 0
+
+    def atualizar_informacoes(self, _id, campos, token=None) -> bool:
+        print("prova_dao.atualizar_informacoes()")
+        try:
+            object_id = ObjectId(_id)
+        except:
+            return False
         resultado = self.__colecao.update_one(
             {"_id": object_id, "ativo": {"$ne": False}, "tipo": "Objetiva",
              "status": {"$in": list(Prova.STATUS_EDITAVEIS)},
@@ -209,7 +226,8 @@ class Prova_dao:
             "periodo_letivo":obj_prova.periodo_letivo,
             "data_de_aplicacao":obj_prova.data_de_aplicacao,
             "questoes":obj_prova.questoes,
-            "quantidade_questoes": obj_prova.quantidade_questoes
+            "quantidade_questoes": obj_prova.quantidade_questoes,
+            "colunas": obj_prova.colunas
         }
 
         return doc

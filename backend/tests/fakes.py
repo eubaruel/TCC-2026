@@ -322,6 +322,13 @@ class FakeProvaDao:
             doc["geracao_pendente"] = True
         return True
 
+    def atualizar_informacoes(self, id_prova, campos, token=None):
+        doc = self.documentos.get(id_prova)
+        if not self._pode_alterar(doc, token):
+            return False
+        doc.update(campos)
+        return True
+
     def enviar(self, id_prova, ids_questoes, token=None):
         doc = self.documentos.get(id_prova)
         if not self._pode_alterar(doc, token) or doc["questoes"] != ids_questoes or doc.get("geracao_pendente"):
@@ -377,6 +384,9 @@ class FakeProvaDao:
             "periodo_letivo": prova.periodo_letivo,
             "data_de_aplicacao": prova.data_de_aplicacao,
             "quantidade_questoes": prova.quantidade_questoes,
+            "colunas": prova.colunas,
+            "conteudo": prova.conteudo,
+            "observacao": prova.observacao,
             "questoes": deepcopy(prova.questoes),
             "ativo": True,
         }

@@ -66,6 +66,12 @@
               <input id="base-quantidade" v-model.number="formulario.quantidade_questoes" type="number" min="2" max="10" step="1" inputmode="numeric" required :disabled="salvando" placeholder="Ex.: 5" aria-describedby="base-quantidade-ajuda" />
               <small id="base-quantidade-ajuda" class="info-text">De 2 a 10 questões.</small>
             </div>
+            <div class="form-group-modal campo-largo">
+              <label class="opcao-colunas">
+                <input v-model="formulario.duas_colunas" type="checkbox" :disabled="salvando" />
+                Dividir as questões em duas colunas (modelo ENEM)
+              </label>
+            </div>
           </div>
           <p v-if="erro" class="mensagem-erro" role="alert">{{ erro }}</p>
           <button v-if="erro && (!professores.length || !disciplinas.length)" type="button" class="btn-modal-cancelar" :disabled="carregando" @click="carregar">Tentar carregar novamente</button>
@@ -90,7 +96,7 @@ export default {
   name: "CriarProvaBase",
   emits: ["fechar", "criada"],
   data: () => ({
-    formulario: { registroProfessor: "", codigoDisciplina: "", turmasTexto: "", serie: 3, periodo_letivo: "", data: "", quantidade_questoes: "" },
+    formulario: { registroProfessor: "", codigoDisciplina: "", turmasTexto: "", serie: 3, periodo_letivo: "", data: "", quantidade_questoes: "", duas_colunas: false },
     professores: [],
     disciplinas: [],
     buscaProfessor: "",
@@ -192,6 +198,7 @@ export default {
           periodo_letivo: this.formulario.periodo_letivo,
           data_de_aplicacao: this.formulario.data,
           quantidade_questoes: this.formulario.quantidade_questoes,
+          colunas: this.formulario.duas_colunas ? 2 : 1,
         });
         this.$emit("criada", resposta.prova);
       } catch (error) {
@@ -253,6 +260,8 @@ export default {
 .info-text { font-size: 12px; color: #888; margin-bottom: 16px; }
 .mensagem-erro { color: #dc3545; font-size: 13px; margin-top: 16px; }
 .modal-footer { display: flex; gap: 12px; padding: 20px 24px; border-top: 1px solid #e0e0e0; justify-content: flex-end; }
+.opcao-colunas { display: flex; align-items: center; gap: 8px; font-weight: 500; cursor: pointer; }
+.opcao-colunas input { width: auto; margin: 0; }
 .btn-modal-salvar { padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; }
 .btn-modal-salvar:hover:not(:disabled) { background: #218838; }
 .btn-modal-cancelar { padding: 10px 20px; background: transparent; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; color: inherit; }

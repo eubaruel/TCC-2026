@@ -3,6 +3,7 @@ from api.modelos.disciplina import Disciplina
 
 class Prova:
     MAX_QUESTOES = 10
+    LIMITE_INFORMACOES = 300
     STATUS_EDITAVEIS = ("Aguardando questões", "Em elaboração")
     STATUS_ENVIADA = "Enviada ao pedagógico"
     STATUS_IMPRESSA = "Impressa"
@@ -20,7 +21,49 @@ class Prova:
         self.__data_de_aplicacao = None 
         self.__questoes = None
         self.__quantidade_questoes = None
-    
+        self.__colunas = 1           #1 = layout padrão; 2 = questões em duas colunas (modelo ENEM)
+        self.__conteudo = ""         #conteúdos cobrados, informados pelo professor
+        self.__observacao = ""       #observações impressas junto ao cartão-resposta
+
+    @property
+    def colunas(self):
+        return self.__colunas
+
+    @colunas.setter
+    def colunas(self, value):
+        if value is None:
+            value = 1
+        if type(value) is not int or value not in (1, 2):
+            raise ValueError("Colunas deve ser 1 ou 2")
+        self.__colunas = value
+
+    @staticmethod
+    def _texto_informativo(value, campo):
+        if value is None:
+            return ""
+        if not isinstance(value, str):
+            raise TypeError(f"{campo} deve ser uma string")
+        value = value.strip()
+        if len(value) > Prova.LIMITE_INFORMACOES:
+            raise ValueError(f"{campo} deve ter no máximo {Prova.LIMITE_INFORMACOES} caracteres")
+        return value
+
+    @property
+    def conteudo(self):
+        return self.__conteudo
+
+    @conteudo.setter
+    def conteudo(self, value):
+        self.__conteudo = self._texto_informativo(value, "Conteúdo")
+
+    @property
+    def observacao(self):
+        return self.__observacao
+
+    @observacao.setter
+    def observacao(self, value):
+        self.__observacao = self._texto_informativo(value, "Observação")
+
     @property
     def id_hash(self):
         return self.__id_hash

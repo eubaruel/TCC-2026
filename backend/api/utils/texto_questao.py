@@ -1,3 +1,4 @@
+import re
 from html.parser import HTMLParser
 
 
@@ -48,3 +49,42 @@ def validar_conteudo_questao(html, limite, campo):
         )
     if conteudo.imagens > LIMITE_IMAGENS:
         raise ValueError(f"{campo} deve ter no máximo {LIMITE_IMAGENS} imagens")
+
+
+# O Quill 2 grava cada espaço como &nbsp;, o que impede a quebra de linha.
+# Mantém o &nbsp; apenas onde ele preserva espaços consecutivos; <pre> fica intacto.
+_ESPACO_DURO = " "
+_NBSP = re.compile("&nbsp;|&#160;|&#xa0;|" + _ESPACO_DURO, re.IGNORECASE)
+_ESPACOS = re.compile("[ " + _ESPACO_DURO + "]+")
+_TRECHO_PRE = re.compile(r"(<pre\b.*?</pre>)", re.IGNORECASE | re.DOTALL)
+
+
+def _normalizar_trecho(html):
+    html = _NBSP.sub(_ESPACO_DURO, html)
+    return _ESPACOS.sub(
+        lambda m: " " if len(m.group(0)) == 1 else " " + "&nbsp;" * (len(m.group(0)) - 1),
+        html,
+    )
+
+
+def normalizar_espacos(html):
+    if not isinstance(html, str):
+        return html
+    partes = _TRECHO_PRE.split(html)
+    return "".join(parte if i % 2 else _normalizar_trecho(parte) for i, parte in enumerate(partes))
+
+
+class _ExtratorTexto(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.partes = []
+
+    def handle_data(self, data):
+        self.partes.append(data)
+
+
+def resumo_texto(html, limite=80):
+    extrator = _ExtratorTexto()
+    extrator.feed(html or "")
+    texto = " ".join("".join(extrator.partes).split())
+    return texto if len(texto) <= limite else texto[:limite].rstrip() + "…"

@@ -69,7 +69,8 @@ class Prova_controle:
         json_prova = request.json.get("prova")
         resultado = self.__prova_service.adicionar_questoes(
             _id,
-            json_prova.get("questoes")
+            json_prova.get("questoes"),
+            {campo: json_prova[campo] for campo in ("conteudo", "observacao") if campo in json_prova}
         )
 
         return Resposta_json.sucesso(

@@ -113,12 +113,17 @@ class Questao_dao:
 
     def campo_existe(self,campo,valor):
         print(" questao_dao.campo_existe()")
-        filtro = {
-            campo: {
-                "$regex": f"^{re.escape(valor)}$",
-                "$options": "i"
+        # Enunciados podem conter imagens em base64; um regex com o texto inteiro
+        # ultrapassa o limite de padrão do MongoDB. O índice único usa igualdade exata.
+        if campo == "enunciado":
+            filtro = {campo: valor}
+        else:
+            filtro = {
+                campo: {
+                    "$regex": f"^{re.escape(valor)}$",
+                    "$options": "i"
+                }
             }
-        }
         resultado = self.__colecao.find_one(filtro, {"_id":1})
 
         return resultado is not None

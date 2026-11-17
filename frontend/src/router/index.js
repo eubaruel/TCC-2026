@@ -6,6 +6,7 @@ import QuestoesView from "@/views/QuestoesView.vue";
 import GestaoUsuarios from "@/views/GestaoUsuarios.vue";
 import ConfiGuracoes from "@/views/ConfiGuracoes.vue";
 import CriarProvaView from "@/views/CriarProvaView.vue";
+import TrocarSenhaView from "@/views/TrocarSenhaView.vue";
 import { useAuthStore } from "@/stores/auth";
 
 const routes = [
@@ -13,6 +14,13 @@ const routes = [
     path: "/",
     name: "Login",
     component: LoginTelaPrincipal,
+  },
+  {
+    // Primeiro acesso: o professor define a própria senha antes de usar o sistema.
+    path: "/trocar-senha",
+    name: "TrocarSenha",
+    component: TrocarSenhaView,
+    meta: { requiresAuth: true },
   },
   {
     // Tela cheia (fora da TelaPrincipal): sem barra lateral e sem cabeçalho de boas-vindas.
@@ -89,6 +97,10 @@ router.beforeEach((to, from, next) => {
 
   if (to.meta.requiresAuth && !authStore.isLoggedIn) {
     next("/");
+  } else if (authStore.isLoggedIn && authStore.precisaTrocarSenha && to.name !== "TrocarSenha" && to.name !== "Login") {
+    next({ name: "TrocarSenha" });
+  } else if (to.name === "TrocarSenha" && !authStore.precisaTrocarSenha) {
+    next("/provas");
   } else if (to.meta.requiresProfessor && !authStore.isProfessor) {
     next("/provas");
   } else if (to.meta.requiresProcesso && !authStore.isProcessoPedagogico) {

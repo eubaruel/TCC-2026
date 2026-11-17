@@ -100,7 +100,7 @@ export default {
         this.erroRegistro = resultado.message;
         return;
       }
-      this.router.push("/provas");
+      this.router.push(this.authStore.precisaTrocarSenha ? "/trocar-senha" : "/provas");
     },
     abrirModalEsqueciSenha() {
       this.modalEsqueciSenha = true;

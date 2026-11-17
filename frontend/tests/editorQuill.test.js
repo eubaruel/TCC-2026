@@ -64,7 +64,7 @@ function ambiente(larguraImagem = 1000, alturaImagem = 400, falharImagem = false
   const codigo = transformSync(script, { babelrc: false, configFile: false, plugins: ["@babel/plugin-transform-modules-commonjs"] }).code;
   const modulos = { quill: QuillSimulado, "quill/dist/quill.snow.css": {},
     "@/utils/redimensionarImagem": {}, "@/utils/clipboardQuestao": {},
-    "@/utils/html": { contarCaracteres, contarImagens, sanitizar: (html) => (html || "").replace(/<script[\s\S]*?<\/script>/gi, "") } };
+    "@/utils/html": { contarCaracteres, contarImagens, normalizarEspacos: (html) => html, sanitizar: (html) => (html || "").replace(/<script[\s\S]*?<\/script>/gi, "") } };
   const contexto = {
     exports: {},
     FileReader: class { readAsDataURL() { this.result = "data:image/png;base64,original"; this.onload(); } },

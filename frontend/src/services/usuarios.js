@@ -10,6 +10,9 @@ export const listarUsuarios = (params = {}) => {
 export const autenticarUsuario = (registro, senha) =>
   api("/usuarios/login", { method: "POST", body: { usuario: { registro, senha } } });
 
+export const alterarSenha = (registro, senha_atual, nova_senha) =>
+  api(`/usuarios/${registro}/alterar-senha`, { method: "PATCH", body: { usuario: { senha_atual, nova_senha } } });
+
 export const criarUsuario = (usuario) => api("/usuarios/", { method: "POST", body: { usuario } });
 
 export const atualizarUsuario = (registro, usuario) =>

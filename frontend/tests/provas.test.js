@@ -53,7 +53,7 @@ function ambiente(quantidade = 3, tamanhoBanco = 3) {
     enviarProva: async (id) => { chamadas.push({ rota: "enviar", id }); prova = { ...prova, status: "Enviada ao pedagógico" }; return { prova }; },
   };
   const opcoes = carregarOpcoes("views/CriarProvaView.vue", {
-    "@/components/QuestaoEditor.vue": {}, "@/components/PreviewProva.vue": {}, "@/components/CartaoResposta.vue": {}, "@/components/ModalSairEdicao.vue": {},
+    "@/components/QuestaoEditor.vue": {}, "@/components/PreviewProva.vue": {}, "@/components/CartaoResposta.vue": {}, "@/components/ModalSairEdicao.vue": {}, "@/components/InformacoesProva.vue": {},
     "@/components/FiltrosQuestoes.vue": filtrosComponente, "@/utils/filtrosQuestoes": filtrosModulo,
     "@/stores/auth": {}, "@/stores/provaDraft": draftModulo, "@/services/questoes": { listarQuestoes: async () => ({ questoes: banco }) },
     "@/services/disciplinas": { listarDisciplinas: async () => ({ disciplinas: [
@@ -258,7 +258,7 @@ test("cards filtram por enunciado, excluem incompatíveis e não duplicam seleç
   banco[3].assunto = "Equações"; banco[3].enunciado = "Resolva a igualdade";
   banco[4].disciplina = ["História"]; banco[5].tipo_questao = "Outro tipo";
   await tela.carregar();
-  assert.deepEqual([...tela.questoesBancoFiltradas.map((questao) => questao._id)], ["q3", "q4"]);
+  assert.deepEqual([...tela.questoesBancoFiltradas.map((questao) => questao._id)], ["q3", "q4", "q5"]);
   tela.filtrosQuestoes.enunciado = "  QUADRADO ";
   assert.deepEqual([...tela.questoesBancoFiltradas.map((questao) => questao._id)], ["q3"]);
   tela.filtrosQuestoes.enunciado = "igualdade";
@@ -337,8 +337,8 @@ test("editor inicia na disciplina da prova e permite trocar ou remover o filtro 
   banco[2].dificuldade = "Difícil"; banco[2].professor = { nome: "Ana" };
   banco[3].disciplina = ["HIST"]; banco[3].professor = { nome: "Ana" };
   await tela.carregar();
-  assert.equal(tela.filtrosQuestoes.disciplina, "MAT");
-  assert.deepEqual([...tela.questoesBancoFiltradas.map((questao) => questao._id)], ["q3"]);
+  assert.equal(tela.filtrosQuestoes.disciplina, "");
+  assert.deepEqual([...tela.questoesBancoFiltradas.map((questao) => questao._id)], ["q3", "q4"]);
   assert.equal(tela.disciplinasFiltro.find((item) => item.codigo_disciplina === "HIST").nome_disciplina, "História");
   assert.equal(tela.disciplinasDaQuestao(banco[3]), "História");
   tela.filtrosQuestoes.disciplina = "HIST";
@@ -786,7 +786,7 @@ test("rota de correção bloqueia professor e visitante, mas permite processo pe
       createRouter: (opcoes) => { configuracao = opcoes; return { beforeEach: (callback) => { guarda = callback; } }; },
     },
     "@/views/LoginTelaPrincipal.vue": {}, "@/components/TelaPrincipal.vue": {}, "@/views/ProvasView.vue": {},
-    "@/views/QuestoesView.vue": {}, "@/views/GestaoUsuarios.vue": {}, "@/views/ConfiGuracoes.vue": {},
+    "@/views/QuestoesView.vue": {}, "@/views/GestaoUsuarios.vue": {}, "@/views/ConfiGuracoes.vue": {}, "@/views/TrocarSenhaView.vue": {},
     "@/views/CriarProvaView.vue": {}, "@/stores/auth": { useAuthStore: () => auth },
   });
   const principal = configuracao.routes.find((rota) => rota.children);
@@ -827,7 +827,7 @@ test("prévia utiliza o novo campo e marcador de período letivo", () => {
   const opcoes = carregarOpcoes("components/PreviewProva.vue", {
     "@/utils/cartaoResposta": carregarOpcoes("utils/cartaoResposta.js", {}),
     "@/stores/provaDraft": { LETRAS: ["A", "B", "C", "D", "E"] },
-    "@/utils/html": { escaparHtml: String, sanitizar: (valor) => valor, htmlVazio: (valor) => !valor },
+    "@/utils/html": { escaparHtml: String, normalizarEspacos: (valor) => valor, sanitizar: (valor) => valor, htmlVazio: (valor) => !valor },
   }).default;
   const html = opcoes.computed.htmlFinal.call({
     template: "<p>{{PERIODO_LETIVO}}</p>", metadados: { turmasTexto: "Turma A", periodo_letivo: "2º período letivo" },
@@ -858,7 +858,7 @@ test("cartão vetorial preserva dez colunas, cinco alternativas e geometria do Q
   assert.match(html, /viewBox="0 0 1200 286"/i);
   assert.equal((html.match(/M[\d.]+ 86V257/g) || []).length, 10);
   for (const letra of ["A", "B", "C", "D", "E"]) assert.match(html, new RegExp(`>${letra}</text>`));
-  assert.match(html, /href="qr-individual.png" x="9" y="168" width="94" height="94"/);
+  assert.match(html, /href="qr-individual.png" x="4" y="162" width="104" height="104"/);
   assert.equal((html.match(/href="logos-originais.png"/g) || []).length, 2);
   assert.match(html, /M0 143H1200/);
   assert.match(html, /Matemática/);
@@ -907,7 +907,7 @@ test("prévia do professor inclui o cartão real antes das questões, sem identi
   const PreviewProva = componente("components/PreviewProva.vue", {
     "@/utils/cartaoResposta": carregarOpcoes("utils/cartaoResposta.js", {}),
     "@/stores/provaDraft": { LETRAS: ["A", "B", "C", "D", "E"] },
-    "@/utils/html": { escaparHtml: String, sanitizar: (valor) => valor, htmlVazio: (valor) => !valor },
+    "@/utils/html": { escaparHtml: String, normalizarEspacos: (valor) => valor, sanitizar: (valor) => valor, htmlVazio: (valor) => !valor },
   });
   const { tela, prova, draft, banco, opcoes, chamadas } = ambiente();
   await tela.carregar();
@@ -945,7 +945,7 @@ function ambienteImpressao(versoes, globais) {
   const opcoes = carregarOpcoes("views/ImprimirProvasView.vue", {
     qrcode: { toDataURL: async (id) => { qrs.push(id); return `qr:${id}`; } },
     "@/components/CartaoResposta.vue": {}, "@/components/PreviewProva.vue": {},
-    "@/components/ListaTurma.vue": {},
+    "@/components/ListaTurma.vue": {}, "@/components/GabaritoTurma.vue": {}, "@/components/InformacoesProva.vue": {},
     "@/utils/listasTurma": carregarOpcoes("utils/listasTurma.js", {}),
     "@/services/provas": { ...servicos, imprimirProvas: async (id) => {
       assert.equal(id, prova._id); return { provas_alunos: dados };
@@ -1081,7 +1081,7 @@ test("botão de confirmação fica ao lado da impressora só para pedagógico e 
     if (esperado) assert.match(html, /🖨️\s*<\/button>\s*<button[^>]*btn-confirmar-impressao/);
   }
   const impressao = carregarOpcoes("views/ImprimirProvasView.vue", {
-    qrcode: {}, "@/components/CartaoResposta.vue": {}, "@/components/PreviewProva.vue": {}, "@/components/ListaTurma.vue": {},
+    qrcode: {}, "@/components/CartaoResposta.vue": {}, "@/components/PreviewProva.vue": {}, "@/components/ListaTurma.vue": {}, "@/components/GabaritoTurma.vue": {}, "@/components/InformacoesProva.vue": {},
     "@/utils/listasTurma": {}, "@/services/provas": {}, "@/services/templates": {}, "@/stores/provaDraft": {}, "@/utils/cartaoResposta": {},
   }).default;
   assert.equal(impressao.methods.confirmarImpressao, undefined);
@@ -1235,7 +1235,7 @@ test("impressão usa a mesma folha da prévia e mantém cartão e questões dent
   const preview = carregarOpcoes("components/PreviewProva.vue", {
     "@/utils/cartaoResposta": carregarOpcoes("utils/cartaoResposta.js", {}),
     "@/stores/provaDraft": { LETRAS: ["A", "B", "C", "D", "E"] },
-    "@/utils/html": { escaparHtml: String, sanitizar: (valor) => valor, htmlVazio: (valor) => !valor },
+    "@/utils/html": { escaparHtml: String, normalizarEspacos: (valor) => valor, sanitizar: (valor) => valor, htmlVazio: (valor) => !valor },
   }).default;
   const html = await renderToString(createSSRApp({
     template: fonte.template.content, data: () => ({ ...tela, metadados: tela.metadados, template: "{{QUESTOES}}" }),

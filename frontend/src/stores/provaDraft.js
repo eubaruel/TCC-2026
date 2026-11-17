@@ -11,7 +11,12 @@ export const novosMetadados = () => ({
   periodo_letivo: "",
   data_de_aplicacao: "",
   status: "Aguardando questões",
+  colunas: 1,
+  conteudo: "",
+  observacao: "",
 });
+
+export const LIMITE_INFORMACOES_PROVA = 300;
 
 // Converte uma questão vinda da API para o formato usado no editor.
 export const questaoDoBanco = (questao) => {

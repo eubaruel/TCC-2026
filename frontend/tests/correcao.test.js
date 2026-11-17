@@ -27,8 +27,9 @@ function imagemComCartao() {
   for (const y of [100, 315]) {
     for (let x = 30; x <= 930; x++) imagem.data.fill(0, (y * 1000 + x) * 4, (y * 1000 + x) * 4 + 3);
   }
-  const quiet = 94 * 4 / 33, lado = 94 * 25 / 33 * .75;
-  const origem = { x: 30 + (9 + quiet) * .75, y: 100 + (168 + quiet) * .75 };
+  const { qr } = modelo.CARTAO_RESPOSTA, total = 25 + 2 * qr.margem;
+  const quiet = qr.tamanho * qr.margem / total, lado = qr.tamanho * 25 / total * .75;
+  const origem = { x: 30 + (qr.x + quiet) * .75, y: 100 + (qr.y + quiet) * .75 };
   const codigo = { data: "6acecbcd32149b41b3a09574", version: 2, location: {
     topLeftCorner: origem, topRightCorner: { x: origem.x + lado, y: origem.y },
     bottomLeftCorner: { x: origem.x, y: origem.y + lado },
@@ -55,8 +56,8 @@ test("recorte reconhece o cartão A4 com as margens atuais da prova", () => {
   for (const linha of [Math.round(y), fim]) {
     for (let coluna = Math.round(x); coluna <= Math.round(width - x); coluna++) imagem.data.fill(0, (linha * width + coluna) * 4, (linha * width + coluna) * 4 + 3);
   }
-  const quiet = cartao.qr.tamanho * cartao.qr.margem / 33;
-  const lado = cartao.qr.tamanho * 25 / 33 * escala;
+  const quiet = cartao.qr.tamanho * cartao.qr.margem / (25 + 2 * cartao.qr.margem);
+  const lado = cartao.qr.tamanho * 25 / (25 + 2 * cartao.qr.margem) * escala;
   const origem = { x: x + (cartao.qr.x + quiet) * escala, y: y + (cartao.qr.y + quiet) * escala };
   const codigo = { data: "6acecbcd32149b41b3a09574", version: 2, location: {
     topLeftCorner: origem, topRightCorner: { x: origem.x + lado, y: origem.y }, bottomLeftCorner: { x: origem.x, y: origem.y + lado },

@@ -1,12 +1,14 @@
 from uuid import uuid4
 
+from pymongo.errors import DuplicateKeyError
+
 from api.modelos.alternativa import Alternativa
 from api.modelos.questao import Questao
 from api.modelos.usuario import Usuario
 from api.DAOs.questao_dao import Questao_dao
 
 from api.utils.resposta_erro_http import resposta_erro_http
-from api.utils.texto_questao import LIMITE_ALTERNATIVA, LIMITE_ENUNCIADO, validar_conteudo_questao
+from api.utils.texto_questao import LIMITE_ALTERNATIVA, LIMITE_ENUNCIADO, normalizar_espacos, resumo_texto, validar_conteudo_questao
 
 
 class Questao_service:
@@ -32,10 +34,13 @@ class Questao_service:
             raise resposta_erro_http(
                 400,
                 "Enunciado repetido",
-                {"mensagem": f'A questão de enunciado "{obj_questao.enunciado}" já está cadastrada'}
+                {"mensagem": f'A questão de enunciado "{resumo_texto(obj_questao.enunciado)}" já está cadastrada'}
             )
 
-        id_hash = self.__questao_dao.criar(obj_questao)
+        try:
+            id_hash = self.__questao_dao.criar(obj_questao)
+        except DuplicateKeyError:
+            raise self._erro_enunciado_repetido(obj_questao)
         return self._formatar_questao(obj_questao, id_hash)
 
     def consulta(self, filtro) -> list[dict]:
@@ -50,7 +55,10 @@ class Questao_service:
         obj_questao.id_hash = id_hash
         self._exigir_edicao(id_hash)
 
-        sucesso = self.__questao_dao.atualizar(obj_questao)
+        try:
+            sucesso = self.__questao_dao.atualizar(obj_questao)
+        except DuplicateKeyError:
+            raise self._erro_enunciado_repetido(obj_questao)
         if not sucesso:
             raise resposta_erro_http(
                 400,
@@ -67,13 +75,24 @@ class Questao_service:
         self._exigir_edicao(id_hash)
         return self.__questao_dao.excluir(obj_questao.id_hash)
 
+    @staticmethod
+    def _erro_enunciado_repetido(obj_questao):
+        return resposta_erro_http(
+            400,
+            "Enunciado repetido",
+            {"mensagem": f'A questão de enunciado "{resumo_texto(obj_questao.enunciado)}" já está cadastrada'}
+        )
+
     def _exigir_edicao(self, id_hash):
         if self.__questao_dao.usada_em_prova_concluida(id_hash):
             raise resposta_erro_http(409, "Questão vinculada a uma prova concluída não pode ser alterada ou excluída")
 
     def _setar_modelo_questao(self, obj_questao, json_questao):
         for campo in self._CAMPOS_QUESTAO:
-            setattr(obj_questao, campo, json_questao.get(campo))
+            valor = json_questao.get(campo)
+            if campo == "enunciado" and isinstance(valor, str):
+                valor = normalizar_espacos(valor)
+            setattr(obj_questao, campo, valor)
         validar_conteudo_questao(obj_questao.enunciado, LIMITE_ENUNCIADO, "Enunciado")
 
         dados_professor = json_questao.get("professor")
@@ -89,6 +108,7 @@ class Questao_service:
         for indice, texto in enumerate(textos_alternativas, start=1):
             if not isinstance(texto, str):
                 raise TypeError("Cada alternativa deve ser uma string")
+            texto = normalizar_espacos(texto)
             validar_conteudo_questao(texto, LIMITE_ALTERNATIVA, f"Alternativa {indice}")
             texto = texto.strip()
             if not texto:
@@ -100,7 +120,7 @@ class Questao_service:
         texto_correto = json_questao.get("alternativa_correta")
         if not isinstance(texto_correto, str):
             raise TypeError("Alternativa correta deve ser uma string")
-        texto_correto = texto_correto.strip()
+        texto_correto = normalizar_espacos(texto_correto).strip()
 
         alternativa_correta = next(
             (alternativa for alternativa in alternativas if alternativa.texto == texto_correto),

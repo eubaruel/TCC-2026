@@ -3,6 +3,10 @@
     <header class="impressao-acoes">
       <button class="btn-secundario" :disabled="imprimindo" @click="$router.push('/provas')">← Voltar</button>
       <h2>Impressão individualizada</h2>
+      <label class="opcao-gabarito">
+        <input v-model="incluirGabarito" type="checkbox" :disabled="imprimindo" />
+        Incluir gabarito do professor
+      </label>
       <button class="btn-primario" :disabled="carregando || imprimindo || Boolean(erro) || !versoes.length" @click="imprimir">
         {{ imprimindo ? 'Preparando...' : 'Imprimir provas' }}
       </button>
@@ -14,11 +18,13 @@
       <template v-for="grupo in turmas" :key="grupo.turma">
         <ListaTurma :prova="prova" :turma="grupo.turma" :alunos="grupo.alunos" tipo="notas" />
         <ListaTurma :prova="prova" :turma="grupo.turma" :alunos="grupo.alunos" tipo="entrega" />
+        <GabaritoTurma v-if="incluirGabarito" :prova="prova" :turma="grupo.turma" :alunos="grupo.alunos" />
         <section v-for="versao in grupo.alunos" :key="versao.id_prova_aluno" class="versao-aluno documento-impressao">
         <PreviewProva :template="template" :metadados="metadados" :professor="prova.professor.nome"
           :matricula="versao.matricula_aluno" :questoes="versao.questoes">
           <template #cabecalho>
             <CartaoResposta :prova="{ ...prova, id_turma: grupo.turma }" :matricula="versao.matricula_aluno" :nomeAluno="versao.nome_aluno" :qrCode="versao.qrCode" />
+            <InformacoesProva :conteudo="prova.conteudo" :observacao="prova.observacao" />
             <p class="orientacao-cartao">Preencha todo o retângulo de uma alternativa em cada questão de 1 a {{ versao.questoes.length }}. Deixe as demais colunas em branco.</p>
           </template>
         </PreviewProva>
@@ -37,13 +43,15 @@ import { obterTemplateProva } from "@/services/templates";
 import { questaoDoBanco } from "@/stores/provaDraft";
 import { CARTAO_RESPOSTA } from "@/utils/cartaoResposta";
 import ListaTurma from "@/components/ListaTurma.vue";
+import GabaritoTurma from "@/components/GabaritoTurma.vue";
+import InformacoesProva from "@/components/InformacoesProva.vue";
 import { agruparVersoesPorTurma } from "@/utils/listasTurma";
 
 export default {
   name: "ImprimirProvasView",
-  components: { CartaoResposta, PreviewProva, ListaTurma },
+  components: { CartaoResposta, PreviewProva, ListaTurma, GabaritoTurma, InformacoesProva },
   props: { id: { type: String, required: true } },
-  data: () => ({ prova: null, template: "", versoes: [], turmas: [], carregando: true, imprimindo: false, erro: "" }),
+  data: () => ({ prova: null, template: "", versoes: [], turmas: [], carregando: true, imprimindo: false, erro: "", incluirGabarito: false }),
   computed: {
     metadados() {
       if (!this.prova) return {};
@@ -68,7 +76,7 @@ export default {
             throw new Error("Uma versão não possui a quantidade de questões definida pelo processo pedagógico.");
           }
           return { ...versao, questoes: versao.questoes.map(questaoDoBanco),
-            qrCode: await QRCode.toDataURL(versao.id_prova_aluno, { errorCorrectionLevel: "M", margin: CARTAO_RESPOSTA.qr.margem, width: 256 }) };
+            qrCode: await QRCode.toDataURL(versao.id_prova_aluno, { errorCorrectionLevel: "M", margin: CARTAO_RESPOSTA.qr.margem, width: 512 }) };
         }));
         this.turmas = agruparVersoesPorTurma(versoes, prova.id_turma);
         this.versoes = versoes;
@@ -99,6 +107,7 @@ export default {
 .impressao-container { padding: 20px; }
 .impressao-acoes { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 2px solid #00488b; padding-bottom: 15px; }
 .impressao-acoes h2 { font-size: 22px; }
+.opcao-gabarito { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; }
 .btn-primario, .btn-secundario { border: 0; border-radius: 6px; padding: 10px 16px; cursor: pointer; font-weight: 600; }
 .btn-primario { background: #00488b; color: white; }
 .btn-secundario { background: #eee; color: #333; }

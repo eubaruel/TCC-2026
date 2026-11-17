@@ -44,7 +44,7 @@
 <script>
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
-import { contarCaracteres, contarImagens, sanitizar } from "@/utils/html";
+import { contarCaracteres, contarImagens, normalizarEspacos, sanitizar } from "@/utils/html";
 import RedimensionarImagem from "@/utils/redimensionarImagem";
 import ClipboardQuestao from "@/utils/clipboardQuestao";
 import { LIMITE_IMAGENS, prepararImagem } from "@/utils/imagensQuestao";
@@ -156,7 +156,7 @@ export default {
       document.body.style.overflow = this.rolagemAnterior;
     },
     atualizarConteudo() {
-      this.ultimoHtml = sanitizar(this.quill.getSemanticHTML());
+      this.ultimoHtml = normalizarEspacos(sanitizar(this.quill.getSemanticHTML()));
       this.$emit("update:modelValue", this.ultimoHtml);
     },
     definirConteudo(html) {

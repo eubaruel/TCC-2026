@@ -67,6 +67,9 @@ class Prova_middleware:
                     }
                 )
 
+            if "colunas" in prova and prova["colunas"] not in (1, 2):
+                raise resposta_erro_http(400, "O campo 'colunas' deve ser 1 ou 2")
+
             professor = prova["professor"]
             if not isinstance(professor, dict):
                 raise resposta_erro_http(
@@ -137,8 +140,12 @@ class Prova_middleware:
                     {"mensagem": "O campo 'questoes' é obrigatório!"}
                 )
 
-            if set(prova) != {"questoes"}:
-                raise resposta_erro_http(400, "Envie somente o campo 'questoes' com a lista de IDs")
+            if set(prova) - {"questoes", "conteudo", "observacao"}:
+                raise resposta_erro_http(400, "Envie somente 'questoes' e, opcionalmente, 'conteudo' e 'observacao'")
+
+            for campo in ("conteudo", "observacao"):
+                if campo in prova and not isinstance(prova[campo], str):
+                    raise resposta_erro_http(400, f"O campo '{campo}' deve ser texto")
 
             if not isinstance(prova["questoes"], list):
                 raise resposta_erro_http(

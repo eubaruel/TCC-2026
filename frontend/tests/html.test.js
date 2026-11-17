@@ -24,3 +24,10 @@ test("contagem ignora marcação, comentários, atributos e base64 das imagens",
   assert.equal(contarCaracteres("<p><br></p>"), 0);
   assert.equal(contarCaracteres("<script>ignorar</script><style>ignorar</style><p>A</p>"), 1);
 });
+
+test("normalizarEspacos troca &nbsp; do Quill por espaços que quebram linha", () => {
+  const { normalizarEspacos } = require("./helpers/html");
+  assert.equal(normalizarEspacos("<p>A&nbsp;Segunda&nbsp;Guerra</p>"), "<p>A Segunda Guerra</p>");
+  assert.equal(normalizarEspacos("<p>a&nbsp;&nbsp;&nbsp;b</p>"), "<p>a &nbsp;&nbsp;b</p>");
+  assert.equal(normalizarEspacos("<pre>a&nbsp;&nbsp;b</pre><p>c&nbsp;d</p>"), "<pre>a&nbsp;&nbsp;b</pre><p>c d</p>");
+});

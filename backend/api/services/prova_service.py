@@ -29,7 +29,8 @@ class Prova_service:
         "tipo",
         "serie",
         "periodo_letivo",
-        "data_de_aplicacao"
+        "data_de_aplicacao",
+        "colunas"
     ]
 
     def criar_prova(self, json_prova: dict) -> dict:
@@ -45,11 +46,23 @@ class Prova_service:
         id_criado = self.__prova_dao.criar(obj_prova)
         return self._formatar_prova(obj_prova, id_criado)
 
-    def adicionar_questoes(self, id_hash: str, ids_questoes: list) -> dict:
+    def adicionar_questoes(self, id_hash: str, ids_questoes: list, informacoes: dict | None = None) -> dict:
         print("prova_service.adicionar_questoes()")
         with self._operacao_exclusiva(id_hash) as token:
             prova = self._buscar_prova(id_hash)
             self._exigir_edicao(prova)
+            if informacoes:
+                # Conteúdo e observação são opcionais e editáveis enquanto a prova estiver em elaboração.
+                validada = Prova()
+                campos = {}
+                for campo in ("conteudo", "observacao"):
+                    if campo in informacoes:
+                        setattr(validada, campo, informacoes[campo])
+                        campos[campo] = getattr(validada, campo)
+                if campos:
+                    if not self.__prova_dao.atualizar_informacoes(id_hash, campos, token=token):
+                        raise resposta_erro_http(409, "A prova não está mais disponível para edição")
+                    prova.update(campos)
             geracao_pendente = prova.pop("geracao_pendente", False)
             ids_normalizados = self._validar_ids_questoes(
                 ids_questoes, prova.get("tipo")
@@ -181,6 +194,10 @@ class Prova_service:
                 json_prova.setdefault("quantidade_questoes", prova["quantidade_questoes"])
                 if json_prova["quantidade_questoes"] is None:
                     raise resposta_erro_http(400, "Quantidade de questões deve ser um inteiro de 2 a 10")
+            # Provas antigas não têm "colunas": tratadas como layout padrão (1).
+            prova["colunas"] = prova.get("colunas") or 1
+            if json_prova.get("colunas") is None:
+                json_prova["colunas"] = prova["colunas"]
             if json_prova.get("status") != prova["status"] or json_prova.get("questoes") != prova["questoes"]:
                 raise resposta_erro_http(400, "Use as rotas adicionar-questoes e enviar para alterar o fluxo da prova")
             if prova["questoes"] and any(json_prova.get(campo) != prova.get(campo)
@@ -252,7 +269,10 @@ class Prova_service:
             "periodo_letivo": obj_prova.periodo_letivo,
             "data_de_aplicacao": obj_prova.data_de_aplicacao,
             "questoes": obj_prova.questoes,
-            "quantidade_questoes": obj_prova.quantidade_questoes
+            "quantidade_questoes": obj_prova.quantidade_questoes,
+            "colunas": obj_prova.colunas,
+            "conteudo": obj_prova.conteudo,
+            "observacao": obj_prova.observacao
         }
 
     @staticmethod

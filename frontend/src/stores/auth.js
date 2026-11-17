@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { autenticarUsuario } from "@/services/usuarios";
+import { alterarSenha, autenticarUsuario } from "@/services/usuarios";
 
 const CHAVE_USUARIO = "tcc.usuario";
 
@@ -31,6 +31,8 @@ export const useAuthStore = defineStore("auth", {
     isProfessor: (state) => state.user?.role === "Professor",
     isProcessoPedagogico: (state) => state.user?.role === "Processo pedagógico",
     isLoggedIn: (state) => Boolean(state.user),
+    // Professores precisam definir uma senha própria antes de usar o sistema.
+    precisaTrocarSenha: (state) => state.user?.role === "Professor" && state.user?.deve_alterar_senha !== false,
   },
   actions: {
     async login(registro, senha) {
@@ -52,8 +54,19 @@ export const useAuthStore = defineStore("auth", {
       this.user = null;
       salvarUsuario(null);
     },
-    async trocarSenha() {
-      // A API não disponibiliza endpoint para alteração de senha.
+    async trocarSenha(senhaAtual, novaSenha) {
+      if (!this.user) return { success: false, message: "Sessão expirada. Entre novamente." };
+      this.loading = true;
+      try {
+        await alterarSenha(this.user.registro, senhaAtual, novaSenha);
+        this.user = { ...this.user, deve_alterar_senha: false };
+        salvarUsuario(this.user);
+        return { success: true };
+      } catch (error) {
+        return { success: false, message: error.details || error.message };
+      } finally {
+        this.loading = false;
+      }
     },
   },
 });
